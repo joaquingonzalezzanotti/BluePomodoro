@@ -1,10 +1,8 @@
 import { useState } from 'react'
-import { QuickAddTask } from './QuickAddTask'
 import { TasksPanel } from './TasksPanel'
 import { StatsPanel } from './StatsPanel'
-import { TimerCard } from './TimerCard'
-import { BacklogList } from './BacklogList'
 import { HierarchySidebar } from './HierarchySidebar'
+import { ActiveTimer } from './ActiveTimer'
 
 export function TableroView() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -13,18 +11,12 @@ export function TableroView() {
     <div className={`layout-shell ${sidebarOpen ? 'sidebar-open' : ''}`}>
       {sidebarOpen && <div className="sidebar-backdrop" onClick={() => setSidebarOpen(false)} />}
       <HierarchySidebar open={sidebarOpen} onToggle={setSidebarOpen} />
-      <main className="main-grid">
-        <section className="stacked">
-          <QuickAddTask />
-          <TasksPanel compact showForm={false} statusFilter={['todo']} />
+      <main className="dashboard-grid">
+        <section className="stacked main-col">
+          <TasksPanel statusFilter={['todo']} />
         </section>
-        <section className="stacked">
-          <BacklogList />
-        </section>
-        <section className="timer-column stacked">
-          <div className="timer-panel">
-            <TimerCard />
-          </div>
+        <section className="stacked side-col">
+          <ActiveTimer />
           <StatsPanel compact />
         </section>
       </main>

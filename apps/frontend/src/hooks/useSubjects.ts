@@ -3,6 +3,7 @@ import {
   createSubject,
   deleteSubject,
   getSubjects,
+  updateSubject,
   type Subject,
   type CreateSubjectInput,
   type UpdateSubjectInput,

@@ -1,9 +1,9 @@
-import { TimerCard } from './TimerCard'
+import { ActiveTimer } from './ActiveTimer'
 
 export function FocusView() {
   return (
     <div className="single-column">
-      <TimerCard />
+      <ActiveTimer />
     </div>
   )
 }

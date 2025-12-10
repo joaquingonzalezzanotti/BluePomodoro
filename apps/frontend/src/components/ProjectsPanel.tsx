@@ -24,6 +24,7 @@ type ProjectDraft = {
 type SubjectDraft = {
   name: string
   description: string
+  projectId: string | null
 }
 
 const emptyProject: ProjectDraft = {
@@ -36,6 +37,7 @@ const emptyProject: ProjectDraft = {
 const emptySubject: SubjectDraft = {
   name: '',
   description: '',
+  projectId: null,
 }
 
 export function ProjectsPanel() {
@@ -96,11 +98,12 @@ export function ProjectsPanel() {
   }
 
   const handleSaveSubject = async () => {
-    if (!editingSubjectId || !selectedProjectId) return
+    if (!editingSubjectId) return
     await updateSubject.mutateAsync({
       id: editingSubjectId,
-      ...subjectDraft,
-      projectId: selectedProjectId,
+      name: subjectDraft.name,
+      description: subjectDraft.description,
+      projectId: selectedProjectId ?? subjectDraft.projectId ?? null,
     })
     setEditingSubjectId(null)
     setSubjectDraft(emptySubject)
@@ -161,7 +164,7 @@ export function ProjectsPanel() {
             />
           </div>
           <div className="field">
-            <label>Descripción</label>
+            <label>DescripciИn</label>
             <input
               name="project-description"
               value={projectForm.description}
@@ -226,7 +229,7 @@ export function ProjectsPanel() {
                       </div>
                     </div>
                     <div className="field">
-                      <label>Descripción</label>
+                      <label>DescripciИn</label>
                       <input
                         name="project-edit-description"
                         value={projectDraft.description}
@@ -356,8 +359,27 @@ export function ProjectsPanel() {
               />
             </div>
             <div className="field">
-              <label>&nbsp;</label>
-              <button className="primary" type="submit" disabled={createSubject.isPending}>
+              <label>Proyecto</label>
+              <select
+                name="subject-project"
+                value={selectedProjectId ?? ''}
+                onChange={(e) => setSelectedProjectId(e.target.value || null)}
+              >
+                <option value="">Sin proyecto</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field" style={{ gridColumn: '1 / span 3' }}>
+              <button
+                className="primary"
+                type="submit"
+                disabled={createSubject.isPending}
+                style={{ width: 'auto', alignSelf: 'start' }}
+              >
                 {createSubject.isPending ? 'Creando...' : 'Crear materia'}
               </button>
             </div>
@@ -371,7 +393,7 @@ export function ProjectsPanel() {
                 <article key={s.id} className="item">
                   {editingSubjectId === s.id ? (
                     <>
-                      <div className="grid-2">
+                      <div className="grid-3">
                         <div className="field">
                           <label>Nombre</label>
                           <input
@@ -387,6 +409,23 @@ export function ProjectsPanel() {
                             value={subjectDraft.description}
                             onChange={(e) => setSubjectDraft({ ...subjectDraft, description: e.target.value })}
                           />
+                        </div>
+                        <div className="field">
+                          <label>Proyecto</label>
+                          <select
+                            name="subject-edit-project"
+                            value={subjectDraft.projectId ?? selectedProjectId ?? ''}
+                            onChange={(e) =>
+                              setSubjectDraft({ ...subjectDraft, projectId: e.target.value || null })
+                            }
+                          >
+                            <option value="">Sin proyecto</option>
+                            {projects.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </select>
                         </div>
                       </div>
                       <div className="item-actions">
@@ -435,7 +474,11 @@ export function ProjectsPanel() {
                           type="button"
                           onClick={() => {
                             setEditingSubjectId(s.id)
-                            setSubjectDraft({ name: s.name, description: s.description ?? '' })
+                            setSubjectDraft({
+                              name: s.name,
+                              description: s.description ?? '',
+                              projectId: s.projectId ?? selectedProjectId ?? null,
+                            })
                           }}
                         >
                           Editar

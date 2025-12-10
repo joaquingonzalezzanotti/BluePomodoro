@@ -41,7 +41,7 @@ function App() {
                 Estadísticas
               </NavLink>
               <NavLink to="/foco" className="sidebar-link">
-                Modo foco
+                Pomodo
               </NavLink>
               <NavLink to="/configuracion" className="sidebar-link">
                 Config
@@ -74,7 +74,7 @@ function App() {
               Estadísticas
             </NavLink>
             <NavLink to="/foco" className="pill nav-link">
-              Modo foco
+              Pomodo
             </NavLink>
             <NavLink to="/configuracion" className="pill nav-link">
               Config
@@ -98,9 +98,8 @@ function App() {
             <Route
               path="/tareas"
               element={
-                <div className="two-col">
-                  <TasksPanel showList={false} />
-                  <TasksPanel listOnly />
+                <div className="single-column" style={{ gap: '12px' }}>
+                  <TasksPanel />
                 </div>
               }
             />

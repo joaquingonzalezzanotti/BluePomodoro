@@ -23,37 +23,39 @@ export function DataPanel() {
   }
 
   return (
-    <div className="panel">
-      <div className="panel-header">
-        <div>
-          <p className="eyebrow">Respaldos</p>
-          <h2>Exportar / Importar</h2>
-          <p className="muted">Lleva tus tareas y sesiones a otro equipo. Opcional, es plug and play.</p>
+    <div className="preferences-shell">
+      <div className="pref-card" style={{ marginTop: '12px' }}>
+        <div className="pref-header">
+          <div>
+            <p className="eyebrow">Respaldos</p>
+            <h2>Mantenimiento</h2>
+            <p className="muted">Exporta o importa tus datos. Usa esta sección con cuidado.</p>
+          </div>
         </div>
-      </div>
-      <div className="controls">
-        <button className="primary" onClick={handleExport}>
-          Exportar datos
-        </button>
-        <button
-          className="ghost"
-          onClick={() => {
-            fileInputRef.current?.click()
-          }}
-        >
-          Importar archivo
-        </button>
-        <input
-          type="file"
-          accept=".sqlite"
-          name="data-import-file"
-          ref={fileInputRef}
-          style={{ display: 'none' }}
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) void handleImport(file)
-          }}
-        />
+        <div className="data-actions">
+          <button className="ghost" onClick={handleExport}>
+            📤 Exportar
+          </button>
+          <button
+            className="ghost"
+            onClick={() => {
+              fileInputRef.current?.click()
+            }}
+          >
+            📥 Importar
+          </button>
+          <input
+            type="file"
+            accept=".sqlite"
+            name="data-import-file"
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) void handleImport(file)
+            }}
+          />
+        </div>
       </div>
     </div>
   )
