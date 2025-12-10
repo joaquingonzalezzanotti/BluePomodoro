@@ -10,6 +10,7 @@ import { ProjectsSubjectsPage } from './components/ProjectsSubjectsPage'
 import { TableroView } from './components/TableroView'
 import { useAppStore } from './state/useAppStore'
 import logo from './assets/BluePomodoro.png'
+import { TimerWidget } from './components/TimerWidget'
 
 function App() {
   const { init, resetAndInit, dbReady, dbError } = useAppStore()
@@ -47,6 +48,7 @@ function App() {
             </NavLink>
           </nav>
         )}
+        {!navCollapsed && <TimerWidget />}
       </aside>
       <div className="main-area">
         <header className="topbar" id="hoy">
