@@ -46,6 +46,7 @@ export function DataPanel() {
         <input
           type="file"
           accept=".sqlite"
+          name="data-import-file"
           ref={fileInputRef}
           style={{ display: 'none' }}
           onChange={(e) => {

@@ -1,7 +1,9 @@
 import { useMemo, useState, type FormEvent } from 'react'
-import { useAppStore } from '../state/useAppStore'
-import { type Task, type TaskStatus } from '../lib/types'
+import { type TaskStatus } from '../lib/types'
 import { formatDateShort } from '../lib/time'
+import { useProjects } from '../api/projects'
+import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../hooks/useTasks'
+import { useSessions } from '../hooks/useSessions'
 
 type TasksPanelProps = {
   compact?: boolean
@@ -31,34 +33,40 @@ export function TasksPanel({
   showForm = true,
   statusFilter,
 }: TasksPanelProps) {
-  const {
-    tasks,
-    projects,
-    subjects,
-    subtasks,
-    addTask,
-    setTaskStatus,
-    sessions,
-    editTask,
-    removeTask,
-    addSubtask,
-    toggleSubtask,
-    deleteSubtask,
-  } = useAppStore()
+  const { data: tasks = [], isLoading, isError } = useTasks()
+  const { data: projects = [] } = useProjects()
+  const { data: sessions = [] } = useSessions()
+  const createTask = useCreateTask()
+  const updateTask = useUpdateTask()
+  const deleteTask = useDeleteTask()
+
   const [title, setTitle] = useState('')
-  const [priority, setPriority] = useState<Task['priority']>('medium')
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium')
   const [description, setDescription] = useState('')
   const [estimatedPomodoros, setEstimatedPomodoros] = useState(1)
   const [projectId, setProjectId] = useState<string | null>(null)
   const [subjectId, setSubjectId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [editDraft, setEditDraft] = useState<Partial<Task>>({})
-  const [subtaskInput, setSubtaskInput] = useState<Record<string, string>>({})
+  const [editDraft, setEditDraft] = useState<{
+    title?: string
+    description?: string
+    priority?: 'low' | 'medium' | 'high'
+    estimatedPomodoros?: number
+    projectId?: string | null
+    subjectId?: string | null
+  }>({})
 
   const filteredTasks = useMemo(() => {
-    const base = statusFilter ? tasks.filter((t) => statusFilter.includes(t.status)) : tasks
-    return [...base].sort((a, b) => statusOrder[a.status] - statusOrder[b.status])
+    const base = statusFilter ? tasks.filter((t) => statusFilter.includes(t.status as TaskStatus)) : tasks
+    return [...base].sort((a, b) => statusOrder[a.status as TaskStatus] - statusOrder[b.status as TaskStatus])
   }, [statusFilter, tasks])
+
+  const sections = useMemo(() => {
+    const todo = filteredTasks.filter((t) => t.status === 'todo')
+    const doing = filteredTasks.filter((t) => t.status === 'doing')
+    const done = filteredTasks.filter((t) => t.status === 'done')
+    return { todo, doing, done }
+  }, [filteredTasks])
 
   const focusPerTask = useMemo(() => {
     const map = new Map<string, number>()
@@ -74,7 +82,7 @@ export function TasksPanel({
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault()
     if (!title.trim()) return
-    await addTask({
+    await createTask.mutateAsync({
       title: title.trim(),
       description,
       priority,
@@ -97,29 +105,29 @@ export function TasksPanel({
     return 'Listo'
   }
 
-  const startEdit = (task: Task) => {
+  const startEdit = (taskId: string) => {
+    const task = tasks.find((t) => t.id === taskId)
+    if (!task) return
     setEditingId(task.id)
-    setEditDraft(task)
+    setEditDraft({
+      title: task.title,
+      description: task.description,
+      priority: task.priority as 'low' | 'medium' | 'high',
+      estimatedPomodoros: task.estimatedPomodoros,
+      projectId: task.projectId ?? null,
+      subjectId: task.subjectId ?? null,
+    })
   }
 
   const saveEdit = async () => {
     if (!editingId) return
-    await editTask(editingId, {
-      title: editDraft.title,
-      description: editDraft.description,
-      priority: editDraft.priority,
-      estimatedPomodoros: editDraft.estimatedPomodoros,
-      projectId: editDraft.projectId,
-      subjectId: editDraft.subjectId,
+    await updateTask.mutateAsync({
+      id: editingId,
+      ...editDraft,
     })
     setEditingId(null)
     setEditDraft({})
   }
-
-  const filteredSubjects = useMemo(
-    () => subjects.filter((s) => !projectId || s.projectId === projectId),
-    [subjects, projectId]
-  )
 
   const formBlock = !showForm || compact || listOnly ? null : (
     <form className="stack" onSubmit={handleSubmit}>
@@ -178,17 +186,8 @@ export function TasksPanel({
         </div>
         <div className="field">
           <label htmlFor="subject">Materia</label>
-          <select
-            id="subject"
-            value={subjectId ?? ''}
-            onChange={(e) => setSubjectId(e.target.value || null)}
-          >
+          <select id="subject" value={subjectId ?? ''} disabled>
             <option value="">Sin materia</option>
-            {filteredSubjects.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
           </select>
         </div>
         <div className="field">
@@ -196,7 +195,7 @@ export function TasksPanel({
           <select
             id="priority"
             value={priority}
-            onChange={(e) => setPriority(e.target.value as Task['priority'])}
+            onChange={(e) => setPriority(e.target.value as 'low' | 'medium' | 'high')}
           >
             <option value="low">Baja</option>
             <option value="medium">Media</option>
@@ -205,8 +204,8 @@ export function TasksPanel({
         </div>
         <div className="field">
           <label>&nbsp;</label>
-          <button type="submit" className="primary">
-            Guardar tarea
+          <button type="submit" className="primary" disabled={createTask.isPending}>
+            {createTask.isPending ? 'Guardando...' : 'Guardar tarea'}
           </button>
         </div>
       </div>
@@ -217,210 +216,187 @@ export function TasksPanel({
     <>
       {!compact && !listOnly && formBlock}
 
+      {isLoading && <p className="muted">Cargando tareas...</p>}
+      {isError && <p className="muted danger">No se pudieron cargar las tareas.</p>}
+
       {showList && (
         <div className={`list ${compact || listOnly ? 'compact-list' : ''}`}>
           {filteredTasks.length === 0 && <p className="muted">Aún no hay tareas.</p>}
-          {filteredTasks.map((task) => (
-          <article key={task.id} className="item">
-            <header>
-              <div>
-                <p className="eyebrow">{statusLabel(task.status)}</p>
-                <h3>{task.title}</h3>
-                {task.description && <p className="muted small">{task.description}</p>}
-                {!compact && (
-                  <>
-                    <p className="muted small">Creada: {formatDateShort(task.createdAt)}</p>
-                    <p className="muted small">
-                      Pomodoros: {focusPerTask.get(task.id) ?? 0} / {task.estimatedPomodoros}
-                    </p>
-                    {(task.projectId || task.subjectId) && (
-                      <p className="muted small">
-                        {task.projectId && (
-                          <span>Proyecto: {projects.find((p) => p.id === task.projectId)?.name ?? '—'}</span>
-                        )}
-                        {task.projectId && task.subjectId ? ' · ' : ''}
-                        {task.subjectId && (
-                          <span>Materia: {subjects.find((s) => s.id === task.subjectId)?.name ?? '—'}</span>
-                        )}
-                      </p>
-                    )}
-                  </>
-                )}
-              </div>
-              <div className={`chip ${task.priority}`}>{task.priority}</div>
-            </header>
-            {!compact && (
-              <div className="subtasks">
-                <p className="eyebrow">Subtareas</p>
-                <ul className="muted small" style={{ paddingLeft: '16px', margin: '6px 0' }}>
-                  {subtasks.filter((s) => s.taskId === task.id).length === 0 && <li>Sin subtareas</li>}
-                  {subtasks
-                    .filter((s) => s.taskId === task.id)
-                    .map((s) => (
-                      <li key={s.id}>
-                        <label className="checkbox">
-                          <input
-                            type="checkbox"
-                            checked={s.done}
-                            onChange={(e) => toggleSubtask(s.id, e.target.checked)}
-                          />
-                          {s.title}
-                        </label>
-                        <button className="ghost danger" onClick={() => deleteSubtask(s.id)}>
-                          x
-                        </button>
-                      </li>
-                    ))}
-                </ul>
-                <div className="inline">
-                  <input
-                    placeholder="Nueva subtarea"
-                    value={subtaskInput[task.id] ?? ''}
-                    onChange={(e) => setSubtaskInput({ ...subtaskInput, [task.id]: e.target.value })}
-                  />
-                  <button
-                    className="primary"
-                    type="button"
-                    onClick={async () => {
-                      const title = (subtaskInput[task.id] ?? '').trim()
-                      if (!title) return
-                      await addSubtask(task.id, title)
-                      setSubtaskInput({ ...subtaskInput, [task.id]: '' })
-                    }}
-                  >
-                    Añadir
-                  </button>
-                  <button
-                    className="ghost"
-                    type="button"
-                    onClick={async () => {
-                      const template = ['Leer', 'Resumir', 'Preguntas']
-                      for (const t of template) {
-                        await addSubtask(task.id, t)
-                      }
-                    }}
-                  >
-                    Plantilla estudiar
-                  </button>
+
+          {(['todo', 'doing', 'done'] as TaskStatus[]).map((state) => {
+            const list = sections[state]
+            if (list.length === 0) return null
+            return (
+              <section key={state} style={{ marginBottom: '16px' }}>
+                <div className="list-header" style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <div>
+                    <p className="eyebrow">{statusLabel(state)}</p>
+                    <h4 style={{ margin: '4px 0 0' }}>
+                      {list.length} {list.length === 1 ? 'tarea' : 'tareas'}
+                    </h4>
+                  </div>
                 </div>
-              </div>
-            )}
-            {editingId === task.id ? (
-              <div className="edit-block">
-                <div className="grid-3">
-                  <div className="field">
-                    <label>Título</label>
-                    <input
-                      value={editDraft.title ?? ''}
-                      onChange={(e) => setEditDraft({ ...editDraft, title: e.target.value })}
-                    />
-                  </div>
-                  <div className="field">
-                    <label>Prioridad</label>
-                    <select
-                      value={editDraft.priority ?? task.priority}
-                      onChange={(e) =>
-                        setEditDraft({ ...editDraft, priority: e.target.value as Task['priority'] })
-                      }
-                    >
-                      <option value="low">Baja</option>
-                      <option value="medium">Media</option>
-                      <option value="high">Alta</option>
-                    </select>
-                  </div>
-                  <div className="field">
-                    <label>Pomodoros estimados</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={20}
-                      value={editDraft.estimatedPomodoros ?? task.estimatedPomodoros}
-                      onChange={(e) =>
-                        setEditDraft({ ...editDraft, estimatedPomodoros: Number(e.target.value) })
-                      }
-                    />
-                  </div>
-                  <div className="field">
-                    <label>Proyecto</label>
-                    <select
-                      value={editDraft.projectId ?? task.projectId ?? ''}
-                      onChange={(e) =>
-                        setEditDraft({ ...editDraft, projectId: e.target.value || null, subjectId: null })
-                      }
-                    >
-                      <option value="">Sin proyecto</option>
-                      {projects.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="field">
-                    <label>Materia</label>
-                    <select
-                      value={editDraft.subjectId ?? task.subjectId ?? ''}
-                      onChange={(e) => setEditDraft({ ...editDraft, subjectId: e.target.value || null })}
-                    >
-                      <option value="">Sin materia</option>
-                      {subjects
-                        .filter((s) => !editDraft.projectId || s.projectId === editDraft.projectId)
-                        .map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
+                {list.map((task) => (
+                  <article key={task.id} className="item">
+              <header>
+                <div>
+                  <p className="eyebrow">{statusLabel(task.status as TaskStatus)}</p>
+                  <h3>{task.title}</h3>
+                  {task.description && <p className="muted small">{task.description}</p>}
+                  {!compact && (
+                    <>
+                      <p className="muted small">Creada: {formatDateShort(task.createdAt)}</p>
+                      <p className="muted small">
+                        Pomodoros: {focusPerTask.get(task.id) ?? 0} / {task.estimatedPomodoros}
+                      </p>
+                      {(task.projectId || task.subjectId) && (
+                        <p className="muted small">
+                          {task.projectId && (
+                            <span>Proyecto: {projects.find((p) => p.id === task.projectId)?.name ?? 'N/D'}</span>
+                          )}
+                          {task.projectId && task.subjectId ? ' · ' : ''}
+                          {task.subjectId && <span>Materia: N/D</span>}
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+                <div className={`chip ${task.priority}`}>{task.priority}</div>
+              </header>
+
+              {editingId === task.id ? (
+                <div className="edit-block">
+                  <div className="grid-3">
+                    <div className="field">
+                      <label>Título</label>
+                      <input
+                        value={editDraft.title ?? ''}
+                        onChange={(e) => setEditDraft({ ...editDraft, title: e.target.value })}
+                      />
+                    </div>
+                    <div className="field">
+                      <label>Prioridad</label>
+                      <select
+                        value={editDraft.priority ?? (task.priority as 'low' | 'medium' | 'high')}
+                        onChange={(e) =>
+                          setEditDraft({ ...editDraft, priority: e.target.value as 'low' | 'medium' | 'high' })
+                        }
+                      >
+                        <option value="low">Baja</option>
+                        <option value="medium">Media</option>
+                        <option value="high">Alta</option>
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label>Pomodoros estimados</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={editDraft.estimatedPomodoros ?? task.estimatedPomodoros}
+                        onChange={(e) =>
+                          setEditDraft({ ...editDraft, estimatedPomodoros: Number(e.target.value) })
+                        }
+                      />
+                    </div>
+                    <div className="field">
+                      <label>Proyecto</label>
+                      <select
+                        value={editDraft.projectId ?? task.projectId ?? ''}
+                        onChange={(e) =>
+                          setEditDraft({ ...editDraft, projectId: e.target.value || null, subjectId: null })
+                        }
+                      >
+                        <option value="">Sin proyecto</option>
+                        {projects.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
                           </option>
                         ))}
-                    </select>
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label>Materia</label>
+                      <select
+                        value={editDraft.subjectId ?? task.subjectId ?? ''}
+                        onChange={(e) => setEditDraft({ ...editDraft, subjectId: e.target.value || null })}
+                        disabled
+                      >
+                        <option value="">Sin materia</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label>Descripción</label>
+                    <textarea
+                      rows={2}
+                      value={editDraft.description ?? task.description}
+                      onChange={(e) => setEditDraft({ ...editDraft, description: e.target.value })}
+                    />
+                  </div>
+                  <div className="item-actions">
+                    <button className="primary" onClick={saveEdit} disabled={updateTask.isPending}>
+                      {updateTask.isPending ? 'Guardando...' : 'Guardar'}
+                    </button>
+                    <button
+                      className="ghost"
+                      onClick={() => {
+                        setEditingId(null)
+                        setEditDraft({})
+                      }}
+                    >
+                      Cancelar
+                    </button>
                   </div>
                 </div>
-                <div className="field">
-                  <label>Descripción</label>
-                  <textarea
-                    rows={2}
-                    value={editDraft.description ?? task.description}
-                    onChange={(e) => setEditDraft({ ...editDraft, description: e.target.value })}
-                  />
-                </div>
+              ) : (
                 <div className="item-actions">
-                  <button className="primary" onClick={saveEdit}>
-                    Guardar
-                  </button>
-                  <button
-                    className="ghost"
-                    onClick={() => {
-                      setEditingId(null)
-                      setEditDraft({})
-                    }}
+                  <select
+                    value={task.status}
+                    onChange={(e) =>
+                      updateTask.mutate({ id: task.id, status: e.target.value as TaskStatus })
+                    }
                   >
-                    Cancelar
+                    {statusOptions.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                  {!compact && (
+                    <button className="ghost" onClick={() => startEdit(task.id)}>
+                      Editar
+                    </button>
+                  )}
+                  {task.status !== 'done' ? (
+                    <button
+                      className="ghost"
+                      onClick={() =>
+                        updateTask.mutate({ id: task.id, status: task.status === 'todo' ? 'doing' : 'done' })
+                      }
+                    >
+                      {task.status === 'todo' ? 'Mover a en foco' : 'Completar'}
+                    </button>
+                  ) : (
+                    <button className="ghost" onClick={() => updateTask.mutate({ id: task.id, status: 'todo' })}>
+                      Reabrir
+                    </button>
+                  )}
+                  <button
+                    className="ghost danger"
+                    onClick={() => deleteTask.mutate(task.id)}
+                    disabled={deleteTask.isPending}
+                  >
+                    {deleteTask.isPending ? 'Eliminando...' : 'Eliminar'}
                   </button>
                 </div>
-              </div>
-            ) : (
-              <div className="item-actions">
-                <select
-                  value={task.status}
-                  onChange={(e) => setTaskStatus(task.id, e.target.value as TaskStatus)}
-                >
-                  {statusOptions.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-                {!compact && (
-                  <button className="ghost" onClick={() => startEdit(task)}>
-                    Editar
-                  </button>
-                )}
-                <button className="ghost danger" onClick={() => removeTask(task.id)}>
-                  Eliminar
-                </button>
-              </div>
-            )}
-          </article>
-        ))}
-      </div>
+              )}
+            </article>
+                ))}
+              </section>
+            )
+          })}
+        </div>
       )}
     </>
   )

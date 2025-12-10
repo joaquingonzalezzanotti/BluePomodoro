@@ -56,19 +56,24 @@ export function ProjectsPanel() {
       <form className="grid-4" onSubmit={handleCreate}>
         <div className="field">
           <label>Nombre</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} required />
+          <input name="project-name" value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
         <div className="field">
           <label>Descripción</label>
-          <input value={description} onChange={(e) => setDescription(e.target.value)} />
+          <input name="project-description" value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
         <div className="field">
           <label>Color</label>
-          <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
+          <input name="project-color" type="color" value={color} onChange={(e) => setColor(e.target.value)} />
         </div>
         <div className="field">
           <label>Fecha objetivo</label>
-          <input type="date" value={dueDate ?? ''} onChange={(e) => setDueDate(e.target.value || null)} />
+          <input
+            name="project-dueDate"
+            type="date"
+            value={dueDate ?? ''}
+            onChange={(e) => setDueDate(e.target.value || null)}
+          />
         </div>
         <div className="field">
           <label>&nbsp;</label>
@@ -88,11 +93,16 @@ export function ProjectsPanel() {
                   <div className="grid-4">
                     <div className="field">
                       <label>Nombre</label>
-                      <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+                      <input
+                        name="project-edit-name"
+                        value={draft.name}
+                        onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                      />
                     </div>
                     <div className="field">
                       <label>Descripción</label>
                       <input
+                        name="project-edit-description"
                         value={draft.description}
                         onChange={(e) => setDraft({ ...draft, description: e.target.value })}
                       />
@@ -100,6 +110,7 @@ export function ProjectsPanel() {
                     <div className="field">
                       <label>Color</label>
                       <input
+                        name="project-edit-color"
                         type="color"
                         value={draft.color}
                         onChange={(e) => setDraft({ ...draft, color: e.target.value })}
@@ -108,6 +119,7 @@ export function ProjectsPanel() {
                     <div className="field">
                       <label>Fecha objetivo</label>
                       <input
+                        name="project-edit-dueDate"
                         type="date"
                         value={draft.dueDate ?? ''}
                         onChange={(e) => setDraft({ ...draft, dueDate: e.target.value || null })}

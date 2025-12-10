@@ -61,7 +61,13 @@ export function QuickAddTask() {
       <div className="grid-4">
         <div className="field">
           <label>Título</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej. Tarea breve" required />
+          <input
+            name="quick-title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Ej. Tarea breve"
+            required
+          />
         </div>
         <div className="field">
           <label>Proyecto</label>

@@ -62,11 +62,11 @@ export function SubjectsPanel() {
       <form className="grid-4" onSubmit={handleCreate}>
         <div className="field">
           <label>Nombre</label>
-          <input value={name} onChange={(e) => setName(e.target.value)} required />
+          <input name="subject-name" value={name} onChange={(e) => setName(e.target.value)} required />
         </div>
         <div className="field">
           <label>Proyecto</label>
-          <select value={projectId ?? ''} onChange={(e) => setProjectId(e.target.value || null)}>
+          <select name="subject-project" value={projectId ?? ''} onChange={(e) => setProjectId(e.target.value || null)}>
             <option value="">Sin proyecto</option>
             {projects.map((p) => (
               <option key={p.id} value={p.id}>
@@ -77,7 +77,7 @@ export function SubjectsPanel() {
         </div>
         <div className="field">
           <label>Descripción</label>
-          <input value={description} onChange={(e) => setDescription(e.target.value)} />
+          <input name="subject-description" value={description} onChange={(e) => setDescription(e.target.value)} />
         </div>
         <div className="field">
           <label>&nbsp;</label>
@@ -96,11 +96,16 @@ export function SubjectsPanel() {
                 <div className="grid-4">
                   <div className="field">
                     <label>Nombre</label>
-                    <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+                    <input
+                      name="subject-edit-name"
+                      value={draft.name}
+                      onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+                    />
                   </div>
                   <div className="field">
                     <label>Proyecto</label>
                     <select
+                      name="subject-edit-project"
                       value={draft.projectId ?? ''}
                       onChange={(e) => setDraft({ ...draft, projectId: e.target.value || null })}
                     >
@@ -115,6 +120,7 @@ export function SubjectsPanel() {
                   <div className="field">
                     <label>Descripción</label>
                     <input
+                      name="subject-edit-description"
                       value={draft.description}
                       onChange={(e) => setDraft({ ...draft, description: e.target.value })}
                     />

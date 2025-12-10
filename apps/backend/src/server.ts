@@ -2,7 +2,7 @@ import Fastify from 'fastify'
 import cors from '@fastify/cors'
 import fastifyStatic from '@fastify/static'
 import { PrismaClient } from '@prisma/client'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url))
@@ -12,7 +12,10 @@ const server = Fastify({ logger: true })
 const API_KEY = process.env.API_KEY
 const PORT = Number(process.env.PORT || 4000)
 const HOST = process.env.HOST || '0.0.0.0'
-const STATIC_DIR = process.env.STATIC_DIR || join(__dirname, '..', 'public')
+// Default to ../public (built frontend). If STATIC_DIR is set, resolve from cwd so it works in dev.
+const STATIC_DIR = process.env.STATIC_DIR
+  ? resolve(process.cwd(), process.env.STATIC_DIR)
+  : join(__dirname, '..', 'public')
 
 server.register(cors, { origin: process.env.CORS_ORIGIN?.split(',') ?? true })
 
@@ -66,6 +69,54 @@ server.post('/tasks', async (req, reply) => {
     },
   })
   reply.code(201).send(task)
+})
+
+server.patch('/tasks/:id', async (req, reply) => {
+  const { id } = req.params as { id: string }
+  const body = req.body as {
+    title?: string
+    description?: string
+    priority?: 'low' | 'medium' | 'high'
+    estimatedPomodoros?: number
+    status?: 'todo' | 'doing' | 'done'
+    projectId?: string | null
+    subjectId?: string | null
+  }
+  try {
+    const task = await prisma.task.update({
+      where: { id },
+      data: {
+        ...(body.title !== undefined ? { title: body.title } : {}),
+        ...(body.description !== undefined ? { description: body.description } : {}),
+        ...(body.priority !== undefined ? { priority: body.priority } : {}),
+        ...(body.estimatedPomodoros !== undefined ? { estimatedPomodoros: body.estimatedPomodoros } : {}),
+        ...(body.status !== undefined ? { status: body.status } : {}),
+        ...(body.projectId !== undefined ? { projectId: body.projectId } : {}),
+        ...(body.subjectId !== undefined ? { subjectId: body.subjectId } : {}),
+      },
+    })
+    reply.send(task)
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
+      reply.code(404).send({ error: 'Task not found' })
+      return
+    }
+    throw error
+  }
+})
+
+server.delete('/tasks/:id', async (req, reply) => {
+  const { id } = req.params as { id: string }
+  try {
+    await prisma.task.delete({ where: { id } })
+    reply.code(204).send()
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
+      reply.code(404).send({ error: 'Task not found' })
+      return
+    }
+    throw error
+  }
 })
 
 server.get('/sessions', async () => prisma.session.findMany({ orderBy: { startedAt: 'desc' } }))
