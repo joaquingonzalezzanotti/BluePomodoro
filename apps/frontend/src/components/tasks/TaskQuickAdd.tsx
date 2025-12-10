@@ -2,12 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCreateTask } from '../../hooks/useTasks'
 import { useProjects } from '../../hooks/useProjects'
 import { useSubjects } from '../../hooks/useSubjects'
+import pomodoroIcon from '../../assets/BluePomodoro.png'
 
 export function TaskQuickAdd() {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [title, setTitle] = useState('')
   const [projectId, setProjectId] = useState<string | null>(null)
   const [subjectId, setSubjectId] = useState<string | null>(null)
+  const [estimate, setEstimate] = useState<number | null>(null)
   const { data: projects = [] } = useProjects()
   const { data: subjects = [] } = useSubjects(projectId ?? undefined)
   const createTask = useCreateTask()
@@ -30,12 +32,13 @@ export function TaskQuickAdd() {
         subjectId,
         description: '',
         priority: 'medium',
-        estimatedPomodoros: 1,
+        estimatedPomodoros: estimate ?? 0,
         dueDate: null,
       })
       setTitle('')
       setProjectId(null)
       setSubjectId(null)
+      setEstimate(null)
       inputRef.current?.focus()
     } catch {
       setErrorMsg('No pudimos guardar, intenta de nuevo.')
@@ -89,10 +92,30 @@ export function TaskQuickAdd() {
               </option>
             ))}
           </select>
+          <select
+            name="quick-estimate"
+            value={estimate ?? ''}
+            onChange={(e) => setEstimate(e.target.value ? Number(e.target.value) : null)}
+            style={{ minWidth: '160px' }}
+          >
+            <option value="">Pomodoros (opcional)</option>
+            {[1, 2, 3, 4, 5].map((n) => (
+              <option key={n} value={n}>
+                {n} pomodoro{n > 1 ? 's' : ''}
+              </option>
+            ))}
+          </select>
           <button className="primary" type="submit" disabled={createTask.isPending} style={{ whiteSpace: 'nowrap' }}>
             {createTask.isPending ? 'Guardando...' : 'Crear'}
           </button>
         </div>
+        {estimate ? (
+          <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+            {Array.from({ length: estimate }).map((_, idx) => (
+              <img key={idx} src={pomodoroIcon} alt="pomodoro" width={18} height={18} />
+            ))}
+          </div>
+        ) : null}
       </div>
       {errorMsg && (
         <p className="muted danger small" style={{ marginTop: '4px' }}>

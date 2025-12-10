@@ -137,7 +137,7 @@ export function ActiveTimer() {
         background: style.bg,
         color: '#fff',
         padding: '18px',
-        minHeight: '280px',
+        minHeight: '240px',
         display: 'grid',
         gap: '12px',
       }}

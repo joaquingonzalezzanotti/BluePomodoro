@@ -26,28 +26,26 @@ function App() {
           <span className="hamburger" />
         </button>
         {!navCollapsed && (
-          <>
-            <nav className="sidebar-nav">
-              <NavLink to="/" className="sidebar-link">
-                Tablero
-              </NavLink>
-              <NavLink to="/tareas" className="sidebar-link">
-                Tareas
-              </NavLink>
-              <NavLink to="/proyectos" className="sidebar-link">
-                Proyectos
-              </NavLink>
-              <NavLink to="/estadisticas" className="sidebar-link">
-                Estadísticas
-              </NavLink>
-              <NavLink to="/foco" className="sidebar-link">
-                Pomodo
-              </NavLink>
-              <NavLink to="/configuracion" className="sidebar-link">
-                Config
-              </NavLink>
-            </nav>
-          </>
+          <nav className="sidebar-nav">
+            <NavLink to="/" className="sidebar-link">
+              Tablero
+            </NavLink>
+            <NavLink to="/foco" className="sidebar-link">
+              Pomodoro
+            </NavLink>
+            <NavLink to="/tareas" className="sidebar-link">
+              Tareas
+            </NavLink>
+            <NavLink to="/proyectos" className="sidebar-link">
+              Proyectos
+            </NavLink>
+            <NavLink to="/estadisticas" className="sidebar-link">
+              Estadisticas
+            </NavLink>
+            <NavLink to="/configuracion" className="sidebar-link">
+              Config
+            </NavLink>
+          </nav>
         )}
       </aside>
       <div className="main-area">
@@ -55,7 +53,7 @@ function App() {
           <div className="brand">
             <img src={logo} alt="Focus To-Do logo" className="brand-logo" />
             <div>
-              <p className="eyebrow">Plan del día</p>
+              <p className="eyebrow">Plan del dia</p>
               <h1>Pomodoro + tareas</h1>
               <p className="muted">Organiza sesiones, tareas, materias y proyectos.</p>
             </div>
@@ -64,6 +62,9 @@ function App() {
             <NavLink to="/" className="pill nav-link">
               Tablero
             </NavLink>
+            <NavLink to="/foco" className="pill nav-link">
+              Pomodoro
+            </NavLink>
             <NavLink to="/tareas" className="pill nav-link">
               Tareas
             </NavLink>
@@ -71,10 +72,7 @@ function App() {
               Proyectos
             </NavLink>
             <NavLink to="/estadisticas" className="pill nav-link">
-              Estadísticas
-            </NavLink>
-            <NavLink to="/foco" className="pill nav-link">
-              Pomodo
+              Estadisticas
             </NavLink>
             <NavLink to="/configuracion" className="pill nav-link">
               Config
@@ -123,9 +121,11 @@ function App() {
             <Route
               path="/configuracion"
               element={
-                <div className="single-column">
+                <div className="config-grid">
                   <SettingsPanel />
-                  <DataPanel />
+                  <div className="data-hidden">
+                    <DataPanel />
+                  </div>
                 </div>
               }
             />

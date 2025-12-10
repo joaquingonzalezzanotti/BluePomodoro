@@ -252,6 +252,62 @@ server.post('/sessions', async (req, reply) => {
   reply.code(201).send(session)
 })
 
+server.get('/subtasks', async (req) => {
+  const taskId = (req.query as { taskId?: string }).taskId
+  return prisma.subtask.findMany({ where: taskId ? { taskId } : undefined, orderBy: { createdAt: 'asc' } })
+})
+
+server.post('/subtasks', async (req, reply) => {
+  const body = req.body as { taskId: string; title: string }
+  const count = await prisma.subtask.count({ where: { taskId: body.taskId } })
+  if (count >= 3) {
+    reply.code(400).send({ error: 'Máximo 3 subtareas por tarea' })
+    return
+  }
+  const subtask = await prisma.subtask.create({
+    data: {
+      taskId: body.taskId,
+      title: body.title,
+    },
+  })
+  reply.code(201).send(subtask)
+})
+
+server.patch('/subtasks/:id', async (req, reply) => {
+  const { id } = req.params as { id: string }
+  const body = req.body as { title?: string; done?: boolean }
+  try {
+    const subtask = await prisma.subtask.update({
+      where: { id },
+      data: {
+        ...(body.title !== undefined ? { title: body.title } : {}),
+        ...(body.done !== undefined ? { done: body.done } : {}),
+      },
+    })
+    reply.send(subtask)
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
+      reply.code(404).send({ error: 'Subtask not found' })
+      return
+    }
+    throw error
+  }
+})
+
+server.delete('/subtasks/:id', async (req, reply) => {
+  const { id } = req.params as { id: string }
+  try {
+    await prisma.subtask.delete({ where: { id } })
+    reply.code(204).send()
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
+      reply.code(404).send({ error: 'Subtask not found' })
+      return
+    }
+    throw error
+  }
+})
+
 server.register(fastifyStatic, {
   root: STATIC_DIR,
   prefix: '/',
