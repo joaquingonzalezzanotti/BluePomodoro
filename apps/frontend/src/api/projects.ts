@@ -1,14 +1,8 @@
-import { apiClient } from './client'
+import type { Project as DomainProject } from '../lib/types'
+import { insertProject, listProjects, updateProject as updateProjectRepo, deleteProject as deleteProjectRepo } from '../db/repository'
+import { withDb } from './localDb'
 
-export interface Project {
-  id: string
-  name: string
-  description: string
-  color: string
-  dueDate?: string | null
-  createdAt: string
-  updatedAt: string
-}
+export type Project = DomainProject
 
 export interface CreateProjectInput {
   name: string
@@ -26,22 +20,36 @@ export interface UpdateProjectInput {
 }
 
 export async function getProjects() {
-  const { data } = await apiClient.get<Project[]>('/projects')
-  return data
+  return withDb((db) => listProjects(db))
 }
 
 export async function createProject(input: CreateProjectInput) {
-  const { data } = await apiClient.post<Project>('/projects', input)
-  return data
+  return withDb((db) =>
+    insertProject(db, {
+      name: input.name,
+      description: input.description ?? '',
+      color: input.color ?? '#1f56ff',
+      dueDate: input.dueDate ?? null,
+    })
+  )
 }
 
 export async function updateProject(input: UpdateProjectInput) {
-  const { id, ...payload } = input
-  const { data } = await apiClient.patch<Project>(`/projects/${id}`, payload)
-  return data
+  return withDb((db) => {
+    updateProjectRepo(db, input.id, {
+      name: input.name,
+      description: input.description,
+      color: input.color,
+      dueDate: input.dueDate,
+    })
+    const projects = listProjects(db)
+    return projects.find((p) => p.id === input.id)!
+  })
 }
 
 export async function deleteProject(id: string) {
-  await apiClient.delete(`/projects/${id}`)
-  return id
+  return withDb((db) => {
+    deleteProjectRepo(db, id)
+    return id
+  })
 }

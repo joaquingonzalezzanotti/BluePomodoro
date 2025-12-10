@@ -1,21 +1,13 @@
-import { apiClient } from './client'
+import type { Task as DomainTask, TaskPriority, TaskStatus } from '../lib/types'
+import {
+  deleteTask as deleteTaskRepo,
+  insertTask,
+  listTasks,
+  updateTask as updateTaskRepo,
+} from '../db/repository'
+import { withDb } from './localDb'
 
-export type TaskStatus = 'todo' | 'doing' | 'done'
-export type TaskPriority = 'low' | 'medium' | 'high'
-
-export interface Task {
-  id: string
-  title: string
-  description: string
-  estimatedPomodoros: number
-  status: TaskStatus
-  priority: TaskPriority
-  dueDate?: string | null
-  projectId?: string | null
-  subjectId?: string | null
-  createdAt: string
-  updatedAt: string
-}
+export type Task = DomainTask
 
 export interface CreateTaskInput {
   title: string
@@ -41,22 +33,44 @@ export interface UpdateTaskInput {
 }
 
 export async function getTasks() {
-  const { data } = await apiClient.get<Task[]>('/tasks')
-  return data
+  return withDb((db) => listTasks(db))
 }
 
 export async function createTask(input: CreateTaskInput) {
-  const { data } = await apiClient.post<Task>('/tasks', input)
-  return data
+  return withDb((db) =>
+    insertTask(db, {
+      title: input.title,
+      description: input.description ?? '',
+      estimatedPomodoros: input.estimatedPomodoros ?? 1,
+      status: input.status ?? 'todo',
+      priority: input.priority ?? 'medium',
+      dueDate: input.dueDate ?? null,
+      projectId: input.projectId ?? null,
+      subjectId: input.subjectId ?? null,
+    })
+  )
 }
 
 export async function updateTask(input: UpdateTaskInput) {
-  const { id, ...payload } = input
-  const { data } = await apiClient.patch<Task>(`/tasks/${id}`, payload)
-  return data
+  return withDb((db) => {
+    updateTaskRepo(db, input.id, {
+      title: input.title,
+      description: input.description,
+      estimatedPomodoros: input.estimatedPomodoros,
+      status: input.status,
+      priority: input.priority,
+      dueDate: input.dueDate,
+      projectId: input.projectId,
+      subjectId: input.subjectId,
+    })
+    const tasks = listTasks(db)
+    return tasks.find((t) => t.id === input.id)!
+  })
 }
 
 export async function deleteTask(id: string) {
-  await apiClient.delete(`/tasks/${id}`)
-  return id
+  return withDb((db) => {
+    deleteTaskRepo(db, id)
+    return id
+  })
 }

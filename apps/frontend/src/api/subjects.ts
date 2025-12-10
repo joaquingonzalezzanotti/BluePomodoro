@@ -1,13 +1,13 @@
-import { apiClient } from './client'
+import type { Subject as DomainSubject } from '../lib/types'
+import {
+  deleteSubject as deleteSubjectRepo,
+  insertSubject,
+  listSubjects,
+  updateSubject as updateSubjectRepo,
+} from '../db/repository'
+import { withDb } from './localDb'
 
-export interface Subject {
-  id: string
-  projectId?: string | null
-  name: string
-  description: string
-  createdAt: string
-  updatedAt: string
-}
+export type Subject = DomainSubject
 
 export interface CreateSubjectInput {
   name: string
@@ -23,24 +23,37 @@ export interface UpdateSubjectInput {
 }
 
 export async function getSubjects(projectId?: string) {
-  const { data } = await apiClient.get<Subject[]>('/subjects', {
-    params: projectId ? { projectId } : undefined,
+  return withDb((db) => {
+    const subjects = listSubjects(db)
+    return projectId ? subjects.filter((s) => s.projectId === projectId) : subjects
   })
-  return data
 }
 
 export async function createSubject(input: CreateSubjectInput) {
-  const { data } = await apiClient.post<Subject>('/subjects', input)
-  return data
+  return withDb((db) =>
+    insertSubject(db, {
+      name: input.name,
+      description: input.description ?? '',
+      projectId: input.projectId ?? null,
+    })
+  )
 }
 
 export async function updateSubject(input: UpdateSubjectInput) {
-  const { id, ...payload } = input
-  const { data } = await apiClient.patch<Subject>(`/subjects/${id}`, payload)
-  return data
+  return withDb((db) => {
+    updateSubjectRepo(db, input.id, {
+      name: input.name,
+      description: input.description,
+      projectId: input.projectId,
+    })
+    const subjects = listSubjects(db)
+    return subjects.find((s) => s.id === input.id)!
+  })
 }
 
 export async function deleteSubject(id: string) {
-  await apiClient.delete(`/subjects/${id}`)
-  return id
+  return withDb((db) => {
+    deleteSubjectRepo(db, id)
+    return id
+  })
 }

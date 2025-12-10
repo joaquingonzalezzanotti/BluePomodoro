@@ -1,17 +1,8 @@
-import { apiClient } from './client'
+import type { Session as DomainSession, SessionType } from '../lib/types'
+import { insertSession, listSessions } from '../db/repository'
+import { withDb } from './localDb'
 
-export type SessionType = 'focus' | 'break'
-
-export interface Session {
-  id: string
-  taskId?: string | null
-  startedAt: string
-  endedAt: string
-  durationSeconds: number
-  type: SessionType
-  completed: boolean
-  note: string
-}
+export type Session = DomainSession
 
 export interface CreateSessionInput {
   taskId?: string | null
@@ -24,14 +15,19 @@ export interface CreateSessionInput {
 }
 
 export async function createSession(input: CreateSessionInput) {
-  const { data } = await apiClient.post<Session>('/sessions', {
-    ...input,
-    completed: input.completed ?? true,
-  })
-  return data
+  return withDb((db) =>
+    insertSession(db, {
+      taskId: input.taskId ?? null,
+      startedAt: input.startedAt,
+      endedAt: input.endedAt,
+      durationSeconds: input.durationSeconds,
+      type: input.type,
+      completed: input.completed ?? true,
+      note: input.note ?? '',
+    })
+  )
 }
 
 export async function getSessions() {
-  const { data } = await apiClient.get<Session[]>('/sessions')
-  return data
+  return withDb((db) => listSessions(db))
 }

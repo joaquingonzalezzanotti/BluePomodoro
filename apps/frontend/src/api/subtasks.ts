@@ -1,13 +1,13 @@
-import { apiClient } from './client'
+import type { Subtask as DomainSubtask } from '../lib/types'
+import {
+  deleteSubtask as deleteSubtaskRepo,
+  insertSubtask,
+  listSubtasks,
+  updateSubtask as updateSubtaskRepo,
+} from '../db/repository'
+import { withDb } from './localDb'
 
-export interface Subtask {
-  id: string
-  taskId: string
-  title: string
-  done: boolean
-  createdAt: string
-  updatedAt: string
-}
+export type Subtask = DomainSubtask
 
 export interface CreateSubtaskInput {
   taskId: string
@@ -21,22 +21,27 @@ export interface UpdateSubtaskInput {
 }
 
 export async function getSubtasks(taskId?: string) {
-  const { data } = await apiClient.get<Subtask[]>('/subtasks', { params: taskId ? { taskId } : undefined })
-  return data
+  return withDb((db) => {
+    const subtasks = listSubtasks(db)
+    return taskId ? subtasks.filter((s) => s.taskId === taskId) : subtasks
+  })
 }
 
 export async function createSubtask(input: CreateSubtaskInput) {
-  const { data } = await apiClient.post<Subtask>('/subtasks', input)
-  return data
+  return withDb((db) => insertSubtask(db, { taskId: input.taskId, title: input.title }))
 }
 
 export async function updateSubtask(input: UpdateSubtaskInput) {
-  const { id, ...payload } = input
-  const { data } = await apiClient.patch<Subtask>(`/subtasks/${id}`, payload)
-  return data
+  return withDb((db) => {
+    updateSubtaskRepo(db, input.id, { title: input.title, done: input.done })
+    const subtasks = listSubtasks(db)
+    return subtasks.find((s) => s.id === input.id)!
+  })
 }
 
 export async function deleteSubtask(id: string) {
-  await apiClient.delete(`/subtasks/${id}`)
-  return id
+  return withDb((db) => {
+    deleteSubtaskRepo(db, id)
+    return id
+  })
 }
