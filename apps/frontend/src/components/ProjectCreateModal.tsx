@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { ColorPicker } from './ColorPicker'
+import { PROJECT_COLORS } from '../lib/colors'
 
 type ProjectDraft = {
   name: string
@@ -76,22 +78,20 @@ export function ProjectCreateModal({ open, onClose, onCreate }: Props) {
             />
           </div>
           <div className="grid-2">
-            <div className="field">
-              <label>Color</label>
-              <input
-                name="project-color"
-                type="color"
-                value={draft.color}
-                onChange={(e) => setDraft({ ...draft, color: e.target.value })}
-              />
-            </div>
+            <ColorPicker value={draft.color} onChange={(c) => setDraft({ ...draft, color: c })} options={PROJECT_COLORS} />
             <div className="field">
               <label>Fecha objetivo</label>
               <input
                 name="project-dueDate"
                 type="date"
-                value={draft.dueDate ?? ''}
-                onChange={(e) => setDraft({ ...draft, dueDate: e.target.value || null })}
+                value={draft.dueDate ? draft.dueDate.slice(0, 10) : ''}
+                onChange={(e) => {
+                  const raw = e.target.value
+                  setDraft({
+                    ...draft,
+                    dueDate: raw ? new Date(`${raw}T00:00:00`).toISOString() : null,
+                  })
+                }}
               />
             </div>
           </div>

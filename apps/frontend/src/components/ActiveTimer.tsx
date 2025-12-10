@@ -5,11 +5,12 @@ import { TaskSelector } from './TaskSelector'
 import { formatDuration } from '../lib/time'
 import { useAppStore } from '../state/useAppStore'
 import type { TaskStatus } from '../lib/types'
+import pomodoroIcon from '../assets/BluePomodoro.png'
 
 type TimerMode = 'focus' | 'short_break' | 'long_break'
 
 const MODE_STYLES: Record<TimerMode, { bg: string; label: string }> = {
-  focus: { bg: 'linear-gradient(135deg, #1f4fbf, #2141a6)', label: 'Pomodoro' },
+  focus: { bg: 'linear-gradient(135deg, #4f8dff, #3b6ee8)', label: 'Pomodoro' },
   short_break: { bg: 'linear-gradient(135deg, #12b981, #0c9f6c)', label: 'Descanso corto' },
   long_break: { bg: 'linear-gradient(135deg, #7b5cf6, #6a3aed)', label: 'Descanso largo' },
 }
@@ -34,13 +35,19 @@ export function ActiveTimer() {
 
   const style = MODE_STYLES[mode]
   const isPaused = !running && remaining !== getDuration(mode, { focusSeconds, shortBreakSeconds, longBreakSeconds })
+  const pomodorosUntilLongBreak = useMemo(() => {
+    if (mode === 'long_break') return 0
+    const cycle = 4
+    const remainder = focusCount % cycle
+    return remainder === 0 ? cycle : cycle - remainder
+  }, [focusCount, mode])
 
   useEffect(() => {
-    // ajustar duración si cambia settings y timer está detenido
-    if (!running) {
+    // Solo refrescar la duracion base cuando el timer esta detenido y aun no se ha iniciado (no borrar pausas)
+    if (!running && startedAt === null) {
       setRemaining(getDuration(mode, { focusSeconds, shortBreakSeconds, longBreakSeconds }))
     }
-  }, [focusSeconds, shortBreakSeconds, longBreakSeconds, mode, running])
+  }, [focusSeconds, shortBreakSeconds, longBreakSeconds, mode, running, startedAt])
 
   useEffect(() => {
     if (!running) {
@@ -152,6 +159,7 @@ export function ActiveTimer() {
               margin: '4px 0 0',
               letterSpacing: '2px',
               fontWeight: 800,
+              color: 'rgba(0, 20, 60, 0.9)',
             }}
           >
             {formatDuration(remaining)}
@@ -160,9 +168,25 @@ export function ActiveTimer() {
             {statusLabel}
           </p>
         </div>
-        <div className="chip" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff' }}>
-          {mode === 'focus' ? 'Pomodoro' : mode === 'short_break' ? 'Descanso corto' : 'Descanso largo'}
-        </div>
+        {mode === 'focus' ? (
+          <div className="chip" style={{ background: 'rgba(255,255,255,0.15)', color: '#fff' }}>
+            Tareas
+          </div>
+        ) : (
+          <div
+            className="pomodoro-remaining top"
+            aria-label={`Descanso largo en ${pomodorosUntilLongBreak} pomodoro${pomodorosUntilLongBreak === 1 ? '' : 's'}`}
+          >
+            <span className="pomodoro-remaining-chip">Largo en</span>
+            <div className="pomodoro-icon-row">
+              {Array.from({ length: pomodorosUntilLongBreak }).map((_, idx) => (
+                <span className="pomodoro-chip" key={idx}>
+                  <img src={pomodoroIcon} alt="Pomodoro restante" />
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="controls" style={{ gap: '8px', display: 'flex', flexWrap: 'wrap' }}>

@@ -53,10 +53,12 @@ export function TaskQuickAdd() {
     <form className="panel" onSubmit={handleSubmit}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <div className="field">
+          <span className="quick-add-label">Tareas</span>
           <input
             ref={inputRef}
+            id="quick-title"
             name="quick-title"
-            placeholder="¿Qué hay que hacer?"
+            placeholder="Que hay que hacer?"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
           />

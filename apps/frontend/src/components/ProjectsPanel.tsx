@@ -14,6 +14,8 @@ import {
 } from '../hooks/useSubjects'
 import { useTasks } from '../hooks/useTasks'
 import { ProjectCreateModal } from './ProjectCreateModal'
+import { ColorPicker } from './ColorPicker'
+import { PROJECT_COLORS } from '../lib/colors'
 
 type SubjectDraft = {
   name: string
@@ -23,6 +25,14 @@ type SubjectDraft = {
 const emptySubject: SubjectDraft = {
   name: '',
   description: '',
+}
+
+const tintColor = (hex: string, alpha = 0.1) => {
+  const normalized = hex.startsWith('#') ? hex.slice(1) : hex
+  const r = parseInt(normalized.slice(0, 2), 16)
+  const g = parseInt(normalized.slice(2, 4), 16)
+  const b = parseInt(normalized.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
 export function ProjectsPanel() {
@@ -66,6 +76,15 @@ export function ProjectsPanel() {
     () => projects.find((p) => p.id === selectedProjectId) ?? null,
     [projects, selectedProjectId]
   )
+  const baseColor =
+    editingProjectId && selectedProjectId === selectedProject?.id ? projectDraft.color : selectedProject?.color
+  const panelTint = baseColor
+    ? {
+        background: tintColor(baseColor, 0.08),
+        borderColor: tintColor(baseColor, 0.25),
+        transition: 'background-color 0.25s ease, border-color 0.25s ease',
+      }
+    : undefined
 
   const startEditProject = (id: string) => {
     const current = projects.find((p) => p.id === id)
@@ -116,7 +135,12 @@ export function ProjectsPanel() {
               <p className="eyebrow">Proyectos</p>
               <h3>Mis proyectos</h3>
             </div>
-            <button className="primary" type="button" onClick={() => setShowCreateModal(true)}>
+            <button
+              className="primary"
+              type="button"
+              onClick={() => setShowCreateModal(true)}
+              style={{ padding: '10px 14px', fontSize: '14px' }}
+            >
               + Nuevo proyecto
             </button>
           </div>
@@ -125,7 +149,7 @@ export function ProjectsPanel() {
           {errorProjects && <p className="muted danger">No se pudieron cargar los proyectos.</p>}
 
           <div className="project-list">
-            {projects.length === 0 && <p className="muted">Sin proyectos aún.</p>}
+            {projects.length === 0 && <p className="muted">Sin proyectos aun.</p>}
             {projects.map((p) => {
               const isActive = selectedProjectId === p.id
               return (
@@ -146,7 +170,7 @@ export function ProjectsPanel() {
           </div>
         </aside>
 
-        <section className="project-main">
+        <section className="project-main" style={panelTint}>
           {selectedProject ? (
             <>
               <header className="project-main-header">
@@ -160,14 +184,11 @@ export function ProjectsPanel() {
                           onChange={(e) => setProjectDraft({ ...projectDraft, name: e.target.value })}
                         />
                       </div>
-                      <div className="field">
-                        <label>Color</label>
-                        <input
-                          type="color"
-                          value={projectDraft.color}
-                          onChange={(e) => setProjectDraft({ ...projectDraft, color: e.target.value })}
-                        />
-                      </div>
+                      <ColorPicker
+                        value={projectDraft.color}
+                        onChange={(c) => setProjectDraft({ ...projectDraft, color: c })}
+                        options={PROJECT_COLORS}
+                      />
                     </div>
                     <div className="grid-2">
                       <div className="field">
@@ -181,8 +202,11 @@ export function ProjectsPanel() {
                         <label>Fecha objetivo</label>
                         <input
                           type="date"
-                          value={projectDraft.dueDate ?? ''}
-                          onChange={(e) => setProjectDraft({ ...projectDraft, dueDate: e.target.value || null })}
+                          value={projectDraft.dueDate ? projectDraft.dueDate.slice(0, 10) : ''}
+                          onChange={(e) => {
+                            const raw = e.target.value
+                            setProjectDraft({ ...projectDraft, dueDate: raw ? new Date(`${raw}T00:00:00`).toISOString() : null })
+                          }}
                         />
                       </div>
                     </div>

@@ -53,7 +53,7 @@ export async function resetDatabase(): Promise<Database> {
 
 function ensureMigrations(db: Database) {
   const info = db.exec(`PRAGMA table_info(tasks);`)
-  const columns = info?.[0]?.values?.map((v) => String(v[1])) ?? []
+  const columns = info?.[0]?.values?.map((v: unknown[]) => String(v[1])) ?? []
   if (!columns.includes('estimated_pomodoros')) {
     db.exec('ALTER TABLE tasks ADD COLUMN estimated_pomodoros INTEGER NOT NULL DEFAULT 1;')
   }
@@ -75,7 +75,7 @@ function ensureMigrations(db: Database) {
     );
   `)
   const projInfo = db.exec(`PRAGMA table_info(projects);`)
-  const projCols = projInfo?.[0]?.values?.map((v) => String(v[1])) ?? []
+  const projCols = projInfo?.[0]?.values?.map((v: unknown[]) => String(v[1])) ?? []
   if (!projCols.includes('color')) {
     db.exec(`ALTER TABLE projects ADD COLUMN color TEXT DEFAULT '#1f56ff';`)
   }
