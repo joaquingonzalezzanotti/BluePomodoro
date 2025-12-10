@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          String    @id @default(cuid())
+  name        String
+  description String    @default("")
+  color       String    @default("#1f56ff")
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  subjects    Subject[]
+  tasks       Task[]
+}
+
+model Subject {
+  id          String    @id @default(cuid())
+  projectId   String?
+  name        String
+  description String    @default("")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  project     Project?  @relation(fields: [projectId], references: [id])
+  tasks       Task[]
+}
+
+model Task {
+  id                 String     @id @default(cuid())
+  title              String
+  description        String     @default("")
+  estimatedPomodoros Int        @default(1)
+  status             String     @default("todo")
+  priority           String     @default("medium")
+  dueDate            DateTime?
+  projectId          String?
+  subjectId          String?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  project            Project?   @relation(fields: [projectId], references: [id])
+  subject            Subject?   @relation(fields: [subjectId], references: [id])
+  subtasks           Subtask[]
+  sessions           Session[]
+}
+
+model Subtask {
+  id        String   @id @default(cuid())
+  taskId    String
+  title     String
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  task      Task     @relation(fields: [taskId], references: [id])
+}
+
+model Session {
+  id              String      @id @default(cuid())
+  taskId          String?
+  startedAt       DateTime
+  endedAt         DateTime
+  durationSeconds Int
+  type            String
+  completed       Boolean     @default(true)
+  note            String      @default("")
+  task            Task?       @relation(fields: [taskId], references: [id])
+}
