@@ -44,6 +44,114 @@ server.post('/projects', async (req, reply) => {
   reply.code(201).send(project)
 })
 
+server.patch('/projects/:id', async (req, reply) => {
+  const { id } = req.params as { id: string }
+  const body = req.body as { name?: string; description?: string; color?: string; dueDate?: string | null }
+  try {
+    const project = await prisma.project.update({
+      where: { id },
+      data: {
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(body.description !== undefined ? { description: body.description } : {}),
+        ...(body.color !== undefined ? { color: body.color } : {}),
+        ...(body.dueDate !== undefined ? { dueDate: body.dueDate } : {}),
+      },
+    })
+    reply.send(project)
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
+      reply.code(404).send({ error: 'Project not found' })
+      return
+    }
+    throw error
+  }
+})
+
+server.delete('/projects/:id', async (req, reply) => {
+  const { id } = req.params as { id: string }
+  try {
+    const tasks = await prisma.task.findMany({ where: { projectId: id }, select: { id: true } })
+    const taskIds = tasks.map((t) => t.id)
+    await prisma.$transaction([
+      prisma.subtask.deleteMany({ where: { taskId: { in: taskIds } } }),
+      prisma.session.deleteMany({ where: { taskId: { in: taskIds } } }),
+      prisma.task.deleteMany({ where: { projectId: id } }),
+      prisma.subject.deleteMany({ where: { projectId: id } }),
+      prisma.project.delete({ where: { id } }),
+    ])
+    reply.code(204).send()
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
+      reply.code(404).send({ error: 'Project not found' })
+      return
+    }
+    throw error
+  }
+})
+
+server.get('/subjects', async (req) => {
+  const projectId = (req.query as { projectId?: string }).projectId
+  return prisma.subject.findMany({
+    where: projectId ? { projectId } : undefined,
+    include: { tasks: true },
+  })
+})
+
+server.post('/subjects', async (req, reply) => {
+  const body = req.body as { name: string; description?: string; projectId?: string | null }
+  const subject = await prisma.subject.create({
+    data: {
+      name: body.name,
+      description: body.description ?? '',
+      projectId: body.projectId ?? null,
+    },
+  })
+  reply.code(201).send(subject)
+})
+
+server.patch('/subjects/:id', async (req, reply) => {
+  const { id } = req.params as { id: string }
+  const body = req.body as { name?: string; description?: string; projectId?: string | null }
+  try {
+    const subject = await prisma.subject.update({
+      where: { id },
+      data: {
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(body.description !== undefined ? { description: body.description } : {}),
+        ...(body.projectId !== undefined ? { projectId: body.projectId } : {}),
+      },
+    })
+    reply.send(subject)
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
+      reply.code(404).send({ error: 'Subject not found' })
+      return
+    }
+    throw error
+  }
+})
+
+server.delete('/subjects/:id', async (req, reply) => {
+  const { id } = req.params as { id: string }
+  try {
+    const tasks = await prisma.task.findMany({ where: { subjectId: id }, select: { id: true } })
+    const taskIds = tasks.map((t) => t.id)
+    await prisma.$transaction([
+      prisma.subtask.deleteMany({ where: { taskId: { in: taskIds } } }),
+      prisma.session.deleteMany({ where: { taskId: { in: taskIds } } }),
+      prisma.task.deleteMany({ where: { subjectId: id } }),
+      prisma.subject.delete({ where: { id } }),
+    ])
+    reply.code(204).send()
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
+      reply.code(404).send({ error: 'Subject not found' })
+      return
+    }
+    throw error
+  }
+})
+
 server.get('/tasks', async () =>
   prisma.task.findMany({ include: { project: true, subject: true, subtasks: true } })
 )

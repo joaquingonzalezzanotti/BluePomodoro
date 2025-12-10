@@ -1,7 +1,8 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { type TaskStatus } from '../lib/types'
 import { formatDateShort } from '../lib/time'
-import { useProjects } from '../api/projects'
+import { useProjects } from '../hooks/useProjects'
+import { useSubjects } from '../hooks/useSubjects'
 import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '../hooks/useTasks'
 import { useSessions } from '../hooks/useSessions'
 
@@ -34,11 +35,6 @@ export function TasksPanel({
   statusFilter,
 }: TasksPanelProps) {
   const { data: tasks = [], isLoading, isError } = useTasks()
-  const { data: projects = [] } = useProjects()
-  const { data: sessions = [] } = useSessions()
-  const createTask = useCreateTask()
-  const updateTask = useUpdateTask()
-  const deleteTask = useDeleteTask()
 
   const [title, setTitle] = useState('')
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium')
@@ -55,6 +51,13 @@ export function TasksPanel({
     projectId?: string | null
     subjectId?: string | null
   }>({})
+
+  const { data: projects = [] } = useProjects()
+  const { data: subjects = [] } = useSubjects(projectId ?? undefined)
+  const { data: sessions = [] } = useSessions()
+  const createTask = useCreateTask()
+  const updateTask = useUpdateTask()
+  const deleteTask = useDeleteTask()
 
   const filteredTasks = useMemo(() => {
     const base = statusFilter ? tasks.filter((t) => statusFilter.includes(t.status as TaskStatus)) : tasks
@@ -129,6 +132,11 @@ export function TasksPanel({
     setEditDraft({})
   }
 
+  const filteredSubjects = useMemo(
+    () => subjects.filter((s) => !projectId || s.projectId === projectId),
+    [subjects, projectId]
+  )
+
   const formBlock = !showForm || compact || listOnly ? null : (
     <form className="stack" onSubmit={handleSubmit}>
       <div className="field">
@@ -186,8 +194,18 @@ export function TasksPanel({
         </div>
         <div className="field">
           <label htmlFor="subject">Materia</label>
-          <select id="subject" value={subjectId ?? ''} disabled>
+          <select
+            id="subject"
+            value={subjectId ?? ''}
+            onChange={(e) => setSubjectId(e.target.value || null)}
+            disabled={projects.length === 0}
+          >
             <option value="">Sin materia</option>
+            {filteredSubjects.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
           </select>
         </div>
         <div className="field">
@@ -320,9 +338,14 @@ export function TasksPanel({
                       <select
                         value={editDraft.subjectId ?? task.subjectId ?? ''}
                         onChange={(e) => setEditDraft({ ...editDraft, subjectId: e.target.value || null })}
-                        disabled
+                        disabled={projects.length === 0}
                       >
                         <option value="">Sin materia</option>
+                        {filteredSubjects.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.name}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>

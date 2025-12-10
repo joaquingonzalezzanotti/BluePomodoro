@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTimer } from '../features/timer/useTimer'
 import { formatDuration } from '../lib/time'
+import { useTasks, useUpdateTask } from '../hooks/useTasks'
+import { useSessions } from '../hooks/useSessions'
+import { type TaskStatus } from '../lib/types'
 import { useAppStore } from '../state/useAppStore'
 
 function isToday(iso: string) {
@@ -14,8 +17,9 @@ function isToday(iso: string) {
 }
 
 export function TimerCard() {
-  const tasks = useAppStore((s) => s.tasks)
-  const sessions = useAppStore((s) => s.sessions)
+  const { data: tasks = [] } = useTasks()
+  const { data: sessions = [] } = useSessions()
+  const updateTask = useUpdateTask()
   const settings = useAppStore((s) => s.settings)
   const { mode, remaining, running, start, pause, resume, reset, defaults } = useTimer({
     focus: settings.focusMinutes * 60,
@@ -23,11 +27,16 @@ export function TimerCard() {
   })
   const [selectedTask, setSelectedTask] = useState<string | null>(null)
 
+  const selectableTasks = useMemo(
+    () => tasks.filter((t) => t.status === 'todo' || t.status === 'doing'),
+    [tasks]
+  )
+
   useEffect(() => {
-    if (!selectedTask && tasks.length > 0) {
-      setSelectedTask(tasks[0].id)
+    if (!selectedTask && selectableTasks.length > 0) {
+      setSelectedTask(selectableTasks[0].id)
     }
-  }, [tasks, selectedTask])
+  }, [selectableTasks, selectedTask])
 
   const activeTask = useMemo(
     () => tasks.find((t) => t.id === selectedTask),
@@ -37,6 +46,14 @@ export function TimerCard() {
   const todayFocus = sessions.filter((s) => s.type === 'focus' && isToday(s.startedAt)).length
   const currentPomodoroNumber = running && mode === 'focus' ? todayFocus + 1 : todayFocus
   const isPaused = !running && remaining !== defaults[mode] && remaining > 0
+
+  const handleStart = async (targetMode: 'focus' | 'break') => {
+    const task = tasks.find((t) => t.id === selectedTask)
+    if (targetMode === 'focus' && task && task.status === ('todo' as TaskStatus)) {
+      await updateTask.mutateAsync({ id: task.id, status: 'doing' })
+    }
+    start(selectedTask, targetMode)
+  }
 
   return (
     <div className="panel timer-panel">
@@ -67,14 +84,14 @@ export function TimerCard() {
             Continuar
           </button>
         ) : (
-          <button className="primary" onClick={() => start(selectedTask, mode)}>
+          <button className="primary" onClick={() => void handleStart(mode)}>
             Iniciar {mode === 'focus' ? 'pomodoro' : 'descanso'}
           </button>
         )}
         <button className="ghost" onClick={() => reset(mode)}>
           Reiniciar
         </button>
-        <button className="ghost" onClick={() => start(selectedTask, 'break')}>
+        <button className="ghost" onClick={() => void handleStart('break')}>
           Iniciar descanso
         </button>
       </div>
@@ -87,7 +104,7 @@ export function TimerCard() {
           onChange={(e) => setSelectedTask(e.target.value || null)}
         >
           <option value="">Sin tarea</option>
-          {tasks.map((task) => (
+          {selectableTasks.map((task) => (
             <option key={task.id} value={task.id}>
               {task.title}
             </option>

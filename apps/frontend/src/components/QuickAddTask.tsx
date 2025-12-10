@@ -1,27 +1,21 @@
 import { useMemo, useState } from 'react'
-import { useAppStore } from '../state/useAppStore'
+import { useProjects } from '../hooks/useProjects'
+import { useSubjects } from '../hooks/useSubjects'
+import { useCreateTask } from '../hooks/useTasks'
 
 export function QuickAddTask() {
-  const { projects, subjects, addTask } = useAppStore()
-  const [title, setTitle] = useState('')
+  const { data: projects = [] } = useProjects()
   const [projectId, setProjectId] = useState<string | null>(null)
+  const { data: subjects = [] } = useSubjects(projectId ?? undefined)
+  const createTask = useCreateTask()
+
+  const [title, setTitle] = useState('')
   const [subjectId, setSubjectId] = useState<string | null>(null)
 
   const filteredSubjects = useMemo(() => {
-    if (projectId) {
-      return subjects.filter((s) => s.projectId === projectId)
-    }
-    // sin proyecto: mostrar primera materia de cada proyecto + materias sin proyecto
-    const firstByProject = new Map<string, (typeof subjects)[0]>()
-    const noProject: typeof subjects = []
-    subjects.forEach((s) => {
-      if (!s.projectId) {
-        noProject.push(s)
-      } else if (!firstByProject.has(s.projectId)) {
-        firstByProject.set(s.projectId, s)
-      }
-    })
-    return [...noProject, ...firstByProject.values()]
+    if (projectId) return subjects.filter((s) => s.projectId === projectId)
+    // sin proyecto: mostrar materias sin proyecto
+    return subjects.filter((s) => !s.projectId)
   }, [subjects, projectId])
 
   const handleSubjectChange = (value: string) => {
@@ -35,7 +29,7 @@ export function QuickAddTask() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
-    await addTask({
+    await createTask.mutateAsync({
       title: title.trim(),
       description: '',
       priority: 'medium',
@@ -100,8 +94,8 @@ export function QuickAddTask() {
         </div>
         <div className="field">
           <label>&nbsp;</label>
-          <button className="primary" type="submit">
-            Guardar
+          <button className="primary" type="submit" disabled={createTask.isPending}>
+            {createTask.isPending ? 'Guardando...' : 'Guardar'}
           </button>
         </div>
       </div>
