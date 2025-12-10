@@ -82,7 +82,7 @@ function App() {
           </nav>
         </header>
 
-        {!dbReady && <div className="notice">Cargando base..</div>}
+        {!dbReady && <div className="notice">Cargando base....</div>}
         {dbError && (
           <div className="notice error">
             {dbError}{' '}
