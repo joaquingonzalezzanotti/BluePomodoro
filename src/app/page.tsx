@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -12,7 +13,8 @@ import {
   LogIn,
   Timer as TimerIcon,
   Maximize2,
-  Play
+  Play,
+  Flame
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -29,8 +31,6 @@ import { useToast } from "@/hooks/use-toast"
 import { doc, collection, serverTimestamp, increment } from "firebase/firestore"
 import { Switch } from "@/components/ui/switch"
 
-const DEFAULT_PLAYLIST = "https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator"
-
 export default function FocusFlowDashboard() {
   const [activeTab, setActiveTab] = React.useState("dashboard")
   const { user, isUserLoading } = useUser()
@@ -38,10 +38,11 @@ export default function FocusFlowDashboard() {
   const auth = useAuth()
   const db = useFirestore()
 
-  // ESTADO GLOBAL DEL POMODORO
-  const [workMinutes, setWorkMinutes] = React.useState(25)
-  const [breakMinutes, setBreakMinutes] = React.useState(5)
-  const [timeLeft, setTimeLeft] = React.useState(25 * 60)
+  // CONFIGURACIÓN DE TIEMPOS POR DEFECTO: 40 Focus / 10 Descanso / 20 Descanso Largo
+  const [workMinutes, setWorkMinutes] = React.useState(40)
+  const [breakMinutes, setBreakMinutes] = React.useState(10)
+  const [longBreakMinutes] = React.useState(20)
+  const [timeLeft, setTimeLeft] = React.useState(40 * 60)
   const [isActive, setIsActive] = React.useState(false)
   const [mode, setMode] = React.useState<"work" | "break">("work")
   const [sessionsCompleted, setSessionsCompleted] = React.useState(0)
@@ -71,15 +72,20 @@ export default function FocusFlowDashboard() {
   const handleSessionEnd = () => {
     setIsActive(false)
     if (mode === "work") {
-      setSessionsCompleted(prev => prev + 1)
+      const nextCount = sessionsCompleted + 1
+      setSessionsCompleted(nextCount)
       setMode("break")
-      setTimeLeft(breakMinutes * 60)
+      
+      // Lógica de descanso largo cada 3 sesiones
+      const isLongBreak = nextCount > 0 && nextCount % 3 === 0
+      const nextMinutes = isLongBreak ? longBreakMinutes : breakMinutes
+      setTimeLeft(nextMinutes * 60)
       
       if (user && db) {
         const uRef = doc(db, "usuarios", user.uid)
         const sesionesRef = collection(db, "usuarios", user.uid, "sesionesPomodoro")
         
-        updateDocumentNonBlocking(uRef, { puntosTotales: increment(100) })
+        updateDocumentNonBlocking(uRef, { puntosTotales: increment(150) }) // Más puntos por sesión de 40m
 
         addDocumentNonBlocking(sesionesRef, {
           usuarioId: user.uid,
@@ -88,13 +94,17 @@ export default function FocusFlowDashboard() {
           fecha: serverTimestamp()
         })
 
-        // Incrementar pomodoros de la tarea activa
         if (activeTaskId) {
           const tRef = doc(db, "usuarios", user.uid, "tareas", activeTaskId)
           updateDocumentNonBlocking(tRef, { completadosPomodoros: increment(1) })
         }
 
-        toast({ title: "¡Sesión Completada!", description: "Has ganado 100 XP. Tómate un respiro." })
+        toast({ 
+          title: isLongBreak ? "¡Descanso Largo Alcanzado!" : "¡Sesión Completada!", 
+          description: isLongBreak 
+            ? "Has completado 3 ciclos. Disfruta de 20 minutos de relax." 
+            : "Has ganado 150 XP. Tómate un respiro de 10 minutos." 
+        })
       }
     } else {
       setMode("work")
@@ -193,7 +203,7 @@ export default function FocusFlowDashboard() {
             {activeTaskId && (
               <div className="mt-10 px-6 py-3 bg-primary/5 border border-primary/10 rounded-2xl flex items-center gap-3">
                 <CheckSquare className="h-5 w-5 text-primary" />
-                <span className="text-sm font-bold">Enfocado en: {activeTaskId}</span>
+                <span className="text-sm font-bold">Enfocado en ID: {activeTaskId.substring(0, 8)}...</span>
               </div>
             )}
           </div>
@@ -263,7 +273,7 @@ export default function FocusFlowDashboard() {
             </div>
             <div className="flex items-center gap-4">
               {isActive && (
-                <div className="flex items-center gap-2 px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20">
+                <div className="flex items-center gap-2 px-4 py-1.5 bg-primary/10 rounded-full border border-primary/20 animate-pulse">
                   <TimerIcon className="h-4 w-4 text-primary" />
                   <span className="text-sm font-black text-primary font-mono">
                     {Math.floor(timeLeft / 60).toString().padStart(2, '0')}:{(timeLeft % 60).toString().padStart(2, '0')}

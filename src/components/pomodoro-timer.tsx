@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Timer as TimerIcon, Play, Pause, RotateCcw, Coffee, Settings2, Check } from "lucide-react"
+import { Timer as TimerIcon, Play, Pause, RotateCcw, Coffee, Settings2, Check, Flame } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -43,7 +43,13 @@ export function PomodoroTimer({
   React.useEffect(() => { setLocalWork(workMinutes.toString()) }, [workMinutes])
   React.useEffect(() => { setLocalBreak(breakMinutes.toString()) }, [breakMinutes])
 
-  const initialTime = mode === "work" ? workMinutes * 60 : breakMinutes * 60
+  // Lógica visual para detectar si es un descanso largo (cada 3 sesiones completadas)
+  const isLongBreakMode = mode === "break" && sessionsCompleted > 0 && sessionsCompleted % 3 === 0
+  
+  const initialTime = mode === "work" 
+    ? workMinutes * 60 
+    : (isLongBreakMode ? 20 * 60 : breakMinutes * 60)
+    
   const progress = ((initialTime - timeLeft) / initialTime) * 100
 
   const formatTime = (seconds: number) => {
@@ -68,7 +74,7 @@ export function PomodoroTimer({
             cy="128"
             r="120"
             fill="transparent"
-            stroke={mode === "work" ? "hsl(var(--primary))" : "hsl(var(--accent))"}
+            stroke={mode === "work" ? "hsl(var(--primary))" : (isLongBreakMode ? "hsl(var(--chart-4))" : "hsl(var(--accent))")}
             strokeWidth="8"
             strokeDasharray={2 * Math.PI * 120}
             strokeDashoffset={2 * Math.PI * 120 * (1 - progress / 100)}
@@ -100,20 +106,26 @@ export function PomodoroTimer({
             <div className="space-y-4">
               <h4 className="font-black text-sm uppercase">Tiempos</h4>
               <div className="grid gap-2">
-                <Label className="text-[10px] font-bold">TRABAJO (MIN)</Label>
+                <Label className="text-[10px] font-bold">ENFOQUE (MIN)</Label>
                 <Input type="number" value={localWork} onChange={(e) => setLocalWork(e.target.value)} />
               </div>
               <div className="grid gap-2">
-                <Label className="text-[10px] font-bold">DESCANSO (MIN)</Label>
+                <Label className="text-[10px] font-bold">DESCANSO CORTO (MIN)</Label>
                 <Input type="number" value={localBreak} onChange={(e) => setLocalBreak(e.target.value)} />
               </div>
+              <p className="text-[9px] text-muted-foreground italic">* Descanso largo fijo de 20 min cada 3 sesiones.</p>
               <Button onClick={handleApplyChanges} className="w-full rounded-xl font-bold">Aplicar</Button>
             </div>
           </PopoverContent>
         </Popover>
       </div>
-      <div className="mt-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50">
-        {mode === "work" ? "Modo Enfoque" : "Modo Descanso"} • Sprints: {sessionsCompleted}
+      <div className="mt-8 text-xs font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-2">
+        {mode === "work" ? (
+          <>Modo Enfoque <Flame className="h-3 w-3 text-orange-500 fill-current" /></>
+        ) : (
+          <>{isLongBreakMode ? "Descanso Largo" : "Descanso Corto"} <Coffee className="h-3 w-3 text-primary" /></>
+        )}
+        • Sprints: {sessionsCompleted}
       </div>
     </div>
   )
