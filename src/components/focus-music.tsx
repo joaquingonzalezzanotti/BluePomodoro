@@ -25,10 +25,17 @@ export function FocusMusic({ layout = "dashboard" }: FocusMusicProps) {
   const activeUrl = userData?.spotifyPlaylistUrl || "https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator"
 
   const getEmbedUrl = (url: string) => {
+    if (!url) return "https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator"
     if (url.includes("/embed/")) return url
-    const playlistMatch = url.match(/playlist[\/|:]([a-zA-Z0-9]+)/)
-    if (playlistMatch) return `https://open.spotify.com/embed/playlist/${playlistMatch[1]}?utm_source=generator`
-    return url
+    
+    // Extraer ID y tipo (playlist, album, track) para construir la URL de embed segura
+    const match = url.match(/(playlist|album|track)[\/|:]([a-zA-Z0-9]+)/)
+    if (match) {
+      return `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator`
+    }
+    
+    // Si la URL no es válida, devolvemos el default para evitar que el navegador intente abrir la app de escritorio
+    return "https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator"
   }
 
   const finalUrl = getEmbedUrl(activeUrl)
@@ -37,7 +44,7 @@ export function FocusMusic({ layout = "dashboard" }: FocusMusicProps) {
     return (
       <div className="flex flex-col gap-2 group-data-[collapsible=icon]:items-center py-2 border-t border-primary/5">
         <div className="flex items-center justify-between px-2 group-data-[collapsible=icon]:hidden">
-          <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Controles</span>
+          <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Enfoque</span>
           <Music className="h-3 w-3 text-primary/40" />
         </div>
         
@@ -71,6 +78,7 @@ export function FocusMusic({ layout = "dashboard" }: FocusMusicProps) {
           frameBorder="0" 
           allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
           loading="lazy"
+          title="Spotify Focus Player"
         ></iframe>
       </CardContent>
     </Card>

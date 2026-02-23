@@ -5,10 +5,6 @@ import * as React from "react"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
 import { doc } from "firebase/firestore"
 
-/**
- * Este componente mantiene el iframe de Spotify montado en la raíz de la aplicación.
- * Esto evita que la música se pause al cambiar de ruta o pestañas internas.
- */
 export function PersistentMusicPlayer() {
   const { user } = useUser()
   const db = useFirestore()
@@ -22,10 +18,13 @@ export function PersistentMusicPlayer() {
   const activeUrl = userData?.spotifyPlaylistUrl || "https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator"
 
   const getEmbedUrl = (url: string) => {
+    if (!url) return "https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator"
     if (url.includes("/embed/")) return url
-    const playlistMatch = url.match(/playlist[\/|:]([a-zA-Z0-9]+)/)
-    if (playlistMatch) return `https://open.spotify.com/embed/playlist/${playlistMatch[1]}?utm_source=generator`
-    return url
+    const match = url.match(/(playlist|album|track)[\/|:]([a-zA-Z0-9]+)/)
+    if (match) {
+      return `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator`
+    }
+    return "https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator"
   }
 
   const finalUrl = getEmbedUrl(activeUrl)
@@ -39,7 +38,7 @@ export function PersistentMusicPlayer() {
         frameBorder="0" 
         allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
         loading="lazy"
-        title="Persistent Focus Radio"
+        title="Persistent Background Radio"
       ></iframe>
     </div>
   )

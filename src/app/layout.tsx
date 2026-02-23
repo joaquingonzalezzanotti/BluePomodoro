@@ -8,9 +8,9 @@ export const metadata: Metadata = {
   title: 'BluePomodoro - Domina tu Productividad',
   description: 'Gestión de tareas impulsada por IA y técnica Pomodoro.',
   icons: {
-    icon: '/favicon.ico?v=1',
-    shortcut: '/favicon.ico?v=1',
-    apple: '/favicon.ico?v=1',
+    icon: '/favicon.ico?v=2',
+    shortcut: '/favicon.ico?v=2',
+    apple: '/favicon.ico?v=2',
   },
 };
 

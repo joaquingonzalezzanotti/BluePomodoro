@@ -15,20 +15,16 @@ import {
   Maximize2,
   FolderKanban,
   Users,
-  XCircle,
   ChevronLeft,
   UserCircle,
   Sparkles,
-  Zap,
   Target,
   Brain,
-  ArrowRight,
   ShieldCheck,
   Music,
-  Trophy,
-  ChevronDown
+  Trophy
 } from "lucide-react"
-import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
+import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
 import { PomodoroTimer } from "@/components/pomodoro-timer"
 import { TaskManager } from "@/components/task-manager"
@@ -50,14 +46,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescript
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 
-/**
- * COMPONENTE LANDING PAGE
- * Se muestra solo a usuarios NO autenticados.
- */
 function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => void, onLoginGuest: () => void }) {
   return (
     <div className="min-h-screen bg-white text-slate-900 selection:bg-primary/20">
-      {/* Navegación de la Landing */}
       <nav className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-md border-b border-slate-100 h-20 flex items-center px-6 md:px-12 justify-between">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 relative">
@@ -71,9 +62,8 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
         </div>
       </nav>
 
-      {/* Hero Section */}
       <section className="pt-40 pb-20 px-6 max-w-7xl mx-auto text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 text-primary text-xs font-black uppercase tracking-widest mb-8 border border-primary/10 animate-in fade-in slide-in-from-bottom-4">
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 text-primary text-xs font-black uppercase tracking-widest mb-8 border border-primary/10">
           <Sparkles className="h-3.5 w-3.5" /> Impulsado por Inteligencia Artificial
         </div>
         <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.95] mb-8 text-slate-900">
@@ -92,20 +82,17 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
              Acceso Invitado
           </Button>
         </div>
-        <div className="relative max-w-5xl mx-auto rounded-[2.5rem] overflow-hidden shadow-2xl border-8 border-slate-100 animate-in zoom-in-95 duration-1000">
+        <div className="relative max-w-5xl mx-auto rounded-[2.5rem] overflow-hidden shadow-2xl border-8 border-slate-100">
           <Image 
             src="https://picsum.photos/seed/dashboard/1200/800" 
             alt="App Preview" 
             width={1200} 
             height={800}
             className="w-full object-cover"
-            data-ai-hint="dashboard preview"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-white/20 to-transparent pointer-events-none" />
         </div>
       </section>
 
-      {/* Features Grid */}
       <section className="py-24 bg-slate-50">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-16 space-y-4">
@@ -113,110 +100,38 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
             <p className="text-slate-500 font-medium">Todo lo que necesitas para vencer la procrastinación.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
-              <div className="h-14 w-14 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+            <div className="p-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all">
+              <div className="h-14 w-14 bg-primary/10 rounded-2xl flex items-center justify-center mb-6">
                 <Brain className="h-7 w-7 text-primary" />
               </div>
               <h3 className="text-2xl font-black mb-4">IA Task Breakdown</h3>
-              <p className="text-slate-500 leading-relaxed font-medium">¿Te abruma una tarea gigante? Nuestra IA la desglosa en pasos accionables de 25 minutos automáticamente.</p>
+              <p className="text-slate-500 leading-relaxed font-medium">Nuestra IA desglosa tareas gigantes en pasos accionables de 25 minutos automáticamente.</p>
             </div>
-            <div className="p-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
-              <div className="h-14 w-14 bg-accent/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+            <div className="p-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all">
+              <div className="h-14 w-14 bg-accent/10 rounded-2xl flex items-center justify-center mb-6">
                 <Target className="h-7 w-7 text-accent" />
               </div>
               <h3 className="text-2xl font-black mb-4">Neurodivergente</h3>
-              <p className="text-slate-500 leading-relaxed font-medium">Diseñado con temporizadores visuales, alarmas intrusivas y alertas de transición para mentes con TDAH.</p>
+              <p className="text-slate-500 leading-relaxed font-medium">Diseñado con temporizadores visuales y alertas de transición para mentes con TDAH.</p>
             </div>
-            <div className="p-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all group">
-              <div className="h-14 w-14 bg-green-500/10 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+            <div className="p-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all">
+              <div className="h-14 w-14 bg-green-500/10 rounded-2xl flex items-center justify-center mb-6">
                 <Trophy className="h-7 w-7 text-green-600" />
               </div>
               <h3 className="text-2xl font-black mb-4">Gamificación Pura</h3>
-              <p className="text-slate-500 leading-relaxed font-medium">Gana XP, sube de nivel y desbloquea insignias. Convierte tu lista de tareas en un RPG de productividad.</p>
+              <p className="text-slate-500 leading-relaxed font-medium">Gana XP, sube de nivel y desbloquea insignias mientras trabajas.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ADHD Specific Section */}
-      <section className="py-24 px-6 max-w-7xl mx-auto overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <div className="space-y-8">
-            <div className="inline-flex px-4 py-1.5 rounded-full bg-accent/10 text-accent text-xs font-black uppercase tracking-widest border border-accent/20">
-              Zero-Distraction Mode
-            </div>
-            <h2 className="text-4xl md:text-6xl font-black tracking-tight">El fin de la "Ceguera del Tiempo".</h2>
-            <p className="text-xl text-slate-500 leading-relaxed font-medium">
-              Nuestro temporizador analógico y los avisos de transición te preparan mentalmente para el cambio. 
-              Sin números abstractos, solo percepción real de tu progreso.
-            </p>
-            <ul className="space-y-4">
-              {[
-                { icon: ShieldCheck, text: "Escudo Focus: Bloqueo de sitios distractores." },
-                { icon: Music, text: "Integración Spotify: Música de enfoque persistente." },
-                { icon: Users, text: "Body Doubling Virtual: Siente el apoyo de la comunidad." },
-              ].map((item, i) => (
-                <li key={i} className="flex items-center gap-3 font-bold text-slate-700">
-                  <div className="h-8 w-8 rounded-lg bg-slate-100 flex items-center justify-center">
-                    <item.icon className="h-4 w-4 text-primary" />
-                  </div>
-                  {item.text}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="relative">
-             <div className="absolute -inset-4 bg-primary/10 blur-[100px] rounded-full" />
-             <div className="relative bg-white p-8 rounded-[3rem] shadow-2xl border border-slate-100">
-                <Image 
-                  src="https://picsum.photos/seed/timer/800/800" 
-                  alt="Timer Feature" 
-                  width={800} 
-                  height={800}
-                  className="rounded-[2rem]"
-                  data-ai-hint="pomodoro timer visual"
-                />
-             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Bottom CTA */}
-      <section className="py-32 bg-slate-900 text-white text-center px-6">
-        <h2 className="text-4xl md:text-6xl font-black mb-8">¿Listo para recuperar el control?</h2>
-        <p className="text-slate-400 text-lg mb-12 max-w-xl mx-auto font-medium">
-          Únete a miles de personas que han dejado de procrastinar y han empezado a ejecutar con BluePomodoro.
-        </p>
-        <div className="flex flex-col md:flex-row items-center justify-center gap-4">
-          <Button size="lg" onClick={onLoginGoogle} className="h-16 px-12 rounded-2xl text-xl font-bold bg-primary hover:bg-primary/90 shadow-2xl shadow-primary/20">
-            Empezar Gratis
-          </Button>
-          <Button size="lg" variant="ghost" onClick={onLoginGuest} className="h-16 px-12 rounded-2xl text-xl font-bold text-white hover:bg-white/10">
-            Ver Demo
-          </Button>
-        </div>
-      </section>
-
-      {/* Footer */}
       <footer className="py-12 border-t border-slate-100 text-center text-slate-400 font-medium text-sm">
-        <div className="flex items-center justify-center gap-3 mb-6 grayscale opacity-50">
-          <Image src="/logo.png" alt="Logo" width={30} height={30} />
-          <span className="font-black text-slate-900">BluePomodoro</span>
-        </div>
         <p>© 2025 BluePomodoro. Diseñado para mentes extraordinarias.</p>
-        <div className="flex items-center justify-center gap-6 mt-6">
-          <Link href="/privacy" className="hover:text-primary transition-colors">Privacidad</Link>
-          <a href="#" className="hover:text-primary transition-colors">Términos</a>
-          <a href="#" className="hover:text-primary transition-colors">Soporte</a>
-        </div>
       </footer>
     </div>
   )
 }
 
-/**
- * COMPONENTE DASHBOARD PRINCIPAL
- */
 function DashboardContent({ 
   user, 
   activeTab, 
@@ -289,7 +204,6 @@ function DashboardContent({
                   </Avatar>
                   <div className="flex-1 group-data-[collapsible=icon]:hidden overflow-hidden">
                     <p className="text-[10px] font-black truncate">{user.isAnonymous ? "Invitado" : user.displayName}</p>
-                    <p className="text-[8px] text-muted-foreground truncate">{user.isAnonymous ? "Sesión Temporal" : user.email}</p>
                   </div>
                   <Button variant="ghost" size="icon" className="h-8 w-8 group-data-[collapsible=icon]:hidden" onClick={signOutAction}>
                     <LogOut className="h-4 w-4" />
@@ -472,25 +386,6 @@ export default function AppEntry() {
       audio.loop = true
       audio.play().catch(() => {})
       audioRef.current = audio
-    }
-    if (mode === "work") {
-      const nextCount = sessionsCompleted + 1
-      setSessionsCompleted(nextCount)
-      if (user && db) {
-        const uRef = doc(db, "usuarios", user.uid)
-        const sesionesRef = collection(db, "usuarios", user.uid, "sesionesPomodoro")
-        updateDocumentNonBlocking(uRef, { puntosTotales: increment(150) })
-        addDocumentNonBlocking(sesionesRef, {
-          usuarioId: user.uid,
-          tipo: "trabajo",
-          duracionMinutos: workMinutes,
-          fecha: serverTimestamp()
-        })
-        if (activeTaskId) {
-          const tRef = doc(db, "usuarios", user.uid, "tareas", activeTaskId)
-          updateDocumentNonBlocking(tRef, { completadosPomodoros: increment(1) })
-        }
-      }
     }
   }
 
