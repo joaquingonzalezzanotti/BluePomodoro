@@ -214,13 +214,11 @@ function DashboardContent({
           <div className="flex-1 p-8 max-w-7xl mx-auto w-full">
             {activeTab === "dashboard" && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                {/* Bento Grid: Tareas (Izquierda) */}
                 <div className="lg:col-span-3 space-y-4">
                    <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground/60 px-2">Siguiente Paso</h3>
                    <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                 </div>
 
-                {/* Bento Grid: Enfoque (Centro) */}
                 <div className="lg:col-span-6 flex flex-col gap-6">
                   <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100 flex flex-col items-center justify-center animate-in zoom-in-95 duration-500 min-h-[500px]">
                     {activeTask && (
@@ -245,7 +243,6 @@ function DashboardContent({
                   </div>
                 </div>
 
-                {/* Bento Grid: Progreso y Proyectos (Derecha) */}
                 <div className="lg:col-span-3 space-y-6">
                    <GamifiedProgress />
                    <ProjectManager compact />
@@ -259,7 +256,6 @@ function DashboardContent({
           </div>
         </main>
         
-        {/* Barra de Música Fija (Music Dock) */}
         <div className="fixed bottom-0 left-0 right-0 z-50 px-6 pb-6 pointer-events-none">
           <div className="max-w-4xl mx-auto w-full pointer-events-auto">
              <FocusMusic layout="dock" />
@@ -342,9 +338,18 @@ export default function AppEntry() {
     setTimeLeft(mode === "work" ? workMinutes * 60 : breakMinutes * 60)
   }
 
-  const handleGoogleSignIn = () => signInWithPopup(auth, new GoogleAuthProvider())
-  const handleGuestSignIn = () => initiateAnonymousSignIn(auth)
-  const handleSignOut = () => signOut(auth)
+  const handleGoogleSignIn = () => {
+    if (!auth) return
+    signInWithPopup(auth, new GoogleAuthProvider())
+  }
+  const handleGuestSignIn = () => {
+    if (!auth) return
+    initiateAnonymousSignIn(auth)
+  }
+  const handleSignOut = () => {
+    if (!auth) return
+    signOut(auth)
+  }
 
   if (isUserLoading) return <div className="min-h-screen flex items-center justify-center bg-white"><CloudLightning className="h-12 w-12 text-primary animate-pulse" /></div>
 

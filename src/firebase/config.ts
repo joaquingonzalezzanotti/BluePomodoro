@@ -1,4 +1,3 @@
-
 export const firebaseConfig = {
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "",
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "",
