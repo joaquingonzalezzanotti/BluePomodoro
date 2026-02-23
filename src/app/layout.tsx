@@ -5,6 +5,11 @@ import { FirebaseClientProvider } from '@/firebase';
 export const metadata: Metadata = {
   title: 'BluePomodoro - Domina tu Productividad',
   description: 'Gestión de tareas impulsada por IA y técnica Pomodoro.',
+  icons: {
+    icon: '/favicon.ico',
+    shortcut: '/favicon.ico',
+    apple: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({

@@ -1,30 +1,21 @@
-
 "use client"
 
 import * as React from "react"
+import Image from "next/image"
 import { 
   LayoutDashboard, 
   Settings, 
   LogOut,
-  Zap,
-  CheckSquare,
   BarChart3,
   CloudLightning,
   LogIn,
   Timer as TimerIcon,
   Maximize2,
-  Play,
-  Flame,
   FolderKanban,
-  Bell,
-  Kanban,
-  Music as MusicIcon,
-  ChevronRight,
-  Volume2,
-  XCircle,
-  Users
+  Users,
+  XCircle
 } from "lucide-react"
-import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
+import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
 import { PomodoroTimer } from "@/components/pomodoro-timer"
 import { TaskManager } from "@/components/task-manager"
@@ -177,8 +168,14 @@ export default function FocusFlowDashboard() {
   if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center">
-        <div className="h-20 w-20 bg-primary rounded-[2rem] flex items-center justify-center mb-10 shadow-2xl">
-          <CloudLightning className="text-white h-10 w-10" />
+        <div className="mb-10 shadow-2xl relative">
+          <Image 
+            src="/logo.png" 
+            alt="BluePomodoro Logo" 
+            width={120} 
+            height={120} 
+            className="rounded-[2.5rem]"
+          />
         </div>
         <h1 className="text-4xl font-black mb-4">BluePomodoro</h1>
         <p className="text-muted-foreground mb-8 max-w-sm">Gestiona tus tareas con IA y domina la técnica Pomodoro en un entorno de alto enfoque.</p>
@@ -197,8 +194,13 @@ export default function FocusFlowDashboard() {
         <Sidebar collapsible="icon" className="border-r border-primary/5 bg-white/80 backdrop-blur-xl">
           <SidebarHeader className="p-6">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 bg-primary rounded-xl flex items-center justify-center shrink-0">
-                <CloudLightning className="text-white h-5 w-5" />
+              <div className="h-10 w-10 shrink-0 relative overflow-hidden rounded-xl">
+                <Image 
+                  src="/logo.png" 
+                  alt="Logo" 
+                  fill
+                  className="object-cover"
+                />
               </div>
               <h1 className="text-lg font-black group-data-[collapsible=icon]:hidden">BluePomodoro</h1>
             </div>
