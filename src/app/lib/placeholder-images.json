@@ -1,0 +1,22 @@
+{
+  "placeholderImages": [
+    {
+      "id": "hero-bg",
+      "description": "Calming desk setup with plant and notebook",
+      "imageUrl": "https://picsum.photos/seed/focus1/1200/800",
+      "imageHint": "desk plant"
+    },
+    {
+      "id": "achievement-badge",
+      "description": "Gold trophy icon",
+      "imageUrl": "https://picsum.photos/seed/badge1/200/200",
+      "imageHint": "gold trophy"
+    },
+    {
+      "id": "meditation-bg",
+      "description": "Soft abstract blue shapes",
+      "imageUrl": "https://picsum.photos/seed/meditation/600/400",
+      "imageHint": "abstract blue"
+    }
+  ]
+}
