@@ -45,6 +45,7 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DevAuthSeeder } from "@/components/dev-auth-seeder"
+import Link from "next/link"
 
 const DEFAULT_PLAYLIST = "https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKHA6V9KWm?utm_source=generator&theme=0"
 
@@ -199,6 +200,12 @@ export default function FocusFlowDashboard() {
           
           <DevAuthSeeder />
         </div>
+        
+        <footer className="mt-16 flex gap-6 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">
+          <Link href="/privacy" className="hover:text-primary transition-colors">Política de Privacidad</Link>
+          <span>•</span>
+          <span>© 2025 BluePomodoro</span>
+        </footer>
         <Toaster />
       </div>
     )
@@ -352,21 +359,26 @@ export default function FocusFlowDashboard() {
           </SidebarContent>
 
           <SidebarFooter className="p-6 border-t border-primary/5">
-            <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-2xl hover:bg-muted/60 transition-colors">
-              <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
-                <AvatarImage src={user.photoURL || undefined} />
-                <AvatarFallback className="font-bold">{user.displayName?.charAt(0) || "U"}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-extrabold truncate text-foreground">{user.displayName || "Usuario"}</p>
-                <div className="flex items-center gap-1.5 mt-0.5">
-                  <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                  <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">MAESTRO L{Math.floor((userData?.puntosTotales || 0) / 500) + 1}</p>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3 p-3 bg-muted/40 rounded-2xl hover:bg-muted/60 transition-colors">
+                <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
+                  <AvatarImage src={user.photoURL || undefined} />
+                  <AvatarFallback className="font-bold">{user.displayName?.charAt(0) || "U"}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-extrabold truncate text-foreground">{user.displayName || "Usuario"}</p>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                    <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-wider">MAESTRO L{Math.floor((userData?.puntosTotales || 0) / 500) + 1}</p>
+                  </div>
                 </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/5 rounded-lg" onClick={handleLogout}>
+                  <LogOut className="h-4 w-4" />
+                </Button>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/5 rounded-lg" onClick={handleLogout}>
-                <LogOut className="h-4 w-4" />
-              </Button>
+              <Link href="/privacy" className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/30 text-center hover:text-primary transition-colors">
+                Privacidad y Términos
+              </Link>
             </div>
           </SidebarFooter>
         </Sidebar>
