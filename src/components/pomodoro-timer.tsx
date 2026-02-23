@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Timer as TimerIcon, Play, Pause, RotateCcw, Coffee, Trophy, Settings2 } from "lucide-react"
+import { Timer as TimerIcon, Play, Pause, RotateCcw, Coffee, Trophy, Settings2, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -34,10 +34,10 @@ export function PomodoroTimer({
   breakMinutes,
   setBreakMinutes
 }: PomodoroTimerProps) {
-  // Estado local para los inputs para evitar reseteos al escribir
   const [localWork, setLocalWork] = React.useState(workMinutes.toString())
   const [localBreak, setLocalBreak] = React.useState(breakMinutes.toString())
 
+  // Actualizar estados locales solo cuando cambian las props externas de forma legítima
   React.useEffect(() => {
     setLocalWork(workMinutes.toString())
   }, [workMinutes])
@@ -55,16 +55,11 @@ export function PomodoroTimer({
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
-  const handleWorkChange = (val: string) => {
-    setLocalWork(val)
-    const n = parseInt(val)
-    if (!isNaN(n) && n > 0) setWorkMinutes(n)
-  }
-
-  const handleBreakChange = (val: string) => {
-    setLocalBreak(val)
-    const n = parseInt(val)
-    if (!isNaN(n) && n > 0) setBreakMinutes(n)
+  const handleApplyChanges = () => {
+    const w = parseInt(localWork)
+    const b = parseInt(localBreak)
+    if (!isNaN(w) && w > 0) setWorkMinutes(w)
+    if (!isNaN(b) && b > 0) setBreakMinutes(b)
   }
 
   return (
@@ -87,29 +82,32 @@ export function PomodoroTimer({
               </PopoverTrigger>
               <PopoverContent className="w-60">
                 <div className="space-y-4">
-                  <h4 className="font-bold text-sm">Ajustar Tiempos</h4>
+                  <h4 className="font-bold text-sm">Configurar Tiempos</h4>
                   <div className="grid gap-2">
-                    <Label htmlFor="work" className="text-xs">Trabajo (min)</Label>
+                    <Label htmlFor="work" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Trabajo (min)</Label>
                     <Input 
                       id="work" 
                       type="number" 
                       value={localWork} 
-                      onChange={(e) => handleWorkChange(e.target.value)}
-                      className="h-8"
+                      onChange={(e) => setLocalWork(e.target.value)}
+                      className="h-9 bg-muted/30 font-bold"
                     />
                   </div>
                   <div className="grid gap-2">
-                    <Label htmlFor="break" className="text-xs">Descanso (min)</Label>
+                    <Label htmlFor="break" className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Descanso (min)</Label>
                     <Input 
                       id="break" 
                       type="number" 
                       value={localBreak} 
-                      onChange={(e) => handleBreakChange(e.target.value)}
-                      className="h-8"
+                      onChange={(e) => setLocalBreak(e.target.value)}
+                      className="h-9 bg-muted/30 font-bold"
                     />
                   </div>
-                  <p className="text-[10px] text-muted-foreground italic">
-                    Nota: Los cambios se aplicarán al reiniciar o al terminar la sesión actual.
+                  <Button onClick={handleApplyChanges} className="w-full gap-2 rounded-xl font-bold h-9">
+                    <Check className="h-4 w-4" /> Aplicar Cambios
+                  </Button>
+                  <p className="text-[10px] text-muted-foreground italic leading-tight">
+                    * Los cambios reiniciarán el tiempo si el temporizador está detenido.
                   </p>
                 </div>
               </PopoverContent>
@@ -140,7 +138,7 @@ export function PomodoroTimer({
               className="transition-all duration-1000 ease-linear"
             />
           </svg>
-          <div className="text-5xl font-bold font-mono tracking-tighter">
+          <div className="text-5xl font-bold font-mono tracking-tighter text-foreground drop-shadow-sm">
             {formatTime(timeLeft)}
           </div>
         </div>
@@ -149,15 +147,15 @@ export function PomodoroTimer({
           <Button
             size="lg"
             variant={isActive ? "outline" : "default"}
-            className="rounded-full w-14 h-14 p-0 shadow-lg"
+            className={`rounded-full w-14 h-14 p-0 shadow-lg transition-all ${!isActive ? "bg-primary hover:bg-primary/90 hover:scale-105" : "hover:bg-destructive/5 hover:text-destructive hover:border-destructive/20"}`}
             onClick={toggleTimer}
           >
-            {isActive ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
+            {isActive ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6 fill-current" />}
           </Button>
           <Button
             size="lg"
             variant="ghost"
-            className="rounded-full w-14 h-14 p-0 hover:bg-muted"
+            className="rounded-full w-14 h-14 p-0 hover:bg-muted active:rotate-180 transition-transform duration-500"
             onClick={resetTimer}
           >
             <RotateCcw className="h-6 w-6" />
