@@ -3,7 +3,6 @@
 
 import * as React from "react"
 import Image from "next/image"
-import Link from "next/link"
 import { 
   LayoutDashboard, 
   Settings, 
@@ -15,17 +14,16 @@ import {
   Maximize2,
   FolderKanban,
   Users,
-  ChevronLeft,
   UserCircle,
   Sparkles,
   Target,
   Brain,
-  ShieldCheck,
   Music,
   Trophy,
-  ArrowRight,
-  Zap,
-  LayoutGrid
+  Play,
+  Pause,
+  RotateCcw,
+  Flame
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -35,18 +33,14 @@ import { FocusMusic } from "@/components/focus-music"
 import { ConfigurationView } from "@/components/configuration-view"
 import { StatsView } from "@/components/stats-view"
 import { ProjectManager } from "@/components/project-manager"
-import { KanbanBoard } from "@/components/kanban-board"
 import { Button } from "@/components/ui/button"
-import { Separator } from "@/components/ui/separator"
-import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useDoc, addDocumentNonBlocking, initiateAnonymousSignIn } from "@/firebase"
+import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useDoc, initiateAnonymousSignIn } from "@/firebase"
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
-import { doc, collection, serverTimestamp, increment } from "firebase/firestore"
+import { doc, increment } from "firebase/firestore"
 import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { GamifiedProgress } from "@/components/gamified-progress"
 
@@ -439,7 +433,7 @@ export default function AppEntry() {
               <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 animate-bounce">
                 <TimerIcon className="h-10 w-10 text-primary" />
               </div>
-              <AlertDialogTitle className="text-2xl font-black">¡Tiempo Cumplido!</AlertDialogTitleEditor>
+              <AlertDialogTitle className="text-2xl font-black">¡Tiempo Cumplido!</AlertDialogTitle>
               <AlertDialogDescription className="text-sm font-medium">
                 Has completado tu sesión de {mode === "work" ? "enfoque" : "descanso"}.
                 Es momento de cambiar el ritmo.
