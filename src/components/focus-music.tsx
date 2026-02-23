@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Music, Play, Pause, SkipForward, SkipBack, Volume2, Headphones, Radio, Save, ExternalLink } from "lucide-react"
+import { Music, Play, Pause, SkipForward, SkipBack, Volume2, Headphones, Radio, Save, ExternalLink, RefreshCw, LogIn } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
@@ -14,17 +14,15 @@ import { useToast } from "@/hooks/use-toast"
 
 const DEFAULT_PLAYLIST = "https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator"
 
-const TRACKS = [
-  { id: 1, name: "Deep Focus Lo-Fi", artist: "Mezcla BluePomodoro", duration: "3:45" },
-  { id: 2, name: "Lluvia Ambiental", artist: "Sonidos de la Naturaleza", duration: "∞" },
-  { id: 3, name: "Concentración Piano", artist: "Flujo Clásico", duration: "4:12" },
-]
+const SPOTIFY_CLIENT_ID = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID || ""
+const REDIRECT_URI = typeof window !== 'undefined' ? `${window.location.origin}` : ""
+const SCOPES = "user-read-private user-read-email playlist-read-private"
 
 export function FocusMusic() {
   const [isPlaying, setIsPlaying] = React.useState(false)
   const [volume, setVolume] = React.useState([50])
-  const [currentTrackIndex, setCurrentTrackIndex] = React.useState(0)
   const [spotifyUrlInput, setSpotifyUrlInput] = React.useState("")
+  const [isConnecting, setIsConnecting] = React.useState(false)
   
   const { user } = useUser()
   const db = useFirestore()
@@ -37,10 +35,33 @@ export function FocusMusic() {
 
   const { data: userData } = useDoc(userRef)
 
-  const currentTrack = TRACKS[currentTrackIndex]
+  const handleSpotifyLogin = () => {
+    if (!SPOTIFY_CLIENT_ID) {
+      toast({
+        variant: "destructive",
+        title: "Configuración requerida",
+        description: "Falta el SPOTIFY_CLIENT_ID en las variables de entorno.",
+      })
+      return
+    }
 
-  const nextTrack = () => setCurrentTrackIndex((prev) => (prev + 1) % TRACKS.length)
-  const prevTrack = () => setCurrentTrackIndex((prev) => (prev - 1 + TRACKS.length) % TRACKS.length)
+    setIsConnecting(true)
+    const authUrl = `https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES)}`
+    window.location.href = authUrl
+  }
+
+  const handleSaveSpotifyUrl = (url: string) => {
+    if (!userRef) return
+    
+    updateDocumentNonBlocking(userRef, {
+      spotifyPlaylistUrl: url
+    })
+
+    toast({
+      title: "Música actualizada",
+      description: "Tu selección ha sido guardada.",
+    })
+  }
 
   const getEmbedUrl = (url: string) => {
     if (!url) return DEFAULT_PLAYLIST
@@ -57,22 +78,7 @@ export function FocusMusic() {
     return DEFAULT_PLAYLIST
   }
 
-  const handleSaveSpotifyUrl = () => {
-    if (!userRef || !spotifyUrlInput) return
-    
-    updateDocumentNonBlocking(userRef, {
-      spotifyPlaylistUrl: spotifyUrlInput
-    })
-
-    toast({
-      title: "Música guardada",
-      description: "Tu lista personalizada ha sido actualizada.",
-    })
-  }
-
-  const activeSpotifyUrl = userData?.spotifyPlaylistUrl 
-    ? getEmbedUrl(userData.spotifyPlaylistUrl) 
-    : DEFAULT_PLAYLIST
+  const activeSpotifyUrl = getEmbedUrl(userData?.spotifyPlaylistUrl || "")
 
   return (
     <Card className="w-full bg-card shadow-lg border-none">
@@ -86,64 +92,39 @@ export function FocusMusic() {
         <Tabs defaultValue="spotify" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4 bg-muted/50">
             <TabsTrigger value="spotify" className="text-xs font-bold flex gap-2">
-              <Radio className="h-3 w-3" /> SPOTIFY
+              <Radio className="h-3 w-3" /> MI SPOTIFY
             </TabsTrigger>
-            <TabsTrigger value="local" className="text-xs font-bold">REPRODUCTOR</TabsTrigger>
+            <TabsTrigger value="manual" className="text-xs font-bold">POR ENLACE</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="local">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-16 h-16 bg-primary/20 rounded-lg flex items-center justify-center">
-                <Music className={`h-8 w-8 text-primary ${isPlaying ? "animate-bounce" : ""}`} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h4 className="font-bold truncate text-sm">{currentTrack.name}</h4>
-                <p className="text-xs text-muted-foreground">{currentTrack.artist}</p>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-center gap-4">
-                <Button variant="ghost" size="icon" onClick={prevTrack}>
-                  <SkipBack className="h-5 w-5" />
-                </Button>
-                <Button 
-                  className="h-10 w-10 rounded-full bg-primary hover:bg-primary/80" 
-                  size="icon"
-                  onClick={() => setIsPlaying(!isPlaying)}
-                >
-                  {isPlaying ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5 fill-current" />}
-                </Button>
-                <Button variant="ghost" size="icon" onClick={nextTrack}>
-                  <SkipForward className="h-5 w-5" />
-                </Button>
-              </div>
-
-              <div className="flex items-center gap-2 px-2">
-                <Volume2 className="h-4 w-4 text-muted-foreground" />
-                <Slider 
-                  value={volume} 
-                  onValueChange={setVolume} 
-                  max={100} 
-                  step={1} 
-                  className="flex-1"
-                />
-              </div>
-            </div>
-          </TabsContent>
-
           <TabsContent value="spotify" className="space-y-4">
-            <div className="flex gap-2 mb-2">
-              <Input 
-                placeholder="Pega tu playlist/álbum de Spotify..." 
-                value={spotifyUrlInput}
-                onChange={(e) => setSpotifyUrlInput(e.target.value)}
-                className="text-xs h-8 bg-muted/30"
-              />
-              <Button size="sm" variant="secondary" className="h-8 px-3" onClick={handleSaveSpotifyUrl}>
-                <Save className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+            {!userData?.spotifyAccessToken ? (
+              <div className="flex flex-col items-center justify-center py-6 text-center space-y-4 bg-primary/5 rounded-2xl border border-dashed border-primary/20">
+                <div className="h-12 w-12 bg-primary/10 rounded-full flex items-center justify-center">
+                  <Music className="h-6 w-6 text-primary" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-bold">Vincula tu cuenta</p>
+                  <p className="text-[10px] text-muted-foreground px-6">Accede a tus playlists personales directamente.</p>
+                </div>
+                <Button onClick={handleSpotifyLogin} disabled={isConnecting} className="gap-2 bg-green-500 hover:bg-green-600 text-white rounded-full font-bold text-xs h-9 px-6">
+                  <LogIn className="h-3.5 w-3.5" />
+                  {isConnecting ? "CONECTANDO..." : "CONECTAR CON SPOTIFY"}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between p-3 bg-green-500/10 rounded-xl border border-green-500/20">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 bg-green-500 rounded-full flex items-center justify-center text-white">
+                    <Music className="h-4 w-4" />
+                  </div>
+                  <p className="text-xs font-bold">Cuenta Vinculada</p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={handleSpotifyLogin} className="text-[10px] font-bold text-green-600 hover:bg-green-500/10">
+                  RECONECTAR
+                </Button>
+              </div>
+            )}
 
             <div className="rounded-xl overflow-hidden shadow-inner bg-slate-900 min-h-[152px]">
               <iframe 
@@ -156,20 +137,23 @@ export function FocusMusic() {
                 loading="lazy"
               ></iframe>
             </div>
-            
-            <div className="flex items-center justify-center gap-4 mt-2">
-              <p className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider">
-                {userData?.spotifyPlaylistUrl ? "Tu lista está lista" : "Usando lista predeterminada"}
-              </p>
-              <a 
-                href="https://open.spotify.com" 
-                target="_blank" 
-                rel="noreferrer" 
-                className="text-[9px] font-bold text-primary flex items-center gap-1 hover:underline"
-              >
-                ABRIR SPOTIFY <ExternalLink className="h-2 w-2" />
-              </a>
+          </TabsContent>
+
+          <TabsContent value="manual" className="space-y-4">
+            <div className="flex gap-2 mb-2">
+              <Input 
+                placeholder="Pega enlace de playlist o álbum..." 
+                value={spotifyUrlInput}
+                onChange={(e) => setSpotifyUrlInput(e.target.value)}
+                className="text-xs h-9 bg-muted/30"
+              />
+              <Button size="sm" variant="secondary" className="h-9 px-3" onClick={() => handleSaveSpotifyUrl(spotifyUrlInput)}>
+                <Save className="h-4 w-4" />
+              </Button>
             </div>
+            <p className="text-[9px] text-muted-foreground leading-tight italic">
+              Ejemplo: https://open.spotify.com/playlist/37i9dQZF1DWZeKHA6uMp6M
+            </p>
           </TabsContent>
         </Tabs>
       </CardContent>

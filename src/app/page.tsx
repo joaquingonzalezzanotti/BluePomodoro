@@ -64,6 +64,27 @@ export default function FocusFlowDashboard() {
   const { data: userData } = useDoc(userRef)
   const isBlocking = userData?.modoEstrictoActivo || false
 
+  // Manejo de retorno de Spotify OAuth (Token en URL hash)
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.location.hash && userRef) {
+      const hash = window.location.hash.substring(1)
+      const params = new URLSearchParams(hash)
+      const accessToken = params.get('access_token')
+      
+      if (accessToken) {
+        updateDocumentNonBlocking(userRef, {
+          spotifyAccessToken: accessToken,
+          spotifyTokenTimestamp: serverTimestamp()
+        })
+        window.location.hash = "" // Limpiar URL
+        toast({
+          title: "Spotify Conectado",
+          description: "Ahora puedes gestionar tu música internamente.",
+        })
+      }
+    }
+  }, [userRef])
+
   React.useEffect(() => {
     if (user && db) {
       const userDocRef = doc(db, "usuarios", user.uid)
@@ -90,19 +111,11 @@ export default function FocusFlowDashboard() {
     provider.addScope('https://www.googleapis.com/auth/tasks.readonly')
     
     signInWithPopup(auth, provider).catch((error: any) => {
-      if (error.code === 'auth/unauthorized-domain') {
-        toast({
-          variant: "destructive",
-          title: "Dominio no autorizado",
-          description: "Debes añadir este dominio a la lista blanca en la consola de Firebase.",
-        })
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error de Inicio de Sesión",
-          description: "Asegúrate de permitir el acceso en la ventana de Google (Configuración avanzada -> Ir a BluePomodoro).",
-        })
-      }
+      toast({
+        variant: "destructive",
+        title: "Error de Inicio de Sesión",
+        description: "Asegúrate de permitir el acceso en la ventana de Google (Configuración avanzada -> Ir a BluePomodoro).",
+      })
     })
   }
 
