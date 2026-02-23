@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -72,7 +73,7 @@ export default function FocusFlowDashboard() {
     const showMessage = () => {
       const usersCount = Math.floor(Math.random() * 20) + 6 
       if (usersCount > 5) {
-        setBodyDoublingMessage(`${usersCount} personas están enfocadas contigo ahora`)
+        setBodyDoublingMessage(`${usersCount} personas enfocadas contigo`)
         setTimeout(() => setBodyDoublingMessage(null), 8000) 
       }
       
@@ -229,10 +230,10 @@ export default function FocusFlowDashboard() {
             </SidebarGroup>
           </SidebarContent>
           <SidebarFooter className="p-4 border-t border-primary/5">
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
               {bodyDoublingMessage && (
-                <div className="px-3 py-2 bg-primary/10 border border-primary/20 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-500 group-data-[collapsible=icon]:hidden">
-                  <p className="text-[10px] font-black text-primary flex items-center gap-2">
+                <div className="px-3 py-1.5 bg-primary/5 border border-primary/10 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-500 group-data-[collapsible=icon]:hidden">
+                  <p className="text-[9px] font-black text-primary/70 flex items-center gap-2 italic">
                     <Users className="h-3 w-3" /> {bodyDoublingMessage}
                   </p>
                 </div>

@@ -35,28 +35,32 @@ export function FocusMusic({ layout = "dashboard" }: FocusMusicProps) {
 
   if (layout === "sidebar") {
     return (
-      <div className="space-y-2 group-data-[collapsible=icon]:items-center">
-        <div className="flex items-center justify-between px-2 group-data-[collapsible=icon]:hidden">
-          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Focus Radio</span>
-          <Music className="h-3 w-3 text-primary" />
-        </div>
-        {/* Usamos un contenedor pequeño para el iframe en la sidebar */}
-        <div className="rounded-xl overflow-hidden shadow-sm border border-primary/5 bg-slate-900 h-14 group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:h-10">
-          <iframe 
+      <div className="flex flex-col gap-2 group-data-[collapsible=icon]:items-center">
+        {/* Iframe invisible pero funcional para que la música sea persistente en la sidebar */}
+        <div className="h-0 w-0 opacity-0 overflow-hidden pointer-events-none absolute">
+           <iframe 
             src={finalUrl} 
-            width="100%" 
-            height="80" 
+            width="1" 
+            height="1" 
             frameBorder="0" 
             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
             loading="lazy"
-            className="group-data-[collapsible=icon]:scale-[0.5]"
           ></iframe>
         </div>
-        <div className="flex items-center justify-center gap-4 group-data-[collapsible=icon]:hidden">
-           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10">
+
+        <div className="flex items-center justify-between px-2 group-data-[collapsible=icon]:hidden">
+          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Focus Radio</span>
+          <Music className="h-3 w-3 text-primary animate-pulse" />
+        </div>
+        
+        <div className="flex items-center justify-center gap-1 bg-muted/20 p-1 rounded-xl group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:bg-transparent">
+           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary/60 hover:text-primary hover:bg-primary/5 transition-colors">
               <SkipBack className="h-4 w-4" />
            </Button>
-           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10">
+           <div className="h-8 w-8 flex items-center justify-center bg-primary/10 rounded-lg group-data-[collapsible=icon]:hidden">
+              <Music className="h-4 w-4 text-primary" />
+           </div>
+           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary/60 hover:text-primary hover:bg-primary/5 transition-colors">
               <SkipForward className="h-4 w-4" />
            </Button>
         </div>
