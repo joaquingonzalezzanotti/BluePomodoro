@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Settings, Music, Cloud, ExternalLink, Save, Shield, LayoutGrid } from "lucide-react"
+import { Settings, Music, Cloud, ExternalLink, Save, Shield, Bell, CheckCircle2 } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,6 +18,7 @@ export function ConfigurationView() {
   const db = useFirestore()
   const { toast } = useToast()
   const [spotifyInput, setSpotifyInput] = React.useState("")
+  const [notifPermission, setNotifPermission] = React.useState<"default" | "granted" | "denied">("default")
 
   const userRef = useMemoFirebase(() => {
     if (!db || !user) return null
@@ -25,6 +26,24 @@ export function ConfigurationView() {
   }, [db, user])
 
   const { data: userData } = useDoc(userRef)
+
+  React.useEffect(() => {
+    if ("Notification" in window) {
+      setNotifPermission(Notification.permission)
+    }
+  }, [])
+
+  const requestPermission = async () => {
+    if (!("Notification" in window)) {
+      toast({ variant: "destructive", title: "No soportado", description: "Tu navegador no soporta notificaciones." })
+      return
+    }
+    const permission = await Notification.requestPermission()
+    setNotifPermission(permission)
+    if (permission === "granted") {
+      toast({ title: "¡Permiso Concedido!", description: "Recibirás alertas al terminar tus sesiones." })
+    }
+  }
 
   const handleSaveSpotify = () => {
     if (!userRef || !spotifyInput) return
@@ -40,7 +59,7 @@ export function ConfigurationView() {
         </div>
         <div>
           <h2 className="text-2xl font-black">Configuración Global</h2>
-          <p className="text-sm text-muted-foreground">Centraliza tus integraciones y reglas de enfoque.</p>
+          <p className="text-sm text-muted-foreground">Personaliza tus integraciones, bloqueos y alertas.</p>
         </div>
       </div>
 
@@ -52,6 +71,9 @@ export function ConfigurationView() {
           <TabsTrigger value="bloqueos" className="rounded-xl px-8 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
             <Shield className="h-4 w-4 mr-2" /> Escudo Focus
           </TabsTrigger>
+          <TabsTrigger value="alertas" className="rounded-xl px-8 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
+            <Bell className="h-4 w-4 mr-2" /> Notificaciones
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="integraciones" className="space-y-8">
@@ -60,8 +82,8 @@ export function ConfigurationView() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden">
               <CardHeader className="bg-green-500/5">
-                <CardTitle className="flex items-center gap-2"><Music className="h-5 w-5 text-green-500" /> Mi Música de Enfoque</CardTitle>
-                <CardDescription>Pega aquí el enlace de tu playlist favorita de Spotify.</CardDescription>
+                <CardTitle className="flex items-center gap-2 text-green-700"><Music className="h-5 w-5" /> Mi Música de Enfoque</CardTitle>
+                <CardDescription>Pega aquí el enlace de tu playlist de Spotify.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 pt-6">
                 <Input 
@@ -71,18 +93,18 @@ export function ConfigurationView() {
                   className="rounded-xl bg-muted/30 border-none h-12 font-medium"
                 />
                 <Button onClick={handleSaveSpotify} className="w-full h-12 gap-2 rounded-xl font-bold bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/20">
-                  <Save className="h-4 w-4" /> Vincular Playlist
+                  <Save className="h-4 w-4" /> Guardar Playlist
                 </Button>
               </CardContent>
             </Card>
 
             <div className="p-8 bg-slate-900 text-white rounded-[2rem] flex flex-col justify-center">
-              <h3 className="text-lg font-black flex items-center gap-2 mb-2"><Shield className="h-5 w-5 text-primary" /> Modo Focus Profundo</h3>
+              <h3 className="text-lg font-black flex items-center gap-2 mb-2"><Shield className="h-5 w-5 text-primary" /> Sincronización en la Nube</h3>
               <p className="text-xs text-slate-400 mb-6 leading-relaxed">
-                Tus bloqueos de sitios y configuraciones se sincronizan en la nube. Activa el Modo Focus en el tablero para aplicar estas reglas.
+                Tus bloqueos de sitios y configuraciones de tiempo se guardan en tu perfil. Inicia sesión en cualquier dispositivo para mantener tu flujo.
               </p>
               <Button variant="secondary" className="gap-2 rounded-xl font-bold w-fit">
-                <ExternalLink className="h-4 w-4" /> Guía de Productividad
+                <ExternalLink className="h-4 w-4" /> Guía de Uso
               </Button>
             </div>
           </div>
@@ -90,6 +112,37 @@ export function ConfigurationView() {
 
         <TabsContent value="bloqueos">
           <DistractionBlocker />
+        </TabsContent>
+
+        <TabsContent value="alertas">
+          <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden">
+            <CardHeader className="bg-primary/5">
+              <CardTitle className="flex items-center gap-2"><Bell className="h-5 w-5 text-primary" /> Alertas del Sistema</CardTitle>
+              <CardDescription>Configura cómo quieres que te avisemos al terminar tus sesiones.</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6 space-y-6">
+              <div className="flex items-center justify-between p-6 bg-muted/30 rounded-2xl">
+                <div className="space-y-1">
+                  <h4 className="font-bold">Notificaciones de Escritorio</h4>
+                  <p className="text-xs text-muted-foreground">Recibe alertas nativas aunque el navegador esté minimizado.</p>
+                </div>
+                {notifPermission === "granted" ? (
+                  <div className="flex items-center gap-2 text-green-600 font-bold bg-green-50 px-4 py-2 rounded-full border border-green-100">
+                    <CheckCircle2 className="h-4 w-4" /> Activadas
+                  </div>
+                ) : (
+                  <Button onClick={requestPermission} variant="outline" className="rounded-xl font-bold">
+                    Habilitar
+                  </Button>
+                )}
+              </div>
+
+              <div className="p-6 border border-dashed border-muted-foreground/20 rounded-2xl text-center">
+                <h4 className="text-xs font-black uppercase text-muted-foreground mb-2">Próximamente</h4>
+                <p className="text-sm text-muted-foreground">Sincronización con Firebase Cloud Messaging (FCM) para alertas móviles nativas.</p>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

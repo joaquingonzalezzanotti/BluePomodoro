@@ -19,7 +19,8 @@ import {
   Bell,
   Kanban,
   Music as MusicIcon,
-  ChevronRight
+  ChevronRight,
+  Volume2
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -75,6 +76,12 @@ export default function FocusFlowDashboard() {
     return () => { if (interval) clearInterval(interval) }
   }, [isActive, timeLeft])
 
+  const sendBrowserNotification = (title: string, body: string) => {
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification(title, { body, icon: "/favicon.ico" })
+    }
+  }
+
   const handleSessionEnd = () => {
     setIsActive(false)
     if (mode === "work") {
@@ -85,6 +92,11 @@ export default function FocusFlowDashboard() {
       const isLongBreak = nextCount > 0 && nextCount % 3 === 0
       const nextMinutes = isLongBreak ? longBreakMinutes : breakMinutes
       setTimeLeft(nextMinutes * 60)
+      
+      const title = isLongBreak ? "¡Descanso Largo!" : "¡Sesión Completada!"
+      const desc = isLongBreak ? "Has completado 3 ciclos. Relájate 20 min." : "XP ganado. Tómate 10 min."
+      
+      sendBrowserNotification(title, desc)
       
       if (user && db) {
         const uRef = doc(db, "usuarios", user.uid)
@@ -104,16 +116,12 @@ export default function FocusFlowDashboard() {
           updateDocumentNonBlocking(tRef, { completadosPomodoros: increment(1) })
         }
 
-        toast({ 
-          title: isLongBreak ? "¡Descanso Largo!" : "¡Sesión Completada!", 
-          description: isLongBreak 
-            ? "Has completado 3 ciclos. Disfruta de 20 minutos de relax." 
-            : "XP ganado. Tómate 10 minutos." 
-        })
+        toast({ title, description: desc })
       }
     } else {
       setMode("work")
       setTimeLeft(workMinutes * 60)
+      sendBrowserNotification("Enfoque Activo", "¡Es hora de volver al trabajo!")
       toast({ title: "Enfoque", description: "¡A trabajar!" })
     }
   }
@@ -154,7 +162,8 @@ export default function FocusFlowDashboard() {
           <CloudLightning className="text-white h-10 w-10" />
         </div>
         <h1 className="text-4xl font-black mb-4">BluePomodoro</h1>
-        <Button size="lg" onClick={handleLogin} className="gap-3 rounded-2xl px-10">
+        <p className="text-muted-foreground mb-8 max-w-sm">Gestiona tus tareas con IA y domina la técnica Pomodoro en un entorno de alto enfoque.</p>
+        <Button size="lg" onClick={handleLogin} className="gap-3 rounded-2xl px-10 h-14 font-bold text-lg">
           <LogIn className="h-5 w-5" /> Entrar con Google
         </Button>
       </div>
@@ -188,16 +197,21 @@ export default function FocusFlowDashboard() {
               {activeTaskId && (
                 <Button 
                   onClick={() => setActiveTab("pomodoro")} 
-                  className="w-full h-16 rounded-[2rem] bg-primary text-white font-black text-lg gap-3 shadow-xl shadow-primary/20 animate-pulse"
+                  className="w-full h-20 rounded-[2rem] bg-primary text-white font-black text-xl gap-3 shadow-xl shadow-primary/20 animate-pulse border-4 border-white"
                 >
                   <TimerIcon className="h-6 w-6" /> ¡ENFÓCATE AHORA! <ChevronRight className="h-5 w-5" />
                 </Button>
               )}
               <div className="p-6 bg-primary/5 border border-primary/10 rounded-3xl">
                 <h4 className="text-xs font-black uppercase text-muted-foreground mb-4 flex items-center gap-2">
-                  <Bell className="h-3 w-3" /> Próximas Alertas
+                  <Bell className="h-3 w-3" /> Estado de Alertas
                 </h4>
-                <p className="text-[10px] text-muted-foreground italic">Las notificaciones web y mobile se habilitarán tras configurar FCM.</p>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase">Alertas de escritorio</span>
+                  <div className="flex items-center gap-1 text-[10px] font-black text-primary">
+                    <Volume2 className="h-3 w-3" /> ACTIVO
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -219,9 +233,16 @@ export default function FocusFlowDashboard() {
               large
             />
             {activeTaskId && (
-              <div className="mt-10 px-6 py-3 bg-primary/10 border border-primary/20 rounded-2xl flex items-center gap-3">
-                <CheckSquare className="h-5 w-5 text-primary" />
-                <span className="text-sm font-bold uppercase tracking-widest">Registrando progreso en tarea</span>
+              <div className="mt-12 px-8 py-4 bg-primary text-white rounded-[2rem] flex items-center gap-4 shadow-2xl shadow-primary/30">
+                <div className="h-8 w-8 bg-white/20 rounded-full flex items-center justify-center">
+                  <CheckSquare className="h-4 w-4 text-white" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Trabajando en</span>
+                  <span className="text-sm font-bold truncate max-w-[200px]">
+                    {userData?.tareas?.find((t: any) => t.id === activeTaskId)?.titulo || "Tarea Activa"}
+                  </span>
+                </div>
               </div>
             )}
           </div>
@@ -243,7 +264,9 @@ export default function FocusFlowDashboard() {
         <Sidebar collapsible="icon" className="border-r border-primary/5 bg-white/80 backdrop-blur-xl">
           <SidebarHeader className="p-6">
             <div className="flex items-center gap-3">
-              <CloudLightning className="text-primary h-6 w-6" />
+              <div className="h-8 w-8 bg-primary rounded-xl flex items-center justify-center shrink-0">
+                <CloudLightning className="text-white h-5 w-5" />
+              </div>
               <h1 className="text-lg font-black group-data-[collapsible=icon]:hidden">BluePomodoro</h1>
             </div>
           </SidebarHeader>
@@ -275,8 +298,9 @@ export default function FocusFlowDashboard() {
                   <AvatarImage src={user.photoURL || ""} />
                   <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
                 </Avatar>
-                <div className="flex-1 group-data-[collapsible=icon]:hidden">
+                <div className="flex-1 group-data-[collapsible=icon]:hidden overflow-hidden">
                   <p className="text-[10px] font-black truncate">{user.displayName}</p>
+                  <p className="text-[8px] text-muted-foreground truncate">{user.email}</p>
                 </div>
                 <Button variant="ghost" size="icon" className="h-8 w-8 group-data-[collapsible=icon]:hidden" onClick={handleLogout}>
                   <LogOut className="h-4 w-4" />
@@ -290,7 +314,7 @@ export default function FocusFlowDashboard() {
           <header className="h-16 border-b border-primary/5 bg-white/70 backdrop-blur-md sticky top-0 z-20 px-8 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <SidebarTrigger />
-              <h2 className="text-sm font-black uppercase tracking-widest text-muted-foreground/60">{activeTab}</h2>
+              <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">{activeTab}</h2>
             </div>
             <div className="flex items-center gap-4">
               {isActive && (
