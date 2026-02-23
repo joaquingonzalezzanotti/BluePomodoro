@@ -1,156 +1,63 @@
-
 {
   "entities": {
     "Usuario": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Usuario",
       "type": "object",
-      "description": "Representa un usuario de la aplicación BluePomodoro. Asume autenticación externa con Google.",
+      "description": "Perfil de usuario de BluePomodoro.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Identificador único para el usuario."
-        },
-        "googleAccountId": {
-          "type": "string",
-          "description": "Identificador externo de la cuenta de Google del usuario."
-        },
-        "nombre": {
-          "type": "string",
-          "description": "Nombre del usuario."
-        },
-        "email": {
-          "type": "string",
-          "description": "Dirección de correo electrónico del usuario.",
-          "format": "email"
-        },
-        "preferenciasIdioma": {
-          "type": "string",
-          "description": "Idioma preferido del usuario."
-        },
-        "zonaHoraria": {
-          "type": "string",
-          "description": "Zona horaria del usuario."
-        },
-        "fechaRegistro": {
-          "type": "string",
-          "description": "Marca de tiempo de cuando el usuario se registró.",
-          "format": "date-time"
-        },
-        "puntosTotales": {
-          "type": "number",
-          "description": "Puntos acumulados."
-        }
+        "id": { "type": "string" },
+        "nombre": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "puntosTotales": { "type": "number" },
+        "modoEstrictoActivo": { "type": "boolean" },
+        "fechaRegistro": { "type": "string", "format": "date-time" }
       },
-      "required": [
-        "id",
-        "googleAccountId",
-        "nombre",
-        "email",
-        "preferenciasIdioma",
-        "zonaHoraria",
-        "fechaRegistro",
-        "puntosTotales"
-      ]
+      "required": ["id", "nombre", "email"]
     },
     "Tarea": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Tarea",
       "type": "object",
-      "description": "Representa una tarea o un objetivo que el usuario necesita completar.",
+      "description": "Tarea individual vinculada a un usuario.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Identificador único para la tarea."
-        },
-        "usuarioId": {
-          "type": "string",
-          "description": "Referencia al usuario propietario de la tarea."
-        },
-        "titulo": {
-          "type": "string",
-          "description": "Título de la tarea."
-        },
-        "descripcion": {
-          "type": "string",
-          "description": "Descripción de la tarea."
-        },
-        "fechaVencimiento": {
-          "type": "string",
-          "description": "Fecha límite.",
-          "format": "date-time"
-        },
-        "esfuerzoEstimadoPomodoros": {
-          "type": "number",
-          "description": "Sesiones estimadas."
-        },
-        "prioridad": {
-          "type": "string",
-          "description": "Prioridad (Alta, Media, Baja)."
-        },
-        "estado": {
-          "type": "string",
-          "description": "Estado actual (Pendiente, Completada)."
-        },
-        "fechaCreacion": {
-          "type": "string",
-          "description": "Fecha de creación.",
-          "format": "date-time"
-        }
+        "id": { "type": "string" },
+        "usuarioId": { "type": "string" },
+        "titulo": { "type": "string" },
+        "estado": { "type": "string", "enum": ["Pendiente", "En Proceso", "Completada"] },
+        "prioridad": { "type": "string", "enum": ["Alta", "Media", "Baja"] },
+        "esfuerzoEstimadoPomodoros": { "type": "number" },
+        "fechaVencimiento": { "type": "string" },
+        "subtareas": { "type": "array", "items": { "type": "object" } }
       },
-      "required": [
-        "id",
-        "usuarioId",
-        "titulo",
-        "prioridad",
-        "estado",
-        "fechaCreacion"
-      ]
+      "required": ["id", "usuarioId", "titulo", "estado"]
+    },
+    "Proyecto": {
+      "title": "Proyecto",
+      "type": "object",
+      "description": "Materia o proyecto para organizar tareas.",
+      "properties": {
+        "id": { "type": "string" },
+        "nombre": { "type": "string" },
+        "tipo": { "type": "string", "enum": ["Materia", "Proyecto"] },
+        "fechaCreacion": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "nombre", "tipo"]
     }
   },
   "auth": {
-    "providers": [
-      "google.com"
-    ]
+    "providers": ["google.com"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/usuarios/{usuarioId}",
-        "definition": {
-          "entityName": "Usuario",
-          "schema": {
-            "$ref": "#/backend/entities/Usuario"
-          },
-          "description": "Perfil de usuario.",
-          "params": [
-            {
-              "name": "usuarioId",
-              "description": "ID del usuario."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/usuarios/{usuarioId}/tareas/{tareaId}",
-        "definition": {
-          "entityName": "Tarea",
-          "schema": {
-            "$ref": "#/backend/entities/Tarea"
-          },
-          "description": "Tareas del usuario.",
-          "params": [
-            {
-              "name": "usuarioId",
-              "description": "ID del usuario."
-            },
-            {
-              "name": "tareaId",
-              "description": "ID de la tarea."
-            }
-          ]
-        }
-      }
-    ]
+    "/usuarios/{usuarioId}": {
+      "schema": { "$ref": "#/entities/Usuario" },
+      "description": "Documentos raíz de usuario."
+    },
+    "/usuarios/{usuarioId}/tareas/{tareaId}": {
+      "schema": { "$ref": "#/entities/Tarea" },
+      "description": "Colección de tareas del usuario."
+    },
+    "/usuarios/{usuarioId}/proyectos/{proyectoId}": {
+      "schema": { "$ref": "#/entities/Proyecto" },
+      "description": "Colección de proyectos/materias del usuario."
+    }
   }
 }
