@@ -3,8 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * BluePomodoro: Modelo de Seguridad de Firestore
-     * Acceso basado en la propiedad del documento (UID del usuario).
+     * BluePomodoro: Modelo de Seguridad Simplificado y Robusto
+     * El usuario tiene control total sobre su documento de perfil y cualquier subcolección.
      */
 
     function isSignedIn() {
@@ -15,28 +15,13 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == usuarioId;
     }
 
-    // Reglas para la colección de usuarios y sus subcolecciones
+    // Regla recursiva para el nodo de usuario
     match /usuarios/{usuarioId} {
-      // El usuario solo puede leer y escribir su propio perfil
+      // Permite leer y escribir en el documento del usuario
       allow read, write: if isOwner(usuarioId);
-
-      // Reglas para tareas
-      match /tareas/{tareaId} {
-        allow read, write: if isOwner(usuarioId);
-      }
-
-      // Reglas para proyectos/materias
-      match /proyectos/{proyectoId} {
-        allow read, write: if isOwner(usuarioId);
-      }
-
-      // Reglas para sesiones de pomodoro registradas
-      match /sesionesPomodoro/{sesionId} {
-        allow read, write: if isOwner(usuarioId);
-      }
-
-      // Reglas para configuración de sincronización
-      match /configuracionesSincronizacionGoogle/{confId} {
+      
+      // Permite leer y escribir en CUALQUIER subcolección de forma recursiva (tareas, proyectos, sesiones, etc.)
+      match /{allSubcollections=**} {
         allow read, write: if isOwner(usuarioId);
       }
     }
