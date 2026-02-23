@@ -21,7 +21,8 @@ import {
   Music,
   Play,
   Pause,
-  SkipForward
+  SkipForward,
+  Trophy
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -35,11 +36,11 @@ import { ProjectManager } from "@/components/project-manager"
 import { GoogleSyncSettings } from "@/components/google-sync-settings"
 import { StatsView } from "@/components/stats-view"
 import { Button } from "@/components/ui/button"
-import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, setDocumentNonBlocking, useDoc, useCollection } from "@/firebase"
+import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, setDocumentNonBlocking, useDoc, useCollection, addDocumentNonBlocking } from "@/firebase"
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
-import { doc, collection, serverTimestamp } from "firebase/firestore"
+import { doc, collection, serverTimestamp, increment } from "firebase/firestore"
 import { prioritizeTasks } from "@/ai/flows/ai-powered-task-prioritization-flow"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -56,6 +57,14 @@ export default function FocusFlowDashboard() {
   const db = useFirestore()
   const [isPrioritizing, setIsPrioritizing] = React.useState(false)
 
+  // ESTADO GLOBAL DEL POMODORO PARA PERSISTENCIA
+  const [workMinutes, setWorkMinutes] = React.useState(25)
+  const [breakMinutes, setBreakMinutes] = React.useState(5)
+  const [timeLeft, setTimeLeft] = React.useState(25 * 60)
+  const [isActive, setIsActive] = React.useState(false)
+  const [mode, setMode] = React.useState<"work" | "break">("work")
+  const [sessionsCompleted, setSessionsCompleted] = React.useState(0)
+
   const userRef = useMemoFirebase(() => {
     if (!db || !user) return null
     return doc(db, "usuarios", user.uid)
@@ -64,7 +73,78 @@ export default function FocusFlowDashboard() {
   const { data: userData } = useDoc(userRef)
   const isBlocking = userData?.modoEstrictoActivo || false
 
-  // Manejo de retorno de Spotify OAuth (Token en URL hash)
+  // Lógica del Timer Global
+  React.useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+
+    if (isActive && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => prev - 1)
+      }, 1000)
+    } else if (timeLeft === 0 && isActive) {
+      handleSessionEnd()
+    }
+
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [isActive, timeLeft])
+
+  const handleSessionEnd = () => {
+    setIsActive(false)
+    if (mode === "work") {
+      const nextSessions = sessionsCompleted + 1
+      setSessionsCompleted(nextSessions)
+      setMode("break")
+      setTimeLeft(breakMinutes * 60)
+      
+      if (user && db) {
+        const uRef = doc(db, "usuarios", user.uid)
+        const sesionesRef = collection(db, "usuarios", user.uid, "sesionesPomodoro")
+        
+        updateDocumentNonBlocking(uRef, {
+          puntosTotales: increment(100)
+        })
+
+        addDocumentNonBlocking(sesionesRef, {
+          usuarioId: user.uid,
+          tipo: "trabajo",
+          duracionMinutos: workMinutes,
+          fecha: serverTimestamp()
+        })
+
+        toast({
+          title: "¡Sesión Completada!",
+          description: "Has ganado 100 XP. Tómate un respiro.",
+        })
+      }
+    } else {
+      setMode("work")
+      setTimeLeft(workMinutes * 60)
+      toast({
+        title: "Descanso Terminado",
+        description: "¡Es hora de volver a enfocarse!",
+      })
+    }
+  }
+
+  const toggleTimer = () => setIsActive(!isActive)
+  const resetTimer = () => {
+    setIsActive(false)
+    setTimeLeft(mode === "work" ? workMinutes * 60 : breakMinutes * 60)
+  }
+
+  const updateWorkMinutes = (m: number) => {
+    setWorkMinutes(m)
+    if (!isActive && mode === "work") setTimeLeft(m * 60)
+  }
+
+  const updateBreakMinutes = (m: number) => {
+    setBreakMinutes(m)
+    if (!isActive && mode === "break") setTimeLeft(m * 60)
+  }
+
+  // Manejo de retorno de Spotify OAuth
   React.useEffect(() => {
     if (typeof window !== 'undefined' && window.location.hash && userRef) {
       const hash = window.location.hash.substring(1)
@@ -76,7 +156,7 @@ export default function FocusFlowDashboard() {
           spotifyAccessToken: accessToken,
           spotifyTokenTimestamp: serverTimestamp()
         })
-        window.location.hash = "" // Limpiar URL
+        window.location.hash = ""
         toast({
           title: "Spotify Conectado",
           description: "Ahora puedes gestionar tu música internamente.",
@@ -114,7 +194,7 @@ export default function FocusFlowDashboard() {
       toast({
         variant: "destructive",
         title: "Error de Inicio de Sesión",
-        description: "Asegúrate de permitir el acceso en la ventana de Google (Configuración avanzada -> Ir a BluePomodoro).",
+        description: "Asegúrate de permitir el acceso en la ventana de Google.",
       })
     })
   }
@@ -183,15 +263,12 @@ export default function FocusFlowDashboard() {
   const getEmbedUrl = (url: string) => {
     if (!url) return DEFAULT_PLAYLIST
     if (url.includes("/embed/")) return url
-    
     const playlistMatch = url.match(/playlist[\/|:]([a-zA-Z0-9]+)/)
     const albumMatch = url.match(/album[\/|:]([a-zA-Z0-9]+)/)
     const trackMatch = url.match(/track[\/|:]([a-zA-Z0-9]+)/)
-    
     if (playlistMatch) return `https://open.spotify.com/embed/playlist/${playlistMatch[1]}?utm_source=generator`
     if (albumMatch) return `https://open.spotify.com/embed/album/${albumMatch[1]}?utm_source=generator`
     if (trackMatch) return `https://open.spotify.com/embed/track/${trackMatch[1]}?utm_source=generator`
-    
     return DEFAULT_PLAYLIST
   }
 
@@ -255,7 +332,20 @@ export default function FocusFlowDashboard() {
               </section>
             </div>
             <div className="space-y-8">
-              <section><PomodoroTimer /></section>
+              <section>
+                <PomodoroTimer 
+                  timeLeft={timeLeft}
+                  isActive={isActive}
+                  mode={mode}
+                  sessionsCompleted={sessionsCompleted}
+                  toggleTimer={toggleTimer}
+                  resetTimer={resetTimer}
+                  workMinutes={workMinutes}
+                  setWorkMinutes={updateWorkMinutes}
+                  breakMinutes={breakMinutes}
+                  setBreakMinutes={updateBreakMinutes}
+                />
+              </section>
               <section><GamifiedProgress /></section>
             </div>
           </div>
@@ -264,7 +354,18 @@ export default function FocusFlowDashboard() {
         return (
           <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 animate-in zoom-in-95 duration-500">
             <div className="space-y-8">
-              <PomodoroTimer />
+              <PomodoroTimer 
+                timeLeft={timeLeft}
+                isActive={isActive}
+                mode={mode}
+                sessionsCompleted={sessionsCompleted}
+                toggleTimer={toggleTimer}
+                resetTimer={resetTimer}
+                workMinutes={workMinutes}
+                setWorkMinutes={updateWorkMinutes}
+                breakMinutes={breakMinutes}
+                setBreakMinutes={updateBreakMinutes}
+              />
               <FocusMusic />
             </div>
             <div className="space-y-8">
@@ -371,9 +472,6 @@ export default function FocusFlowDashboard() {
                   loading="lazy"
                 ></iframe>
               </div>
-              <p className="text-[8px] text-muted-foreground text-center mt-2 uppercase font-black tracking-widest">
-                Configura tu lista en la Zona de Enfoque
-              </p>
             </SidebarGroup>
           </SidebarContent>
 
@@ -406,13 +504,21 @@ export default function FocusFlowDashboard() {
           <header className="h-20 border-b border-primary/5 bg-white/70 backdrop-blur-md sticky top-0 z-20 px-10 flex items-center justify-between shadow-sm shadow-primary/5">
             <div className="flex items-center gap-6">
               <SidebarTrigger className="md:hidden" />
-              <div>
-                <h2 className="text-xs font-black uppercase tracking-[0.3em] text-muted-foreground/60 mb-0.5">
-                  Navegación / {activeTab}
-                </h2>
-                <h3 className="text-xl font-extrabold tracking-tight text-foreground">
-                  {activeTab === "dashboard" ? "Mi Tablero" : activeTab === "pomodoro" ? "Modo Enfoque" : activeTab === "stats" ? "Productividad" : activeTab}
-                </h3>
+              <div className="flex items-center gap-4">
+                <div>
+                  <h2 className="text-xs font-black uppercase tracking-[0.3em] text-muted-foreground/60 mb-0.5">
+                    Navegación / {activeTab}
+                  </h2>
+                  <h3 className="text-xl font-extrabold tracking-tight text-foreground">
+                    {activeTab === "dashboard" ? "Mi Tablero" : activeTab === "pomodoro" ? "Modo Enfoque" : activeTab === "stats" ? "Productividad" : activeTab}
+                  </h3>
+                </div>
+                {isActive && (
+                   <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full animate-pulse border border-primary/20">
+                     <TimerIcon className="h-3.5 w-3.5 text-primary" />
+                     <span className="text-[10px] font-black text-primary font-mono">{Math.floor(timeLeft / 60).toString().padStart(2, '0')}:{(timeLeft % 60).toString().padStart(2, '0')}</span>
+                   </div>
+                )}
               </div>
             </div>
             
