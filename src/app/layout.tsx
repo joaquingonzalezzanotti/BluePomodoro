@@ -12,14 +12,23 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'BluePomodoro - Domina tu Tiempo',
     description: 'Gestión de tareas impulsada por IA para mentes extraordinarias.',
-    type: 'website',
-    locale: 'es_ES',
+    url: 'https://blue-pomodoro-fire-base.vercel.app',
     siteName: 'BluePomodoro',
+    images: [
+      {
+        url: 'https://picsum.photos/seed/productivity/1200/630',
+        width: 1200,
+        height: 630,
+        alt: 'BluePomodoro Preview',
+      },
+    ],
+    locale: 'es_ES',
+    type: 'website',
   },
   icons: {
-    icon: '/favicon.ico?v=2',
-    shortcut: '/favicon.ico?v=2',
-    apple: '/favicon.ico?v=2',
+    icon: '/favicon.ico?v=1',
+    shortcut: '/favicon.ico?v=1',
+    apple: '/favicon.ico?v=1',
   },
 };
 

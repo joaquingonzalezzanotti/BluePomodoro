@@ -11,14 +11,12 @@ import {
   CloudLightning,
   LogIn,
   Timer as TimerIcon,
-  Maximize2,
   FolderKanban,
   Users,
   UserCircle,
   Sparkles,
   Target,
   Brain,
-  Music,
   Trophy,
   Play,
   Pause,
@@ -89,11 +87,11 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
           <div className="relative max-w-5xl mx-auto rounded-[2.5rem] overflow-hidden shadow-2xl border-8 border-slate-100 animate-in zoom-in-95 duration-1000">
             <Image 
               src="https://picsum.photos/seed/productivity-focus/1200/800" 
-              alt="BluePomodoro App Preview" 
+              alt="BluePomodoro Dashboard" 
               width={1200} 
               height={800}
               className="w-full object-cover"
-              data-ai-hint="productivity workspace"
+              data-ai-hint="minimalist workspace"
             />
           </div>
         </section>
@@ -246,7 +244,7 @@ function DashboardContent({
                    <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                 </div>
 
-                {/* Centro: Pomodoro (EL CORAZÓN) */}
+                {/* Centro: Pomodoro (Bento Hero) */}
                 <div className="xl:col-span-2 flex flex-col items-center">
                   <div className="w-full bg-white rounded-[3rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center animate-in zoom-in-95 duration-500">
                     {activeTask && (
@@ -271,7 +269,7 @@ function DashboardContent({
                   </div>
                 </div>
 
-                {/* Columna Derecha: Stats y Proyectos */}
+                {/* Columna Derecha: Gamificación */}
                 <div className="xl:col-span-1 space-y-6">
                    <GamifiedProgress />
                    <div className="p-6 bg-slate-900 rounded-[2.5rem] text-white">
@@ -292,7 +290,7 @@ function DashboardContent({
           </div>
         </main>
         
-        {/* Music Dock Superior Fijo */}
+        {/* Music Dock Inferior Fijo */}
         <div className="fixed bottom-0 left-0 right-0 z-50 px-6 pb-6 pointer-events-none">
           <div className="max-w-4xl mx-auto w-full pointer-events-auto">
             <FocusMusic layout="dock" />
@@ -306,7 +304,6 @@ function DashboardContent({
 export default function AppEntry() {
   const [activeTab, setActiveTab] = React.useState("dashboard")
   const { user, isUserLoading } = useUser()
-  const { toast } = useToast()
   const auth = useAuth()
   const db = useFirestore()
 
