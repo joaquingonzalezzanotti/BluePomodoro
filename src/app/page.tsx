@@ -44,10 +44,9 @@ import { prioritizeTasks } from "@/ai/flows/ai-powered-task-prioritization-flow"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { DevAuthSeeder } from "@/components/dev-auth-seeder"
 import Link from "next/link"
 
-const DEFAULT_PLAYLIST = "https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKHA6V9KWm?utm_source=generator&theme=0"
+const DEFAULT_PLAYLIST = "https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator"
 
 export default function FocusFlowDashboard() {
   const [activeTab, setActiveTab] = React.useState("dashboard")
@@ -87,12 +86,10 @@ export default function FocusFlowDashboard() {
 
   const handleLogin = () => {
     const provider = new GoogleAuthProvider()
-    // Añadimos scopes para Google Calendar y Tasks como se requiere para la sincro real
     provider.addScope('https://www.googleapis.com/auth/calendar.readonly')
     provider.addScope('https://www.googleapis.com/auth/tasks.readonly')
     
     signInWithPopup(auth, provider).catch((error: any) => {
-      // Manejo de errores de dominio no autorizado (común en Vercel)
       if (error.code === 'auth/unauthorized-domain') {
         toast({
           variant: "destructive",
@@ -173,14 +170,16 @@ export default function FocusFlowDashboard() {
   const getEmbedUrl = (url: string) => {
     if (!url) return DEFAULT_PLAYLIST
     if (url.includes("/embed/")) return url
-    try {
-      const parts = url.split("spotify.com/")[1].split("?")[0].split("/")
-      const type = parts[0]
-      const id = parts[1]
-      return `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`
-    } catch (e) {
-      return DEFAULT_PLAYLIST
-    }
+    
+    const playlistMatch = url.match(/playlist[\/|:]([a-zA-Z0-9]+)/)
+    const albumMatch = url.match(/album[\/|:]([a-zA-Z0-9]+)/)
+    const trackMatch = url.match(/track[\/|:]([a-zA-Z0-9]+)/)
+    
+    if (playlistMatch) return `https://open.spotify.com/embed/playlist/${playlistMatch[1]}?utm_source=generator`
+    if (albumMatch) return `https://open.spotify.com/embed/album/${albumMatch[1]}?utm_source=generator`
+    if (trackMatch) return `https://open.spotify.com/embed/track/${trackMatch[1]}?utm_source=generator`
+    
+    return DEFAULT_PLAYLIST
   }
 
   const activeSpotifyUrl = getEmbedUrl(userData?.spotifyPlaylistUrl || "")
@@ -207,8 +206,6 @@ export default function FocusFlowDashboard() {
           <Button size="lg" onClick={handleLogin} className="gap-3 px-10 py-7 text-lg rounded-2xl shadow-xl shadow-primary/20 hover:shadow-primary/40 transition-all font-bold">
             <LogIn className="h-5 w-5" /> Entrar con Google
           </Button>
-          
-          <DevAuthSeeder />
         </div>
         
         <footer className="mt-16 flex gap-6 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">
@@ -305,25 +302,25 @@ export default function FocusFlowDashboard() {
               <SidebarGroupLabel className="text-[10px] font-extrabold text-muted-foreground/50 tracking-[0.2em] uppercase mb-2">Ecosistema</SidebarGroupLabel>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton isActive={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} className="rounded-xl h-11 font-semibold text-sm">
+                  <SidebarMenuButton isActive={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} className="rounded-xl h-11 font-bold text-sm">
                     <LayoutDashboard className="h-4 w-4" />
                     <span>Tablero General</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton isActive={activeTab === "pomodoro"} onClick={() => setActiveTab("pomodoro")} className="rounded-xl h-11 font-semibold text-sm">
+                  <SidebarMenuButton isActive={activeTab === "pomodoro"} onClick={() => setActiveTab("pomodoro")} className="rounded-xl h-11 font-bold text-sm">
                     <TimerIcon className="h-4 w-4" />
                     <span>Zona de Enfoque</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton isActive={activeTab === "tasks"} onClick={() => setActiveTab("tasks")} className="rounded-xl h-11 font-semibold text-sm">
+                  <SidebarMenuButton isActive={activeTab === "tasks"} onClick={() => setActiveTab("tasks")} className="rounded-xl h-11 font-bold text-sm">
                     <CheckSquare className="h-4 w-4" />
                     <span>Tareas & Kanban</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton isActive={activeTab === "projects"} onClick={() => setActiveTab("projects")} className="rounded-xl h-11 font-semibold text-sm">
+                  <SidebarMenuButton isActive={activeTab === "projects"} onClick={() => setActiveTab("projects")} className="rounded-xl h-11 font-bold text-sm">
                     <Library className="h-4 w-4" />
                     <span>Proyectos</span>
                   </SidebarMenuButton>
@@ -335,13 +332,13 @@ export default function FocusFlowDashboard() {
               <SidebarGroupLabel className="text-[10px] font-extrabold text-muted-foreground/50 tracking-[0.2em] uppercase mb-2">Análisis</SidebarGroupLabel>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton isActive={activeTab === "sync"} onClick={() => setActiveTab("sync")} className="rounded-xl h-11 font-semibold text-sm">
+                  <SidebarMenuButton isActive={activeTab === "sync"} onClick={() => setActiveTab("sync")} className="rounded-xl h-11 font-bold text-sm">
                     <RefreshCw className="h-4 w-4" />
                     <span>Conexión Google</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton isActive={activeTab === "stats"} onClick={() => setActiveTab("stats")} className="rounded-xl h-11 font-semibold text-sm">
+                  <SidebarMenuButton isActive={activeTab === "stats"} onClick={() => setActiveTab("stats")} className="rounded-xl h-11 font-bold text-sm">
                     <BarChart3 className="h-4 w-4" />
                     <span>Estadísticas</span>
                   </SidebarMenuButton>
@@ -349,7 +346,6 @@ export default function FocusFlowDashboard() {
               </SidebarMenu>
             </SidebarGroup>
 
-            {/* Spotify Player en Sidebar */}
             <SidebarGroup className="mt-4">
               <SidebarGroupLabel className="text-[10px] font-extrabold text-muted-foreground/50 tracking-[0.2em] uppercase mb-2">Mi Música Spotify</SidebarGroupLabel>
               <div className="rounded-2xl overflow-hidden shadow-lg border border-primary/5 bg-slate-900 min-h-[80px]">

@@ -12,7 +12,7 @@ import { useUser, useFirestore, useDoc, useMemoFirebase, updateDocumentNonBlocki
 import { doc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 
-const DEFAULT_PLAYLIST = "https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKHA6V9KWm?utm_source=generator&theme=0"
+const DEFAULT_PLAYLIST = "https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator"
 
 const TRACKS = [
   { id: 1, name: "Deep Focus Lo-Fi", artist: "Mezcla BluePomodoro", duration: "3:45" },
@@ -42,20 +42,19 @@ export function FocusMusic() {
   const nextTrack = () => setCurrentTrackIndex((prev) => (prev + 1) % TRACKS.length)
   const prevTrack = () => setCurrentTrackIndex((prev) => (prev - 1 + TRACKS.length) % TRACKS.length)
 
-  // Convierte un enlace normal de Spotify en un enlace de Embed
   const getEmbedUrl = (url: string) => {
     if (!url) return DEFAULT_PLAYLIST
     if (url.includes("/embed/")) return url
     
-    try {
-      // Maneja formatos como https://open.spotify.com/playlist/ID?si=...
-      const parts = url.split("spotify.com/")[1].split("?")[0].split("/")
-      const type = parts[0]
-      const id = parts[1]
-      return `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`
-    } catch (e) {
-      return DEFAULT_PLAYLIST
-    }
+    const playlistMatch = url.match(/playlist[\/|:]([a-zA-Z0-9]+)/)
+    const albumMatch = url.match(/album[\/|:]([a-zA-Z0-9]+)/)
+    const trackMatch = url.match(/track[\/|:]([a-zA-Z0-9]+)/)
+    
+    if (playlistMatch) return `https://open.spotify.com/embed/playlist/${playlistMatch[1]}?utm_source=generator`
+    if (albumMatch) return `https://open.spotify.com/embed/album/${albumMatch[1]}?utm_source=generator`
+    if (trackMatch) return `https://open.spotify.com/embed/track/${trackMatch[1]}?utm_source=generator`
+    
+    return DEFAULT_PLAYLIST
   }
 
   const handleSaveSpotifyUrl = () => {
