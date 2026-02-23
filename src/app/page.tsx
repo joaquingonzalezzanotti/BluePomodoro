@@ -12,16 +12,15 @@ import {
   LogIn,
   Timer as TimerIcon,
   FolderKanban,
-  Users,
   UserCircle,
   Sparkles,
-  Target,
-  Brain,
-  Trophy,
   Play,
   Pause,
   RotateCcw,
-  Flame
+  Flame,
+  Brain,
+  Shield,
+  Trophy
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -40,7 +39,6 @@ import { Switch } from "@/components/ui/switch"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { GamifiedProgress } from "@/components/gamified-progress"
-import { Separator } from "@/components/ui/separator"
 
 function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => void, onLoginGuest: () => void }) {
   return (
@@ -93,6 +91,34 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
               className="w-full object-cover"
               data-ai-hint="minimalist workspace"
             />
+          </div>
+        </section>
+
+        <section className="py-24 bg-slate-50">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+              <div className="space-y-4">
+                <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
+                  <Brain className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-black">Enfoque TDAH</h3>
+                <p className="text-slate-500 font-medium">Temporizadores visuales y analógicos que combaten la ceguera del tiempo y reducen la ansiedad.</p>
+              </div>
+              <div className="space-y-4">
+                <div className="h-12 w-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent">
+                  <Sparkles className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-black">Desglose con IA</h3>
+                <p className="text-slate-500 font-medium">Nuestra IA descompone tareas grandes en pasos atómicos de menos de 25 minutos automáticamente.</p>
+              </div>
+              <div className="space-y-4">
+                <div className="h-12 w-12 bg-green-100 rounded-2xl flex items-center justify-center text-green-600">
+                  <Trophy className="h-6 w-6" />
+                </div>
+                <h3 className="text-xl font-black">Gamificación Real</h3>
+                <p className="text-slate-500 font-medium">Gana XP, desbloquea insignias y sube de nivel mientras completas tus sesiones de enfoque profundo.</p>
+              </div>
+            </div>
           </div>
         </section>
       </main>
@@ -191,13 +217,11 @@ function DashboardContent({
           <div className="flex-1 p-8 max-w-7xl mx-auto w-full">
             {activeTab === "dashboard" && (
               <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
-                {/* Tareas */}
                 <div className="xl:col-span-1 space-y-4">
                    <h3 className="text-sm font-black uppercase tracking-wider text-muted-foreground">Mis Tareas</h3>
                    <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                 </div>
 
-                {/* Pomodoro Central */}
                 <div className="xl:col-span-2 flex flex-col gap-6">
                   <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center animate-in zoom-in-95 duration-500 min-h-[500px]">
                     {activeTask && (
@@ -221,7 +245,6 @@ function DashboardContent({
                   </div>
                 </div>
 
-                {/* Progreso y Proyectos */}
                 <div className="xl:col-span-1 space-y-6">
                    <GamifiedProgress />
                    <ProjectManager compact />
@@ -235,7 +258,6 @@ function DashboardContent({
           </div>
         </main>
         
-        {/* Music Dock Inferior */}
         <div className="fixed bottom-0 left-0 right-0 z-50 px-6 pb-6 pointer-events-none">
           <div className="max-w-4xl mx-auto w-full pointer-events-auto">
             <FocusMusic layout="dock" />

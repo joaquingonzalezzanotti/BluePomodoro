@@ -17,8 +17,6 @@ export function initializeFirebase() {
 
   // Si no hay API Key (común en el primer build de Vercel), evitamos que crashee
   if (!firebaseConfig.apiKey) {
-    console.warn("Firebase API Key no encontrada. La app no funcionará hasta que se configuren las variables de entorno en Vercel.");
-    // Retornamos una inicialización mínima que no bloquee el renderizado estático
     const app = initializeApp({ ...firebaseConfig, apiKey: "placeholder" });
     return getSdks(app);
   }
