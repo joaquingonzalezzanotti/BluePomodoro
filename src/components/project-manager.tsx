@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { FolderPlus, Book, Briefcase, GraduationCap, Trash2, Plus, LayoutGrid } from "lucide-react"
+import { FolderPlus, Book, Briefcase, GraduationCap, Trash2, Plus, LayoutGrid, Folder } from "lucide-react"
 import { useFirestore, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase"
 import { collection, query, orderBy, serverTimestamp, doc } from "firebase/firestore"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
@@ -11,8 +11,13 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 
-export function ProjectManager() {
+interface ProjectManagerProps {
+  compact?: boolean
+}
+
+export function ProjectManager({ compact = false }: ProjectManagerProps) {
   const { user } = useUser()
   const db = useFirestore()
   const { toast } = useToast()
@@ -45,6 +50,29 @@ export function ProjectManager() {
     toast({ title: "Proyecto eliminado" })
   }
 
+  if (compact) {
+    return (
+      <Card className="border-none shadow-sm bg-white rounded-[2rem] overflow-hidden">
+        <CardHeader className="pb-3 border-b border-slate-50">
+          <CardTitle className="text-xs font-black uppercase flex items-center gap-2">
+            <Folder className="h-3.5 w-3.5 text-primary" /> Proyectos
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-4 space-y-2">
+          {projects?.slice(0, 3).map(p => (
+            <div key={p.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-primary/5 transition-colors cursor-pointer group">
+              <span className="text-xs font-bold truncate">{p.nombre}</span>
+              <Badge variant="outline" className="text-[9px] h-4">{p.tipo}</Badge>
+            </div>
+          ))}
+          {(!projects || projects.length === 0) && (
+            <p className="text-[10px] text-muted-foreground italic text-center py-2">Sin proyectos activos</p>
+          )}
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
       <div className="flex items-center justify-between">
@@ -68,7 +96,7 @@ export function ProjectManager() {
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row gap-4">
             <Input 
-              placeholder="Nombre del proyecto o materia (ej: Matemáticas I, Tesis...)" 
+              placeholder="Nombre del proyecto o materia..." 
               value={newProjectName}
               onChange={(e) => setNewProjectName(e.target.value)}
               className="rounded-xl bg-muted/30 border-none h-12 flex-1 font-bold"
@@ -109,17 +137,10 @@ export function ProjectManager() {
                   {project.tipo}
                 </Badge>
                 <h4 className="font-black text-xl leading-tight">{project.nombre}</h4>
-                <p className="text-[10px] text-muted-foreground mt-2 font-bold uppercase tracking-widest">Ver tareas vinculadas →</p>
               </div>
             </CardContent>
           </Card>
         ))}
-        {projects?.length === 0 && (
-          <div className="col-span-full py-20 text-center border-2 border-dashed border-muted rounded-[3rem]">
-            <FolderPlus className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-20" />
-            <p className="text-muted-foreground font-bold">No tienes materias o proyectos registrados.</p>
-          </div>
-        )}
       </div>
     </div>
   )
