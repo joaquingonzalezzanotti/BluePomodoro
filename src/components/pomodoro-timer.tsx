@@ -34,6 +34,17 @@ export function PomodoroTimer({
   breakMinutes,
   setBreakMinutes
 }: PomodoroTimerProps) {
+  // Estado local para los inputs para evitar reseteos al escribir
+  const [localWork, setLocalWork] = React.useState(workMinutes.toString())
+  const [localBreak, setLocalBreak] = React.useState(breakMinutes.toString())
+
+  React.useEffect(() => {
+    setLocalWork(workMinutes.toString())
+  }, [workMinutes])
+
+  React.useEffect(() => {
+    setLocalBreak(breakMinutes.toString())
+  }, [breakMinutes])
 
   const initialTime = mode === "work" ? workMinutes * 60 : breakMinutes * 60
   const progress = ((initialTime - timeLeft) / initialTime) * 100
@@ -42,6 +53,18 @@ export function PomodoroTimer({
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+  }
+
+  const handleWorkChange = (val: string) => {
+    setLocalWork(val)
+    const n = parseInt(val)
+    if (!isNaN(n) && n > 0) setWorkMinutes(n)
+  }
+
+  const handleBreakChange = (val: string) => {
+    setLocalBreak(val)
+    const n = parseInt(val)
+    if (!isNaN(n) && n > 0) setBreakMinutes(n)
   }
 
   return (
@@ -70,8 +93,8 @@ export function PomodoroTimer({
                     <Input 
                       id="work" 
                       type="number" 
-                      value={workMinutes} 
-                      onChange={(e) => setWorkMinutes(Number(e.target.value))}
+                      value={localWork} 
+                      onChange={(e) => handleWorkChange(e.target.value)}
                       className="h-8"
                     />
                   </div>
@@ -80,8 +103,8 @@ export function PomodoroTimer({
                     <Input 
                       id="break" 
                       type="number" 
-                      value={breakMinutes} 
-                      onChange={(e) => setBreakMinutes(Number(e.target.value))}
+                      value={localBreak} 
+                      onChange={(e) => handleBreakChange(e.target.value)}
                       className="h-8"
                     />
                   </div>

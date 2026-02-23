@@ -73,7 +73,7 @@ export default function FocusFlowDashboard() {
   const { data: userData } = useDoc(userRef)
   const isBlocking = userData?.modoEstrictoActivo || false
 
-  // Lógica del Timer Global
+  // Lógica del Timer Global (Corre incluso si el componente del Timer no está montado)
   React.useEffect(() => {
     let interval: NodeJS.Timeout | null = null
 
@@ -156,7 +156,8 @@ export default function FocusFlowDashboard() {
           spotifyAccessToken: accessToken,
           spotifyTokenTimestamp: serverTimestamp()
         })
-        window.location.hash = ""
+        // Limpiar el hash sin recargar la página
+        window.history.replaceState(null, "", window.location.pathname)
         toast({
           title: "Spotify Conectado",
           description: "Ahora puedes gestionar tu música internamente.",

@@ -246,7 +246,6 @@ export function TaskManager() {
                               </Button>
                             )}
                             
-                            {/* Selector de Prioridad/Complejidad */}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-8 px-2 p-0 hover:bg-transparent">
@@ -283,7 +282,6 @@ export function TaskManager() {
                           </div>
                         </div>
 
-                        {/* Barra de Progreso y Trigger de Colapso */}
                         {totalSubTasks > 0 && (
                           <div className="mb-4">
                             <div className="flex items-center justify-between mb-2">
@@ -291,7 +289,7 @@ export function TaskManager() {
                                 <Sparkles className="h-3.5 w-3.5" /> Progreso del desglose
                               </div>
                               <CollapsibleTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full">
+                                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full bg-primary/5 hover:bg-primary/10">
                                   <ChevronDown className="h-4 w-4 transition-transform duration-200" />
                                 </Button>
                               </CollapsibleTrigger>
