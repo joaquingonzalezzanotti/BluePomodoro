@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -220,7 +221,7 @@ function DashboardContent({
                 </div>
 
                 <div className="lg:col-span-6 flex flex-col gap-6">
-                  <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100 flex flex-col items-center justify-center animate-in zoom-in-95 duration-500 min-h-[500px]">
+                  <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100 flex flex-col items-center justify-center animate-in zoom-in-95 duration-500">
                     {activeTask && (
                       <div className="mb-6 text-center animate-in fade-in slide-in-from-top-2 duration-700">
                         <Badge className="bg-primary/10 text-primary border-none text-[10px] font-black uppercase tracking-widest mb-2 px-3 py-1">Enfoque Profundo</Badge>

@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Timer as TimerIcon, Play, Pause, RotateCcw, Coffee, Settings2, Check, Flame } from "lucide-react"
+import { Timer as TimerIcon, Play, Pause, RotateCcw, Settings2, Flame } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -62,102 +62,118 @@ export function PomodoroTimer({
     if (!isNaN(b) && b > 0) setBreakMinutes(b)
   }
 
-  // Generar marcadores analógicos sutiles
-  const markers = Array.from({ length: 60 }, (_, i) => (
-    <div
-      key={i}
-      className={cn(
-        "absolute w-0.5 h-2 rounded-full transition-all duration-700",
-        i % 5 === 0 ? "h-3.5 w-1 opacity-60" : "opacity-20",
-        (i / 60) * 100 < progress ? "bg-primary" : "bg-slate-300"
-      )}
-      style={{
-        transform: `rotate(${i * 6}deg) translateY(-85px)`,
-        transformOrigin: "center"
-      }}
-    />
-  ))
+  const colorClass = mode === "work" 
+    ? "text-primary" 
+    : (isLongBreakMode ? "text-purple-500" : "text-accent")
+
+  const strokeColor = mode === "work" 
+    ? "hsl(var(--primary))" 
+    : (isLongBreakMode ? "hsl(262, 83%, 58%)" : "hsl(var(--accent))")
 
   return (
-    <div className={cn("flex flex-col items-center", large ? "scale-100" : "scale-75")}>
-      <div className="relative w-64 h-64 flex items-center justify-center mb-8 group transition-transform duration-500 hover:scale-[1.02]">
-        {/* Marcadores Analógicos */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          {markers}
-        </div>
-        
-        {/* Anillo de progreso */}
-        <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none drop-shadow-sm">
-          <circle cx="128" cy="128" r="105" fill="transparent" stroke="hsl(var(--muted)/0.1)" strokeWidth="4" />
+    <div className={cn("flex flex-col items-center w-full max-w-md mx-auto", large ? "scale-100" : "scale-90")}>
+      <div className="relative w-72 h-72 flex items-center justify-center mb-8">
+        {/* Glow Effect Background */}
+        <div className={cn(
+          "absolute inset-0 rounded-full blur-3xl opacity-20 transition-all duration-1000",
+          isActive ? "scale-110 opacity-30" : "scale-100",
+          mode === "work" ? "bg-primary" : "bg-accent"
+        )} />
+
+        {/* Outer Ring (Static) */}
+        <div className="absolute inset-0 border-[10px] border-slate-100 rounded-full" />
+
+        {/* Progress Ring */}
+        <svg className="absolute inset-0 w-full h-full -rotate-90">
           <circle
-            cx="128"
-            cy="128"
-            r="105"
+            cx="144"
+            cy="144"
+            r="134"
             fill="transparent"
-            stroke={mode === "work" ? "hsl(var(--primary))" : (isLongBreakMode ? "hsl(var(--chart-4))" : "hsl(var(--accent))")}
-            strokeWidth="8"
+            stroke={strokeColor}
+            strokeWidth="10"
             strokeLinecap="round"
-            strokeDasharray={2 * Math.PI * 105}
-            strokeDashoffset={2 * Math.PI * 105 * (1 - progress / 100)}
-            className="transition-all duration-1000 ease-linear"
+            strokeDasharray={2 * Math.PI * 134}
+            strokeDashoffset={2 * Math.PI * 134 * (1 - progress / 100)}
+            className={cn(
+              "transition-all duration-1000 ease-linear",
+              isActive && "drop-shadow-[0_0_8px_rgba(var(--primary),0.5)]"
+            )}
           />
         </svg>
 
-        <div className="flex flex-col items-center z-10 animate-in fade-in zoom-in duration-700">
-           <div className="text-5xl font-black font-mono tracking-tighter text-slate-900">
+        <div className="flex flex-col items-center z-10">
+          <div className={cn(
+            "text-6xl font-black font-mono tracking-tighter mb-1 transition-colors duration-500",
+            colorClass
+          )}>
             {formatTime(timeLeft)}
           </div>
-          <div className="text-[9px] font-black uppercase tracking-[0.2em] text-primary/40 mt-1">
-            {mode === "work" ? "Enfoque" : (isLongBreakMode ? "Gran Descanso" : "Descanso")}
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200">
+            <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", mode === "work" ? "bg-primary" : "bg-accent")} />
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
+              {mode === "work" ? "Enfoque" : "Descanso"}
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="flex gap-6 items-center">
+      <div className="flex gap-4 items-center">
         <Button
           size="lg"
-          variant={isActive ? "outline" : "default"}
-          className={cn(
-            "rounded-2xl w-16 h-16 p-0 shadow-xl border-none transition-all hover:scale-110 active:scale-95",
-            !isActive && "bg-primary text-white"
-          )}
           onClick={toggleTimer}
+          className={cn(
+            "rounded-2xl h-16 w-32 font-black text-lg shadow-xl transition-all hover:scale-105 active:scale-95",
+            isActive ? "bg-slate-900 text-white" : "bg-primary text-white"
+          )}
         >
-          {isActive ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 fill-current" />}
+          {isActive ? <Pause className="h-6 w-6 mr-2" /> : <Play className="h-6 w-6 mr-2 fill-current" />}
+          {isActive ? "PAUSA" : "INICIAR"}
         </Button>
+        
         <div className="flex gap-2">
-           <Button size="icon" variant="ghost" className="rounded-xl w-10 h-10 bg-slate-100/50 hover:bg-slate-200" onClick={resetTimer}>
-              <RotateCcw className="h-5 w-5 text-muted-foreground" />
-            </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl bg-slate-100/50 hover:bg-slate-200"><Settings2 className="h-5 w-5 text-muted-foreground" /></Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-64 rounded-2xl p-6 shadow-2xl border-none">
-                <div className="space-y-4">
-                  <h4 className="font-black text-[10px] uppercase tracking-widest text-muted-foreground">Preferencias</h4>
-                  <div className="grid gap-2">
-                    <Label className="text-[9px] font-black uppercase opacity-60">Focus (min)</Label>
-                    <Input type="number" value={localWork} onChange={(e) => setLocalWork(e.target.value)} className="rounded-xl border-none bg-muted/30 h-9 text-sm" />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label className="text-[9px] font-black uppercase opacity-60">Break (min)</Label>
-                    <Input type="number" value={localBreak} onChange={(e) => setLocalBreak(e.target.value)} className="rounded-xl border-none bg-muted/30 h-9 text-sm" />
-                  </div>
-                  <Button onClick={handleApplyChanges} className="w-full rounded-xl font-black h-10 shadow-lg shadow-primary/10">Aplicar</Button>
+          <Button size="icon" variant="outline" className="rounded-xl h-16 w-16 border-2" onClick={resetTimer}>
+            <RotateCcw className="h-6 w-6 text-slate-500" />
+          </Button>
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon" className="rounded-xl h-16 w-16 border-2">
+                <Settings2 className="h-6 w-6 text-slate-500" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 rounded-3xl p-6 shadow-2xl border-none" align="end">
+              <div className="space-y-4">
+                <h4 className="font-black text-[10px] uppercase tracking-widest text-muted-foreground">Preferencias de Sesión</h4>
+                <div className="grid gap-2">
+                  <Label className="text-[9px] font-black uppercase opacity-60">Tiempo Focus (min)</Label>
+                  <Input type="number" value={localWork} onChange={(e) => setLocalWork(e.target.value)} className="rounded-xl border-none bg-muted/30 h-10 font-bold" />
                 </div>
-              </PopoverContent>
-            </Popover>
+                <div className="grid gap-2">
+                  <Label className="text-[9px] font-black uppercase opacity-60">Tiempo Break (min)</Label>
+                  <Input type="number" value={localBreak} onChange={(e) => setLocalBreak(e.target.value)} className="rounded-xl border-none bg-muted/30 h-10 font-bold" />
+                </div>
+                <Button onClick={handleApplyChanges} className="w-full rounded-xl font-black h-12">GUARDAR CAMBIOS</Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
-      <div className="mt-8 flex items-center gap-6 px-5 py-2.5 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm animate-in slide-in-from-bottom-2 duration-700">
-        <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-muted-foreground/80">
-          <Flame className="h-3.5 w-3.5 text-orange-500" /> Sprints: {sessionsCompleted}
+      <div className="mt-8 grid grid-cols-2 gap-4 w-full">
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center">
+          <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider mb-1">Sesiones</span>
+          <div className="flex items-center gap-1.5 font-black text-xl">
+             <Flame className="h-5 w-5 text-orange-500 fill-orange-500" />
+             {sessionsCompleted}
+          </div>
         </div>
-        <div className="w-px h-3 bg-slate-200" />
-        <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-wider text-muted-foreground/80">
-          <TimerIcon className="h-3.5 w-3.5 text-primary" /> {workMinutes}m / {breakMinutes}m
+        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center">
+          <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider mb-1">Ratio</span>
+          <div className="flex items-center gap-1.5 font-black text-xl">
+             <TimerIcon className="h-5 w-5 text-primary" />
+             {workMinutes}m
+          </div>
         </div>
       </div>
     </div>
