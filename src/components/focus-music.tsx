@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Music, Play, Pause, SkipForward, SkipBack, Headphones, Radio, Save, ExternalLink, RefreshCw, LogIn, AlertCircle } from "lucide-react"
+import { Music, Headphones, SkipForward, SkipBack } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
@@ -35,12 +35,13 @@ export function FocusMusic({ layout = "dashboard" }: FocusMusicProps) {
 
   if (layout === "sidebar") {
     return (
-      <div className="space-y-2 group-data-[collapsible=icon]:hidden">
-        <div className="flex items-center justify-between px-2">
+      <div className="space-y-2 group-data-[collapsible=icon]:items-center">
+        <div className="flex items-center justify-between px-2 group-data-[collapsible=icon]:hidden">
           <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Focus Radio</span>
           <Music className="h-3 w-3 text-primary" />
         </div>
-        <div className="rounded-xl overflow-hidden shadow-sm border border-primary/5 bg-slate-900 h-20">
+        {/* Usamos un contenedor pequeño para el iframe en la sidebar */}
+        <div className="rounded-xl overflow-hidden shadow-sm border border-primary/5 bg-slate-900 h-14 group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:h-10">
           <iframe 
             src={finalUrl} 
             width="100%" 
@@ -48,24 +49,33 @@ export function FocusMusic({ layout = "dashboard" }: FocusMusicProps) {
             frameBorder="0" 
             allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
             loading="lazy"
+            className="group-data-[collapsible=icon]:scale-[0.5]"
           ></iframe>
+        </div>
+        <div className="flex items-center justify-center gap-4 group-data-[collapsible=icon]:hidden">
+           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10">
+              <SkipBack className="h-4 w-4" />
+           </Button>
+           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary hover:bg-primary/10">
+              <SkipForward className="h-4 w-4" />
+           </Button>
         </div>
       </div>
     )
   }
 
   return (
-    <Card className="border-none shadow-xl bg-slate-900 overflow-hidden">
+    <Card className="border-none shadow-xl bg-slate-900 overflow-hidden rounded-[2rem]">
       <CardHeader className="pb-2 flex flex-row items-center justify-between border-b border-white/5">
         <CardTitle className="text-white text-sm font-black flex items-center gap-2">
-          <Headphones className="h-4 w-4 text-primary" /> FOCUS PLAYER
+          <Headphones className="h-4 w-4 text-primary" /> MI MÚSICA ACTUAL
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         <iframe 
           src={finalUrl} 
           width="100%" 
-          height="380" 
+          height="152" 
           frameBorder="0" 
           allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
           loading="lazy"

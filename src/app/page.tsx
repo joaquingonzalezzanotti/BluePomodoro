@@ -16,7 +16,10 @@ import {
   Play,
   Flame,
   FolderKanban,
-  Bell
+  Bell,
+  Kanban,
+  Music as MusicIcon,
+  ChevronRight
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -26,6 +29,7 @@ import { FocusMusic } from "@/components/focus-music"
 import { ConfigurationView } from "@/components/configuration-view"
 import { StatsView } from "@/components/stats-view"
 import { ProjectManager } from "@/components/project-manager"
+import { KanbanBoard } from "@/components/kanban-board"
 import { Button } from "@/components/ui/button"
 import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useDoc, addDocumentNonBlocking } from "@/firebase"
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth"
@@ -33,6 +37,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
 import { doc, collection, serverTimestamp, increment } from "firebase/firestore"
 import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function FocusFlowDashboard() {
   const [activeTab, setActiveTab] = React.useState("dashboard")
@@ -162,21 +167,37 @@ export default function FocusFlowDashboard() {
         return (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-black">Tablero de Tareas</h3>
-                <Button variant="outline" size="sm" onClick={() => setActiveTab("pomodoro")} className="gap-2 rounded-xl">
-                  <Maximize2 className="h-4 w-4" /> Modo Focus
-                </Button>
-              </div>
-              <TaskManager onTaskSelect={(id) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
+              <Tabs defaultValue="lista" className="w-full">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-black">Mis Pendientes</h3>
+                  <TabsList className="bg-white p-1 rounded-xl shadow-sm border border-slate-100">
+                    <TabsTrigger value="lista" className="rounded-lg font-bold">Lista</TabsTrigger>
+                    <TabsTrigger value="kanban" className="rounded-lg font-bold">Kanban</TabsTrigger>
+                  </TabsList>
+                </div>
+                <TabsContent value="lista">
+                  <TaskManager onTaskSelect={(id) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
+                </TabsContent>
+                <TabsContent value="kanban">
+                  <KanbanBoard />
+                </TabsContent>
+              </Tabs>
             </div>
             <div className="space-y-6">
               <FocusMusic layout="dashboard" />
+              {activeTaskId && (
+                <Button 
+                  onClick={() => setActiveTab("pomodoro")} 
+                  className="w-full h-16 rounded-[2rem] bg-primary text-white font-black text-lg gap-3 shadow-xl shadow-primary/20 animate-pulse"
+                >
+                  <TimerIcon className="h-6 w-6" /> ¡ENFÓCATE AHORA! <ChevronRight className="h-5 w-5" />
+                </Button>
+              )}
               <div className="p-6 bg-primary/5 border border-primary/10 rounded-3xl">
                 <h4 className="text-xs font-black uppercase text-muted-foreground mb-4 flex items-center gap-2">
                   <Bell className="h-3 w-3" /> Próximas Alertas
                 </h4>
-                <p className="text-[10px] text-muted-foreground italic">Las notificaciones web y mobile se habilitarán en la próxima actualización.</p>
+                <p className="text-[10px] text-muted-foreground italic">Las notificaciones web y mobile se habilitarán tras configurar FCM.</p>
               </div>
             </div>
           </div>
@@ -198,9 +219,9 @@ export default function FocusFlowDashboard() {
               large
             />
             {activeTaskId && (
-              <div className="mt-10 px-6 py-3 bg-primary/10 border border-primary/20 rounded-2xl flex items-center gap-3 animate-bounce">
+              <div className="mt-10 px-6 py-3 bg-primary/10 border border-primary/20 rounded-2xl flex items-center gap-3">
                 <CheckSquare className="h-5 w-5 text-primary" />
-                <span className="text-sm font-bold">Enfocado en tarea activa</span>
+                <span className="text-sm font-bold uppercase tracking-widest">Registrando progreso en tarea</span>
               </div>
             )}
           </div>
