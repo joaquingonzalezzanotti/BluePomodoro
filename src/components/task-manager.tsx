@@ -21,68 +21,70 @@ import { aiAssistedTaskBreakdown } from "@/ai/flows/ai-assisted-task-breakdown-f
 import { useToast } from "@/hooks/use-toast"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
-
-interface SubTask {
-  id: string
-  text: string
-  completed: boolean
-}
-
-interface Task {
-  id: string
-  text: string
-  completed: boolean
-  priority: "Alta" | "Media" | "Baja"
-  deadline: string
-  effort: "Alto" | "Medio" | "Bajo"
-  subTasks: SubTask[]
-  expanded?: boolean
-}
+import { useFirestore, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase"
+import { collection, doc, serverTimestamp, query, orderBy } from "firebase/firestore"
 
 export function TaskManager() {
-  const [tasks, setTasks] = React.useState<Task[]>([])
   const [newTaskText, setNewTaskText] = React.useState("")
   const [isBreakingDown, setIsBreakingDown] = React.useState<string | null>(null)
   const { toast } = useToast()
+  const db = useFirestore()
+  const { user } = useUser()
+
+  const tasksQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return query(
+      collection(db, "usuarios", user.uid, "tareas"),
+      orderBy("fechaCreacion", "desc")
+    )
+  }, [db, user])
+
+  const { data: tasks, isLoading } = useCollection(tasksQuery)
 
   const addTask = () => {
-    if (!newTaskText.trim()) return
-    const newTask: Task = {
-      id: Math.random().toString(36).substr(2, 9),
-      text: newTaskText,
-      completed: false,
-      priority: "Media",
-      deadline: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-      effort: "Medio",
-      subTasks: [],
-      expanded: false
-    }
-    setTasks([newTask, ...tasks])
+    if (!newTaskText.trim() || !user || !db) return
+    
+    const tasksRef = collection(db, "usuarios", user.uid, "tareas")
+    addDocumentNonBlocking(tasksRef, {
+      usuarioId: user.uid,
+      titulo: newTaskText,
+      descripcion: "",
+      estado: "Pendiente",
+      prioridad: "Media",
+      esfuerzoEstimadoPomodoros: 1,
+      fechaVencimiento: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+      fechaCreacion: serverTimestamp(),
+      subtareas: []
+    })
     setNewTaskText("")
   }
 
-  const toggleTask = (taskId: string) => {
-    setTasks(tasks.map(t => t.id === taskId ? { ...t, completed: !t.completed } : t))
+  const toggleTask = (taskId: string, currentStatus: string) => {
+    if (!user || !db) return
+    const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
+    const newStatus = currentStatus === "Completada" ? "Pendiente" : "Completada"
+    updateDocumentNonBlocking(taskRef, { estado: newStatus })
   }
 
   const deleteTask = (taskId: string) => {
-    setTasks(tasks.filter(t => t.id !== taskId))
+    if (!user || !db) return
+    const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
+    deleteDocumentNonBlocking(taskRef)
   }
 
-  const breakdownTask = async (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId)
-    if (!task) return
-
+  const breakdownTask = async (taskId: string, taskText: string) => {
+    if (!user || !db) return
     setIsBreakingDown(taskId)
     try {
-      const result = await aiAssistedTaskBreakdown({ largeTaskDescription: task.text })
-      const subTasks: SubTask[] = result.subTasks.map(text => ({
+      const result = await aiAssistedTaskBreakdown({ largeTaskDescription: taskText })
+      const subTasks = result.subTasks.map(text => ({
         id: Math.random().toString(36).substr(2, 9),
         text,
         completed: false
       }))
       
-      setTasks(tasks.map(t => t.id === taskId ? { ...t, subTasks, expanded: true } : t))
+      const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
+      updateDocumentNonBlocking(taskRef, { subtareas: subTasks })
       toast({ title: "Tarea Desglosada", description: `Se añadieron ${subTasks.length} sub-tareas.` })
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "La IA no pudo procesar esta tarea." })
@@ -91,20 +93,17 @@ export function TaskManager() {
     }
   }
 
-  const toggleExpand = (taskId: string) => {
-    setTasks(tasks.map(t => t.id === taskId ? { ...t, expanded: !t.expanded } : t))
+  const toggleSubTask = (taskId: string, subTasks: any[], subTaskId: string) => {
+    if (!user || !db) return
+    const updatedSubTasks = subTasks.map(st => 
+      st.id === subTaskId ? { ...st, completed: !st.completed } : st
+    )
+    const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
+    updateDocumentNonBlocking(taskRef, { subtareas: updatedSubTasks })
   }
 
-  const toggleSubTask = (taskId: string, subTaskId: string) => {
-    setTasks(tasks.map(t => {
-      if (t.id === taskId) {
-        const updatedSubTasks = t.subTasks.map(st => 
-          st.id === subTaskId ? { ...st, completed: !st.completed } : st
-        )
-        return { ...t, subTasks: updatedSubTasks }
-      }
-      return t
-    }))
+  if (isLoading) {
+    return <div className="py-10 text-center text-muted-foreground">Cargando tareas...</div>
   }
 
   return (
@@ -128,100 +127,96 @@ export function TaskManager() {
 
       <ScrollArea className="h-[600px] pr-4">
         <div className="space-y-4">
-          {tasks.map((task) => (
-            <Card key={task.id} className="border-none shadow-sm hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <button onClick={() => toggleTask(task.id)} className="mt-1">
-                    {task.completed ? (
-                      <CheckCircle2 className="h-5 w-5 text-primary" />
-                    ) : (
-                      <Circle className="h-5 w-5 text-muted-foreground" />
-                    )}
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <h4 className={`text-base font-semibold truncate ${task.completed ? "line-through text-muted-foreground" : ""}`}>
-                        {task.text}
-                      </h4>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={task.priority === "Alta" ? "destructive" : task.priority === "Media" ? "default" : "secondary"}>
-                          {task.priority}
-                        </Badge>
-                        <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)} className="h-8 w-8 text-destructive/50 hover:text-destructive">
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" /> {task.deadline}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Zap className="h-3 w-3" /> Esfuerzo {task.effort}
-                      </span>
-                    </div>
+          {tasks?.map((task) => {
+            const completedSubTasks = task.subtareas?.filter((s: any) => s.completed).length || 0
+            const totalSubTasks = task.subtareas?.length || 0
+            const progress = totalSubTasks > 0 ? (completedSubTasks / totalSubTasks) * 100 : 0
+            const isCompleted = task.estado === "Completada"
 
-                    {task.subTasks.length > 0 && (
-                      <div className="mt-2 mb-4">
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span>Progreso</span>
-                          <span>{Math.round((task.subTasks.filter(s => s.completed).length / task.subTasks.length) * 100)}%</span>
+            return (
+              <Card key={task.id} className="border-none shadow-sm hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <button onClick={() => toggleTask(task.id, task.estado)} className="mt-1">
+                      {isCompleted ? (
+                        <CheckCircle2 className="h-5 w-5 text-primary" />
+                      ) : (
+                        <Circle className="h-5 w-5 text-muted-foreground" />
+                      )}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h4 className={`text-base font-semibold truncate ${isCompleted ? "line-through text-muted-foreground" : ""}`}>
+                          {task.titulo}
+                        </h4>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={task.prioridad === "Alta" ? "destructive" : task.prioridad === "Media" ? "default" : "secondary"}>
+                            {task.prioridad}
+                          </Badge>
+                          <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)} className="h-8 w-8 text-destructive/50 hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
-                        <Progress value={(task.subTasks.filter(s => s.completed).length / task.subTasks.length) * 100} className="h-1.5" />
                       </div>
-                    )}
+                      
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" /> {task.fechaVencimiento}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Zap className="h-3 w-3" /> {task.esfuerzoEstimadoPomodoros} Pomodoros
+                        </span>
+                      </div>
 
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="h-7 text-xs gap-1 border-primary/20 text-primary hover:bg-primary/10"
-                        onClick={() => breakdownTask(task.id)}
-                        disabled={isBreakingDown === task.id}
-                      >
-                        <Sparkles className={`h-3 w-3 ${isBreakingDown === task.id ? "animate-pulse" : ""}`} />
-                        {isBreakingDown === task.id ? "Analizando..." : "Desglose por IA"}
-                      </Button>
-                      {task.subTasks.length > 0 && (
+                      {totalSubTasks > 0 && (
+                        <div className="mt-2 mb-4">
+                          <div className="flex items-center justify-between text-xs mb-1">
+                            <span>Progreso</span>
+                            <span>{Math.round(progress)}%</span>
+                          </div>
+                          <Progress value={progress} className="h-1.5" />
+                        </div>
+                      )}
+
+                      <div className="flex gap-2">
                         <Button 
-                          variant="ghost" 
+                          variant="outline" 
                           size="sm" 
-                          className="h-7 text-xs gap-1"
-                          onClick={() => toggleExpand(task.id)}
+                          className="h-7 text-xs gap-1 border-primary/20 text-primary hover:bg-primary/10"
+                          onClick={() => breakdownTask(task.id, task.titulo)}
+                          disabled={isBreakingDown === task.id}
                         >
-                          {task.expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                          {task.subTasks.length} pasos
+                          <Sparkles className={`h-3 w-3 ${isBreakingDown === task.id ? "animate-pulse" : ""}`} />
+                          {isBreakingDown === task.id ? "Analizando..." : "Desglose por IA"}
                         </Button>
+                      </div>
+
+                      {task.subtareas && task.subtareas.length > 0 && (
+                        <div className="mt-4 pl-4 border-l-2 border-primary/20 space-y-2">
+                          {task.subtareas.map((subTask: any) => (
+                            <div key={subTask.id} className="flex items-center gap-2 text-sm py-1">
+                              <button onClick={() => toggleSubTask(task.id, task.subtareas, subTask.id)}>
+                                {subTask.completed ? (
+                                  <CheckCircle2 className="h-4 w-4 text-primary/70" />
+                                ) : (
+                                  <Circle className="h-4 w-4 text-muted-foreground/50" />
+                                )}
+                              </button>
+                              <span className={subTask.completed ? "line-through text-muted-foreground" : ""}>
+                                {subTask.text}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
-
-                    {task.expanded && task.subTasks.length > 0 && (
-                      <div className="mt-4 pl-4 border-l-2 border-primary/20 space-y-2">
-                        {task.subTasks.map(subTask => (
-                          <div key={subTask.id} className="flex items-center gap-2 text-sm py-1">
-                            <button onClick={() => toggleSubTask(task.id, subTask.id)}>
-                              {subTask.completed ? (
-                                <CheckCircle2 className="h-4 w-4 text-primary/70" />
-                              ) : (
-                                <Circle className="h-4 w-4 text-muted-foreground/50" />
-                              )}
-                            </button>
-                            <span className={subTask.completed ? "line-through text-muted-foreground" : ""}>
-                              {subTask.text}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            )
+          })}
           
-          {tasks.length === 0 && (
+          {tasks?.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
               <div className="p-4 bg-primary/10 rounded-full mb-4">
                 <Plus className="h-10 w-10 text-primary/40" />

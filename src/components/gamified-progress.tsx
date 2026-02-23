@@ -5,6 +5,8 @@ import * as React from "react"
 import { Trophy, Medal, Flame, Star, TrendingUp, Award } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { useFirestore, useUser, useDoc, useMemoFirebase } from "@/firebase"
+import { doc } from "firebase/firestore"
 
 const BADGES = [
   { id: 1, name: "Madrugador", icon: <Star className="h-4 w-4" />, color: "bg-blue-100 text-blue-600" },
@@ -13,7 +15,17 @@ const BADGES = [
 ]
 
 export function GamifiedProgress() {
-  const points = 1250
+  const { user } = useUser()
+  const db = useFirestore()
+
+  const userRef = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return doc(db, "usuarios", user.uid)
+  }, [db, user])
+
+  const { data: userData } = useDoc(userRef)
+
+  const points = userData?.puntosTotales || 0
   const nextLevel = 2000
   const progress = (points / nextLevel) * 100
 
@@ -24,7 +36,7 @@ export function GamifiedProgress() {
           <Trophy className="h-6 w-6 text-accent" />
           Mi Progreso
         </CardTitle>
-        <CardDescription>Nivel 4: Maestro del Enfoque</CardDescription>
+        <CardDescription>Nivel {Math.floor(points / 500) + 1}: Maestro del Enfoque</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
@@ -51,7 +63,7 @@ export function GamifiedProgress() {
             </div>
             <div>
               <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Racha Diaria</p>
-              <p className="text-lg font-bold">7 Días</p>
+              <p className="text-lg font-bold">1 Día</p>
             </div>
           </div>
         </div>

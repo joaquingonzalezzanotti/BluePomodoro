@@ -13,7 +13,8 @@ import {
   BarChart3,
   CloudLightning,
   RefreshCw,
-  LogIn
+  LogIn,
+  Sparkles
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -24,33 +25,50 @@ import { GamifiedProgress } from "@/components/gamified-progress"
 import { DistractionBlocker } from "@/components/distraction-blocker"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { useAuth, useUser } from "@/firebase"
+import { useAuth, useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase"
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
+import { doc, collection, serverTimestamp } from "firebase/firestore"
+import { prioritizeTasks } from "@/ai/flows/ai-powered-task-prioritization-flow"
 
 export default function FocusFlowDashboard() {
   const [activeTab, setActiveTab] = React.useState("dashboard")
   const { user, isUserLoading } = useUser()
   const { toast } = useToast()
   const auth = useAuth()
+  const db = useFirestore()
+  const [isPrioritizing, setIsPrioritizing] = React.useState(false)
+
+  // Sincronizar perfil de usuario en Firestore al iniciar sesión
+  React.useEffect(() => {
+    if (user && db) {
+      const userRef = doc(db, "usuarios", user.uid)
+      setDocumentNonBlocking(userRef, {
+        id: user.uid,
+        nombre: user.displayName || "Usuario",
+        email: user.email,
+        puntosTotales: 0,
+        fechaRegistro: serverTimestamp(),
+      }, { merge: true })
+    }
+  }, [user, db])
+
+  const tasksQuery = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return collection(db, "usuarios", user.uid, "tareas")
+  }, [db, user])
+
+  const { data: tasks } = useCollection(tasksQuery)
 
   const handleLogin = () => {
     const provider = new GoogleAuthProvider()
     signInWithPopup(auth, provider).catch((error: any) => {
-      if (error.code === 'auth/operation-not-allowed') {
-        toast({
-          variant: "destructive",
-          title: "Error de Configuración",
-          description: "El inicio de sesión con Google no está habilitado en la consola de Firebase. Por favor, actívalo en Authentication > Sign-in method.",
-        })
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error de Inicio de Sesión",
-          description: error.message || "No se pudo iniciar sesión con Google.",
-        })
-      }
+      toast({
+        variant: "destructive",
+        title: "Error de Inicio de Sesión",
+        description: error.message || "No se pudo iniciar sesión.",
+      })
     })
   }
 
@@ -59,9 +77,52 @@ export default function FocusFlowDashboard() {
       toast({
         variant: "destructive",
         title: "Error al cerrar sesión",
-        description: error.message || "Ocurrió un problema inesperado.",
+        description: error.message,
       })
     })
+  }
+
+  const handleAIPrioritization = async () => {
+    if (!tasks || tasks.length === 0 || !user || !db) return
+    
+    setIsPrioritizing(true)
+    try {
+      const inputTasks = tasks.map(t => ({
+        id: t.id,
+        title: t.titulo,
+        priority: t.prioridad,
+        deadline: t.fechaVencimiento || "Mañana",
+        effort: t.esfuerzoEstimadoPomodoros || 1
+      }))
+
+      const result = await prioritizeTasks({
+        tasks: inputTasks,
+        userEnergyLevel: "Alto" // Simplificado para MVP
+      })
+
+      // Actualizar prioridades en Firestore basándose en la sugerencia de la IA
+      result.prioritizedTaskIds.forEach((id, index) => {
+        const taskRef = doc(db, "usuarios", user.uid, `tareas/${id}`)
+        let newPriority = "Media"
+        if (index < result.prioritizedTaskIds.length / 3) newPriority = "Alta"
+        else if (index > (result.prioritizedTaskIds.length * 2) / 3) newPriority = "Baja"
+        
+        updateDocumentNonBlocking(taskRef, { prioridad: newPriority })
+      })
+
+      toast({
+        title: "IA ha reorganizado tu día",
+        description: result.reasoning,
+      })
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error de IA",
+        description: "No se pudo completar la priorización.",
+      })
+    } finally {
+      setIsPrioritizing(false)
+    }
   }
 
   if (isUserLoading) {
@@ -134,18 +195,6 @@ export default function FocusFlowDashboard() {
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroup>
-
-            <SidebarGroup>
-              <SidebarGroupLabel>Ajustes</SidebarGroupLabel>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton>
-                    <Settings className="h-4 w-4" />
-                    <span>Configuración</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroup>
           </SidebarContent>
 
           <SidebarFooter className="p-4 border-t border-primary/10">
@@ -169,15 +218,16 @@ export default function FocusFlowDashboard() {
           <header className="h-16 border-b border-primary/10 bg-white/50 backdrop-blur-md sticky top-0 z-10 px-8 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-bold flex items-center gap-2">
-                Buenos días, {user.displayName?.split(" ")[0]} <span className="animate-wave">👋</span>
+                Hola, {user.displayName?.split(" ")[0]} <span className="animate-wave">👋</span>
               </h2>
               <p className="text-xs text-muted-foreground">¿Listo para una sesión productiva?</p>
             </div>
             <div className="flex items-center gap-4">
-              <Button variant="outline" size="sm" className="gap-2 border-primary/20 hover:bg-primary/5">
-                <RefreshCw className="h-4 w-4" /> Sincronizar Calendario
-              </Button>
-              <Button size="sm" className="bg-primary hover:bg-primary/80 gap-2">
+              <Button 
+                size="sm" 
+                className="bg-primary hover:bg-primary/80 gap-2"
+                onClick={() => toast({ title: "Modo Enfoque", description: "Inicia el timer para entrar en zona." })}
+              >
                 <Zap className="h-4 w-4 fill-current" /> ENFOQUE PROFUNDO
               </Button>
             </div>
@@ -190,8 +240,16 @@ export default function FocusFlowDashboard() {
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-xl font-bold">Flujo de Enfoque Hoy</h3>
                     <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" className="text-xs h-7">Por Fecha</Button>
-                      <Button variant="ghost" size="sm" className="text-xs h-7">Priorizar por IA</Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="text-xs h-7 gap-1"
+                        onClick={handleAIPrioritization}
+                        disabled={isPrioritizing || !tasks?.length}
+                      >
+                        <Sparkles className={`h-3 w-3 ${isPrioritizing ? "animate-spin" : ""}`} />
+                        Priorizar por IA
+                      </Button>
                     </div>
                   </div>
                   <TaskManager />
