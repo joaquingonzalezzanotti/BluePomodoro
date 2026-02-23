@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -73,7 +72,7 @@ export default function FocusFlowDashboard() {
   const { data: userData } = useDoc(userRef)
   const isBlocking = userData?.modoEstrictoActivo || false
 
-  // Lógica del Timer Global (Corre incluso si el componente del Timer no está montado)
+  // Lógica del Timer Global
   React.useEffect(() => {
     let interval: NodeJS.Timeout | null = null
 
@@ -144,28 +143,6 @@ export default function FocusFlowDashboard() {
     if (!isActive && mode === "break") setTimeLeft(m * 60)
   }
 
-  // Manejo de retorno de Spotify OAuth
-  React.useEffect(() => {
-    if (typeof window !== 'undefined' && window.location.hash && userRef) {
-      const hash = window.location.hash.substring(1)
-      const params = new URLSearchParams(hash)
-      const accessToken = params.get('access_token')
-      
-      if (accessToken) {
-        updateDocumentNonBlocking(userRef, {
-          spotifyAccessToken: accessToken,
-          spotifyTokenTimestamp: serverTimestamp()
-        })
-        // Limpiar el hash sin recargar la página
-        window.history.replaceState(null, "", window.location.pathname)
-        toast({
-          title: "Spotify Conectado",
-          description: "Ahora puedes gestionar tu música internamente.",
-        })
-      }
-    }
-  }, [userRef])
-
   React.useEffect(() => {
     if (user && db) {
       const userDocRef = doc(db, "usuarios", user.uid)
@@ -188,9 +165,6 @@ export default function FocusFlowDashboard() {
 
   const handleLogin = () => {
     const provider = new GoogleAuthProvider()
-    provider.addScope('https://www.googleapis.com/auth/calendar.readonly')
-    provider.addScope('https://www.googleapis.com/auth/tasks.readonly')
-    
     signInWithPopup(auth, provider).catch((error: any) => {
       toast({
         variant: "destructive",
