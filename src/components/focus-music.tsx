@@ -93,7 +93,7 @@ export function FocusMusic({ layout = "dashboard" }: FocusMusicProps) {
           frameBorder="0" 
           allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
           loading="lazy"
-          title="Spotify Focus Player"
+          title="Spotify Player"
         ></iframe>
       </CardContent>
     </Card>

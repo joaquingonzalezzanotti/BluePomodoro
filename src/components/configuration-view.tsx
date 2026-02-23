@@ -52,6 +52,13 @@ export function ConfigurationView() {
     toast({ title: "Spotify vinculado", description: "Tu música ha sido actualizada." })
   }
 
+  const handleLinkSpotifyReal = () => {
+    const clientId = "b5df5cc5dcbc45e8a34738bd946675ac"
+    const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/` : ''
+    const scopes = "user-read-currently-playing user-read-playback-state"
+    window.location.href = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}`
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700">
       <div className="flex items-center gap-4">
@@ -84,16 +91,24 @@ export function ConfigurationView() {
             <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden">
               <CardHeader className="bg-green-500/5">
                 <CardTitle className="flex items-center gap-2 text-green-700"><Music className="h-5 w-5" /> Mi Música de Enfoque</CardTitle>
-                <CardDescription>Pega aquí el enlace de tu playlist de Spotify.</CardDescription>
+                <CardDescription>Vincula tu cuenta o pega una playlist personalizada.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4 pt-6">
+                <Button onClick={handleLinkSpotifyReal} className="w-full h-12 gap-2 rounded-xl font-bold bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/20 mb-4">
+                  <Music className="h-4 w-4" /> Vincular Spotify Real
+                </Button>
+                <div className="flex items-center gap-2 mb-2">
+                  <Separator className="flex-1" />
+                  <span className="text-[10px] text-muted-foreground font-black uppercase">O pega un enlace</span>
+                  <Separator className="flex-1" />
+                </div>
                 <Input 
                   placeholder="https://open.spotify.com/playlist/..." 
                   value={spotifyInput}
                   onChange={(e) => setSpotifyInput(e.target.value)}
                   className="rounded-xl bg-muted/30 border-none h-12 font-medium"
                 />
-                <Button onClick={handleSaveSpotify} className="w-full h-12 gap-2 rounded-xl font-bold bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/20">
+                <Button onClick={handleSaveSpotify} variant="outline" className="w-full h-12 gap-2 rounded-xl font-bold border-green-200 text-green-700">
                   <Save className="h-4 w-4" /> Guardar Playlist
                 </Button>
               </CardContent>
