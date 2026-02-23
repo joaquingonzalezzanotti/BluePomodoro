@@ -14,9 +14,10 @@ import {
   Maximize2,
   FolderKanban,
   Users,
-  XCircle
+  XCircle,
+  ChevronLeft
 } from "lucide-react"
-import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
 import { PomodoroTimer } from "@/components/pomodoro-timer"
 import { TaskManager } from "@/components/task-manager"
@@ -72,7 +73,7 @@ export default function FocusFlowDashboard() {
     
     const showMessage = () => {
       const usersCount = Math.floor(Math.random() * 20) + 6 
-      if (usersCount > 5) {
+      if (usersCount >= 5) {
         setBodyDoublingMessage(`${usersCount} personas enfocadas contigo`)
         setTimeout(() => setBodyDoublingMessage(null), 8000) 
       }
@@ -150,8 +151,8 @@ export default function FocusFlowDashboard() {
     
     if (mode === "work") {
       setMode("break")
-      const isLongBreak = (sessionsCompleted + 1) % 4 === 0 && sessionsCompleted > 0
-      setTimeLeft((isLongBreak ? longBreakMinutes : breakMinutes) * 60)
+      const isLongBreak = (sessionsCompleted + 1) % 3 === 0 && sessionsCompleted > 0
+      setTimeLeft((isLongBreak ? 20 : breakMinutes) * 60)
     } else {
       setMode("work")
       setTimeLeft(workMinutes * 60)
@@ -225,31 +226,32 @@ export default function FocusFlowDashboard() {
                 ))}
               </SidebarMenu>
             </SidebarGroup>
-            <SidebarGroup className="mt-auto">
-               <FocusMusic layout="sidebar" />
-            </SidebarGroup>
           </SidebarContent>
           <SidebarFooter className="p-4 border-t border-primary/5">
-            <div className="flex flex-col gap-2">
-              {bodyDoublingMessage && (
-                <div className="px-3 py-1.5 bg-primary/5 border border-primary/10 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-500 group-data-[collapsible=icon]:hidden">
-                  <p className="text-[9px] font-black text-primary/70 flex items-center gap-2 italic">
-                    <Users className="h-3 w-3" /> {bodyDoublingMessage}
-                  </p>
+            <div className="flex flex-col gap-3">
+               <FocusMusic layout="sidebar" />
+              
+               <div className="flex flex-col gap-1">
+                {bodyDoublingMessage && (
+                  <div className="px-3 py-1.5 bg-primary/5 border border-primary/10 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-500 group-data-[collapsible=icon]:hidden">
+                    <p className="text-[9px] font-black text-primary/70 flex items-center gap-2 italic">
+                      <Users className="h-3 w-3" /> {bodyDoublingMessage}
+                    </p>
+                  </div>
+                )}
+                <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-xl group-data-[collapsible=icon]:justify-center">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={user.photoURL || ""} />
+                    <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 group-data-[collapsible=icon]:hidden overflow-hidden">
+                    <p className="text-[10px] font-black truncate">{user.displayName}</p>
+                    <p className="text-[8px] text-muted-foreground truncate">{user.email}</p>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 group-data-[collapsible=icon]:hidden" onClick={() => signOut(auth)}>
+                    <LogOut className="h-4 w-4" />
+                  </Button>
                 </div>
-              )}
-              <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-xl group-data-[collapsible=icon]:justify-center">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user.photoURL || ""} />
-                  <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 group-data-[collapsible=icon]:hidden overflow-hidden">
-                  <p className="text-[10px] font-black truncate">{user.displayName}</p>
-                  <p className="text-[8px] text-muted-foreground truncate">{user.email}</p>
-                </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 group-data-[collapsible=icon]:hidden" onClick={() => signOut(auth)}>
-                  <LogOut className="h-4 w-4" />
-                </Button>
               </div>
             </div>
           </SidebarFooter>
@@ -314,21 +316,21 @@ export default function FocusFlowDashboard() {
             )}
 
             {activeTab === "pomodoro" && (
-              <div className="h-full flex flex-col items-center justify-center p-8 animate-in fade-in duration-500 relative">
+              <div className="h-full flex flex-col items-center justify-center p-8 animate-in fade-in duration-500 relative bg-white">
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className="absolute top-8 left-8 h-12 w-12 rounded-2xl bg-white shadow-md"
+                  className="absolute top-8 left-8 h-12 w-12 rounded-2xl bg-white shadow-md border border-slate-100"
                   onClick={() => setActiveTab("dashboard")}
                 >
-                  <XCircle className="h-6 w-6 text-muted-foreground" />
+                  <ChevronLeft className="h-6 w-6 text-muted-foreground" />
                 </Button>
                 
                 <div className="max-w-xl w-full flex flex-col items-center">
                   {activeTaskId && (
                     <div className="mb-12 text-center space-y-2">
                       <Badge variant="secondary" className="px-4 py-1 text-[10px] font-black uppercase tracking-[0.2em] bg-primary/10 text-primary border-none">Tarea Activa</Badge>
-                      <h2 className="text-3xl font-black tracking-tight text-slate-800">{activeTask?.titulo || "Enfoque Profundo"}</h2>
+                      <h2 className="text-4xl font-black tracking-tight text-slate-900">{activeTask?.titulo || "Enfoque Profundo"}</h2>
                     </div>
                   )}
 

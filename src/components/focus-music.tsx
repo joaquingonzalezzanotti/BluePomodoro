@@ -35,32 +35,20 @@ export function FocusMusic({ layout = "dashboard" }: FocusMusicProps) {
 
   if (layout === "sidebar") {
     return (
-      <div className="flex flex-col gap-2 group-data-[collapsible=icon]:items-center">
-        {/* Iframe invisible pero funcional para que la música sea persistente en la sidebar */}
-        <div className="h-0 w-0 opacity-0 overflow-hidden pointer-events-none absolute">
-           <iframe 
-            src={finalUrl} 
-            width="1" 
-            height="1" 
-            frameBorder="0" 
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
-            loading="lazy"
-          ></iframe>
-        </div>
-
+      <div className="flex flex-col gap-2 group-data-[collapsible=icon]:items-center py-2 border-t border-primary/5">
         <div className="flex items-center justify-between px-2 group-data-[collapsible=icon]:hidden">
-          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Focus Radio</span>
-          <Music className="h-3 w-3 text-primary animate-pulse" />
+          <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Controles</span>
+          <Music className="h-3 w-3 text-primary/40" />
         </div>
         
-        <div className="flex items-center justify-center gap-1 bg-muted/20 p-1 rounded-xl group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:bg-transparent">
-           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary/60 hover:text-primary hover:bg-primary/5 transition-colors">
+        <div className="flex items-center justify-center gap-1 bg-primary/5 p-1 rounded-xl">
+           <Button variant="ghost" size="icon" className="h-7 w-7 text-primary/60 hover:text-primary transition-colors">
               <SkipBack className="h-4 w-4" />
            </Button>
-           <div className="h-8 w-8 flex items-center justify-center bg-primary/10 rounded-lg group-data-[collapsible=icon]:hidden">
-              <Music className="h-4 w-4 text-primary" />
+           <div className="h-7 w-7 flex items-center justify-center bg-primary/10 rounded-lg group-data-[collapsible=icon]:hidden">
+              <Headphones className="h-3.5 w-3.5 text-primary" />
            </div>
-           <Button variant="ghost" size="icon" className="h-8 w-8 text-primary/60 hover:text-primary hover:bg-primary/5 transition-colors">
+           <Button variant="ghost" size="icon" className="h-7 w-7 text-primary/60 hover:text-primary transition-colors">
               <SkipForward className="h-4 w-4" />
            </Button>
         </div>
@@ -72,7 +60,7 @@ export function FocusMusic({ layout = "dashboard" }: FocusMusicProps) {
     <Card className="border-none shadow-xl bg-slate-900 overflow-hidden rounded-[2rem]">
       <CardHeader className="pb-2 flex flex-row items-center justify-between border-b border-white/5">
         <CardTitle className="text-white text-sm font-black flex items-center gap-2">
-          <Headphones className="h-4 w-4 text-primary" /> MI MÚSICA ACTUAL
+          <Headphones className="h-4 w-4 text-primary" /> MÚSICA DE ENFOQUE
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
