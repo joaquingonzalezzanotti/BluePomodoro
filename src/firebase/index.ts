@@ -8,17 +8,21 @@ import { getFirestore } from 'firebase/firestore'
 
 /**
  * Inicializa Firebase de forma robusta.
- * Evita el error 'app/no-options' prefiriendo la configuración manual
- * sobre la automática cuando no estamos en un entorno de App Hosting.
+ * Evita errores durante el build de Vercel si las variables de entorno no están presentes.
  */
 export function initializeFirebase() {
-  // Si ya hay apps inicializadas, devolvemos los SDKs de la primera.
   if (getApps().length > 0) {
     return getSdks(getApp());
   }
 
-  // Forzamos la inicialización con el objeto de configuración para evitar warnings
-  // en entornos de desarrollo o despliegues en Vercel.
+  // Si no hay API Key (común en el primer build de Vercel), evitamos que crashee
+  if (!firebaseConfig.apiKey) {
+    console.warn("Firebase API Key no encontrada. La app no funcionará hasta que se configuren las variables de entorno en Vercel.");
+    // Retornamos una inicialización mínima que no bloquee el renderizado estático
+    const app = initializeApp({ ...firebaseConfig, apiKey: "placeholder" });
+    return getSdks(app);
+  }
+
   const firebaseApp = initializeApp(firebaseConfig);
   return getSdks(firebaseApp);
 }

@@ -123,7 +123,6 @@ function DashboardContent({
   setWorkMinutes, 
   breakMinutes, 
   setBreakMinutes, 
-  bodyDoublingMessage, 
   signOutAction 
 }: any) {
   return (
