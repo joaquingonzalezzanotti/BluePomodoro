@@ -44,6 +44,7 @@ import { prioritizeTasks } from "@/ai/flows/ai-powered-task-prioritization-flow"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { DevAuthSeeder } from "@/components/dev-auth-seeder"
 
 const DEFAULT_PLAYLIST = "https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKHA6V9KWm?utm_source=generator&theme=0"
 
@@ -68,13 +69,13 @@ export default function FocusFlowDashboard() {
       const userDocRef = doc(db, "usuarios", user.uid)
       setDocumentNonBlocking(userDocRef, {
         id: user.uid,
-        nombre: user.displayName || "Usuario",
+        nombre: user.displayName || userData?.nombre || "Usuario",
         email: user.email,
         puntosTotales: userData?.puntosTotales || 0,
         fechaRegistro: serverTimestamp(),
       }, { merge: true })
     }
-  }, [user, db, userData?.puntosTotales])
+  }, [user, db, userData?.puntosTotales, userData?.nombre])
 
   const tasksQuery = useMemoFirebase(() => {
     if (!db || !user) return null
@@ -191,9 +192,13 @@ export default function FocusFlowDashboard() {
         <p className="text-muted-foreground max-w-sm mb-10 leading-relaxed font-medium">
           El ecosistema definitivo de enfoque profundo impulsado por IA.
         </p>
-        <Button size="lg" onClick={handleLogin} className="gap-3 px-10 py-7 text-lg rounded-2xl shadow-xl shadow-primary/20 hover:shadow-primary/40 transition-all font-bold">
-          <LogIn className="h-5 w-5" /> Empezar ahora
-        </Button>
+        <div className="flex flex-col gap-4">
+          <Button size="lg" onClick={handleLogin} className="gap-3 px-10 py-7 text-lg rounded-2xl shadow-xl shadow-primary/20 hover:shadow-primary/40 transition-all font-bold">
+            <LogIn className="h-5 w-5" /> Entrar con Google
+          </Button>
+          
+          <DevAuthSeeder />
+        </div>
         <Toaster />
       </div>
     )
