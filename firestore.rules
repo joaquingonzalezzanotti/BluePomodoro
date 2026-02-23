@@ -4,17 +4,7 @@ service cloud.firestore {
 
     /**
      * BluePomodoro: Modelo de Seguridad de Firestore
-     * 
-     * Core Philosophy:
-     * Este conjunto de reglas aplica un modelo estricto de propiedad del usuario. La seguridad se basa 
-     * en la identidad verificada de Google y la estructura jerárquica de los datos.
-     * 
-     * Data Structure:
-     * La mayoría de los datos están organizados bajo el nodo raíz `/usuarios/{usuarioId}/`. Esta segregación 
-     * estructural garantiza que los datos privados de un usuario nunca se mezclen con los de otros.
      */
-
-    // --- FUNCIONES DE AYUDA (HELPERS) ---
 
     function isSignedIn() {
       return request.auth != null;
@@ -36,17 +26,12 @@ service cloud.firestore {
       return isExistingOwner(usuarioId) && request.resource.data[fieldName] == resource.data[fieldName];
     }
 
-    // --- REGLAS DE COLECCIONES ---
-
     match /usuarios/{usuarioId} {
       allow get, list: if isOwner(usuarioId);
       allow create: if isValidCreation(usuarioId, 'id');
       allow update: if isValidUpdate(usuarioId, 'id');
       allow delete: if isExistingOwner(usuarioId);
 
-      /**
-       * @description Tareas del usuario.
-       */
       match /tareas/{tareaId} {
         allow get, list: if isOwner(usuarioId);
         allow create: if isValidCreation(usuarioId, 'usuarioId');
@@ -54,18 +39,12 @@ service cloud.firestore {
         allow delete: if isExistingOwner(usuarioId);
       }
 
-      /**
-       * @description Proyectos o materias del usuario.
-       */
       match /proyectos/{proyectoId} {
         allow get, list: if isOwner(usuarioId);
         allow create, update: if isOwner(usuarioId);
         allow delete: if isExistingOwner(usuarioId);
       }
 
-      /**
-       * @description Sesiones Pomodoro.
-       */
       match /sesionesPomodoro/{sesionId} {
         allow get, list: if isOwner(usuarioId);
         allow create: if isValidCreation(usuarioId, 'usuarioId');
@@ -73,19 +52,11 @@ service cloud.firestore {
         allow delete: if isExistingOwner(usuarioId);
       }
 
-      /**
-       * @description Configuraciones de sincronización.
-       */
       match /configuracionesSincronizacionGoogle/{confId} {
         allow get, list: if isOwner(usuarioId);
         allow create, update: if isOwner(usuarioId);
         allow delete: if isExistingOwner(usuarioId);
       }
-    }
-
-    match /logros/{logroId} {
-      allow get, list: if isSignedIn();
-      allow create, update, delete: if false;
     }
   }
 }
