@@ -35,12 +35,12 @@ import { Button } from "@/components/ui/button"
 import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useDoc, initiateAnonymousSignIn } from "@/firebase"
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useToast } from "@/hooks/use-toast"
 import { doc, increment } from "firebase/firestore"
 import { Switch } from "@/components/ui/switch"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { GamifiedProgress } from "@/components/gamified-progress"
+import { Separator } from "@/components/ui/separator"
 
 function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => void, onLoginGuest: () => void }) {
   return (
@@ -66,7 +66,7 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 text-primary text-xs font-black uppercase tracking-widest mb-8 border border-primary/10">
               <Sparkles className="h-3.5 w-3.5" /> La Productividad del Futuro
             </div>
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.95] mb-8 text-slate-900">
+            <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.95] mb-8 text-slate-900">
               Domina tu tiempo, <br />
               <span className="text-primary italic">con claridad mental.</span>
             </h1>
@@ -93,42 +93,6 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
               className="w-full object-cover"
               data-ai-hint="minimalist workspace"
             />
-          </div>
-        </section>
-
-        <section className="py-24 bg-slate-50">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center mb-16 space-y-4">
-              <Badge variant="outline" className="px-4 py-1 text-primary border-primary/20 font-bold uppercase tracking-widest">Características Pro</Badge>
-              <h2 className="text-3xl md:text-5xl font-black">Tu aliado contra el hiperfoco.</h2>
-              <p className="text-slate-500 font-medium max-w-xl mx-auto">Herramientas diseñadas para vencer la procrastinación y la ceguera del tiempo.</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="group p-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-                <div className="h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
-                  <Brain className="h-8 w-8 text-primary" />
-                </div>
-                <h3 className="text-2xl font-black mb-4">IA Task Breakdown</h3>
-                <p className="text-slate-500 leading-relaxed font-medium">No más parálisis por análisis. Nuestra IA desglosa proyectos enormes en pasos accionables de 25 minutos.</p>
-              </div>
-
-              <div className="group p-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-                <div className="h-16 w-16 bg-accent/10 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
-                  <Target className="h-8 w-8 text-accent" />
-                </div>
-                <h3 className="text-2xl font-black mb-4">Focus Analógico</h3>
-                <p className="text-slate-500 leading-relaxed font-medium">Relojes visuales que facilitan el procesamiento del tiempo, evitando la ansiedad de los números digitales.</p>
-              </div>
-
-              <div className="group p-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
-                <div className="h-16 w-16 bg-green-500/10 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
-                  <Users className="h-8 w-8 text-green-600" />
-                </div>
-                <h3 className="text-2xl font-black mb-4">Body Doubling</h3>
-                <p className="text-slate-500 leading-relaxed font-medium">Siente la compañía productiva de otros usuarios enfocados sin distracciones sociales reales.</p>
-              </div>
-            </div>
           </div>
         </section>
       </main>
@@ -164,7 +128,7 @@ function DashboardContent({
 }: any) {
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-slate-50/50 pb-24">
+      <div className="flex min-h-screen w-full bg-slate-50/50 pb-24 overflow-hidden">
         <Sidebar collapsible="icon" className="border-r border-primary/5 bg-white/80 backdrop-blur-xl">
           <SidebarHeader className="p-6">
             <div className="flex items-center gap-3">
@@ -195,13 +159,6 @@ function DashboardContent({
           </SidebarContent>
           <SidebarFooter className="p-4 border-t border-primary/5">
             <div className="flex flex-col gap-1">
-              {bodyDoublingMessage && (
-                <div className="px-3 py-1.5 bg-primary/5 border border-primary/10 rounded-xl animate-in fade-in slide-in-from-bottom-2 duration-500 group-data-[collapsible=icon]:hidden mb-2">
-                  <p className="text-[9px] font-black text-primary/70 flex items-center gap-2 italic">
-                    <Users className="h-3 w-3" /> {bodyDoublingMessage}
-                  </p>
-                </div>
-              )}
               <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-xl group-data-[collapsible=icon]:justify-center">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={user.photoURL || ""} />
@@ -234,22 +191,19 @@ function DashboardContent({
 
           <div className="flex-1 p-8 max-w-7xl mx-auto w-full">
             {activeTab === "dashboard" && (
-              <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
-                {/* Columna Izquierda: Tareas */}
-                <div className="xl:col-span-1 space-y-6">
-                   <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-black">Mi Día</h3>
-                      <Badge variant="secondary" className="bg-primary/5 text-primary">Siguiente</Badge>
-                   </div>
+              <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
+                {/* Tareas */}
+                <div className="xl:col-span-1 space-y-4">
+                   <h3 className="text-sm font-black uppercase tracking-wider text-muted-foreground">Mis Tareas</h3>
                    <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                 </div>
 
-                {/* Centro: Pomodoro (Bento Hero) */}
-                <div className="xl:col-span-2 flex flex-col items-center">
-                  <div className="w-full bg-white rounded-[3rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center animate-in zoom-in-95 duration-500">
+                {/* Pomodoro Central */}
+                <div className="xl:col-span-2 flex flex-col gap-6">
+                  <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center animate-in zoom-in-95 duration-500 min-h-[500px]">
                     {activeTask && (
-                      <div className="mb-4 text-center">
-                        <Badge className="bg-primary/10 text-primary border-none text-[9px] font-black uppercase tracking-widest mb-1">Enfocado en</Badge>
+                      <div className="mb-6 text-center">
+                        <Badge className="bg-primary/10 text-primary border-none text-[10px] font-black uppercase tracking-widest mb-2">Focus Activo</Badge>
                         <h2 className="text-2xl font-black tracking-tight">{activeTask.titulo}</h2>
                       </div>
                     )}
@@ -264,21 +218,13 @@ function DashboardContent({
                       setWorkMinutes={setWorkMinutes}
                       breakMinutes={breakMinutes}
                       setBreakMinutes={setBreakMinutes}
-                      large
                     />
                   </div>
                 </div>
 
-                {/* Columna Derecha: Gamificación */}
+                {/* Progreso y Proyectos */}
                 <div className="xl:col-span-1 space-y-6">
                    <GamifiedProgress />
-                   <div className="p-6 bg-slate-900 rounded-[2.5rem] text-white">
-                      <h4 className="text-xs font-black uppercase text-primary mb-4 flex items-center gap-2">
-                        <Trophy className="h-4 w-4" /> Logro de Hoy
-                      </h4>
-                      <p className="text-lg font-bold">¡Mantén la racha!</p>
-                      <p className="text-[11px] text-slate-400 mt-2">Completa 3 sesiones más para ganar la insignia "Maestro de la Mañana".</p>
-                   </div>
                    <ProjectManager compact />
                 </div>
               </div>
@@ -290,7 +236,7 @@ function DashboardContent({
           </div>
         </main>
         
-        {/* Music Dock Inferior Fijo */}
+        {/* Music Dock Inferior */}
         <div className="fixed bottom-0 left-0 right-0 z-50 px-6 pb-6 pointer-events-none">
           <div className="max-w-4xl mx-auto w-full pointer-events-auto">
             <FocusMusic layout="dock" />
@@ -316,7 +262,6 @@ export default function AppEntry() {
   const [activeTaskId, setActiveTaskId] = React.useState<string | null>(null)
   
   const [isAlarmModalOpen, setIsAlarmModalOpen] = React.useState(false)
-  const [bodyDoublingMessage, setBodyDoublingMessage] = React.useState<string | null>(null)
   const audioRef = React.useRef<HTMLAudioElement | null>(null)
 
   const userRef = useMemoFirebase(() => {
@@ -326,19 +271,6 @@ export default function AppEntry() {
 
   const { data: userData } = useDoc(userRef)
   const isBlocking = userData?.modoEstrictoActivo || false
-
-  React.useEffect(() => {
-    if (!user) return
-    const showMessage = () => {
-      const usersCount = Math.floor(Math.random() * 20) + 12 
-      setBodyDoublingMessage(`${usersCount} personas enfocadas contigo`)
-      setTimeout(() => setBodyDoublingMessage(null), 8000) 
-      const nextInterval = (Math.floor(Math.random() * (15 - 5 + 1)) + 5) * 60 * 1000
-      setTimeout(showMessage, nextInterval)
-    }
-    const initialTimeout = setTimeout(showMessage, 3000)
-    return () => clearTimeout(initialTimeout)
-  }, [user])
 
   React.useEffect(() => {
     let interval: NodeJS.Timeout | null = null
@@ -420,7 +352,6 @@ export default function AppEntry() {
         setWorkMinutes={setWorkMinutes} 
         breakMinutes={breakMinutes} 
         setBreakMinutes={setBreakMinutes} 
-        bodyDoublingMessage={bodyDoublingMessage} 
         signOutAction={handleSignOut} 
       />
 

@@ -5,7 +5,7 @@ import { FirebaseClientProvider } from '@/firebase';
 import { PersistentMusicPlayer } from '@/components/persistent-music-player';
 
 export const metadata: Metadata = {
-  title: 'BluePomodoro - Domina tu Productividad con IA y TDAH Focus',
+  title: 'BluePomodoro - Domina tu Productividad con IA y Focus TDAH',
   description: 'La herramienta definitiva de productividad diseñada para mentes neurodivergentes. Desglose de tareas con IA, técnica Pomodoro gamificada y modo de enfoque profundo sin distracciones.',
   keywords: ['pomodoro', 'IA', 'TDAH', 'productividad', 'gestión de tareas', 'enfoque', 'focus', 'neurodivergente'],
   authors: [{ name: 'BluePomodoro Team' }],
@@ -26,9 +26,9 @@ export const metadata: Metadata = {
     type: 'website',
   },
   icons: {
-    icon: '/favicon.ico?v=1',
-    shortcut: '/favicon.ico?v=1',
-    apple: '/favicon.ico?v=1',
+    icon: '/favicon.ico?v=2',
+    shortcut: '/favicon.ico?v=2',
+    apple: '/favicon.ico?v=2',
   },
 };
 
