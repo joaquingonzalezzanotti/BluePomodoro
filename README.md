@@ -25,4 +25,4 @@ Para que el inicio de sesión con Google funcione en producción:
 - **Priorización Inteligente**: Organiza tu día basándose en niveles de energía y fechas límite.
 
 ## 📝 Licencia
-Este proyecto es parte de un prototipo generado en Firebase Studio.
+Este proyecto es parte de un prototipo generado en Firebase Studio.# BluePomodoroFireBase
