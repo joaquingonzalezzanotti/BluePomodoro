@@ -1,0 +1,165 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * BluePomodoro: Modelo de Seguridad de Firestore
+     * 
+     * Core Philosophy:
+     * Este conjunto de reglas aplica un modelo estricto de propiedad del usuario. La seguridad se basa 
+     * en la identidad verificada de Google y la estructura jerárquica de los datos.
+     * 
+     * Data Structure:
+     * La mayoría de los datos están organizados bajo el nodo raíz `/usuarios/{usuarioId}/`. Esta segregación 
+     * estructural garantiza que los datos privados de un usuario nunca se mezclen con los de otros.
+     * 
+     * Key Security Decisions:
+     * - Propiedad Estricta: Solo el usuario autenticado cuyo UID coincida con el ID del documento o el 
+     *   segmento de la ruta puede leer o escribir sus datos.
+     * - Integridad Relacional: Se valida que los campos de enlace (como 'usuarioId') coincidan con la ruta 
+     *   del documento durante la creación y permanezcan inmutables durante las actualizaciones.
+     * - Acceso Público: Los 'logros' son de solo lectura para todos los usuarios para permitir la 
+     *   visualización de metas disponibles, pero las escrituras están prohibidas (reservadas para procesos administrativos).
+     * 
+     * Denormalization for Authorization:
+     * Se utiliza el patrón de 'Propiedad Basada en la Ruta' y campos internos redundantes para permitir 
+     * validaciones atómicas y rápidas sin necesidad de llamadas costosas a `get()`.
+     */
+
+    // --- FUNCIONES DE AYUDA (HELPERS) ---
+
+    /** Verifica si el usuario está autenticado. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** Verifica si el UID del usuario coincide con el ID proporcionado. */
+    function isOwner(usuarioId) {
+      return isSignedIn() && request.auth.uid == usuarioId;
+    }
+
+    /** Verifica la propiedad y asegura que el documento existe para operaciones de escritura/borrado. */
+    function isExistingOwner(usuarioId) {
+      return isOwner(usuarioId) && resource != null;
+    }
+
+    /** Valida que al crear, el campo de enlace coincida con el usuario autenticado. */
+    function isValidCreation(usuarioId, fieldName) {
+      return isOwner(usuarioId) && request.resource.data[fieldName] == usuarioId;
+    }
+
+    /** Valida que al actualizar, el campo de enlace no haya sido modificado. */
+    function isValidUpdate(usuarioId, fieldName) {
+      return isExistingOwner(usuarioId) && request.resource.data[fieldName] == resource.data[fieldName];
+    }
+
+    // --- REGLAS DE COLECCIONES ---
+
+    /**
+     * @description Documento de perfil de usuario. Vincula la cuenta de Google con el ID de Firebase.
+     * @path /usuarios/{usuarioId}
+     * @allow get, list: si el usuario es el propietario (isOwner(usuarioId)).
+     * @deny create: si el ID del documento no coincide con el UID de auth.
+     * @principle Patrón de Auto-Creación y Propiedad.
+     */
+    match /usuarios/{usuarioId} {
+      allow get, list: if isOwner(usuarioId);
+      allow create: if isValidCreation(usuarioId, 'id');
+      allow update: if isValidUpdate(usuarioId, 'id');
+      allow delete: if isExistingOwner(usuarioId);
+
+      /**
+       * @description Tareas individuales y objetivos del usuario.
+       * @path /usuarios/{usuarioId}/tareas/{tareaId}
+       * @allow create: si usuarioId en datos coincide con el UID.
+       * @principle Validación de integridad de ruta y propiedad.
+       */
+      match /tareas/{tareaId} {
+        allow get, list: if isOwner(usuarioId);
+        allow create: if isValidCreation(usuarioId, 'usuarioId');
+        allow update: if isValidUpdate(usuarioId, 'usuarioId');
+        allow delete: if isExistingOwner(usuarioId);
+      }
+
+      /**
+       * @description Registros de sesiones de enfoque Pomodoro.
+       * @path /usuarios/{usuarioId}/sesionesPomodoro/{sesionId}
+       * @allow list: solo para el propietario de la cuenta.
+       * @principle Segregación estructural por usuario.
+       */
+      match /sesionesPomodoro/{sesionId} {
+        allow get, list: if isOwner(usuarioId);
+        allow create: if isValidCreation(usuarioId, 'usuarioId');
+        allow update: if isValidUpdate(usuarioId, 'usuarioId');
+        allow delete: if isExistingOwner(usuarioId);
+      }
+
+      /**
+       * @description Registros de energía diaria para priorización por IA.
+       * @path /usuarios/{usuarioId}/nivelesEnergiaDiarios/{nivelId}
+       */
+      match /nivelesEnergiaDiarios/{nivelId} {
+        allow get, list: if isOwner(usuarioId);
+        allow create: if isValidCreation(usuarioId, 'usuarioId');
+        allow update: if isValidUpdate(usuarioId, 'usuarioId');
+        allow delete: if isExistingOwner(usuarioId);
+      }
+
+      /**
+       * @description Preferencias de listas de reproducción para música de concentración.
+       * @path /usuarios/{usuarioId}/preferenciasMusicaFoco/{prefId}
+       */
+      match /preferenciasMusicaFoco/{prefId} {
+        allow get, list: if isOwner(usuarioId);
+        allow create: if isValidCreation(usuarioId, 'usuarioId');
+        allow update: if isValidUpdate(usuarioId, 'usuarioId');
+        allow delete: if isExistingOwner(usuarioId);
+      }
+
+      /**
+       * @description Relación entre usuarios y los logros globales que han obtenido.
+       * @path /usuarios/{usuarioId}/logrosObtenidos/{logroUsuarioId}
+       */
+      match /logrosObtenidos/{logroUsuarioId} {
+        allow get, list: if isOwner(usuarioId);
+        allow create: if isValidCreation(usuarioId, 'usuarioId');
+        allow update: if isValidUpdate(usuarioId, 'usuarioId');
+        allow delete: if isExistingOwner(usuarioId);
+      }
+
+      /**
+       * @description URLs que el usuario desea bloquear durante el tiempo de foco.
+       * @path /usuarios/{usuarioId}/urlsBloqueadas/{urlId}
+       */
+      match /urlsBloqueadas/{urlId} {
+        allow get, list: if isOwner(usuarioId);
+        allow create: if isValidCreation(usuarioId, 'usuarioId');
+        allow update: if isValidUpdate(usuarioId, 'usuarioId');
+        allow delete: if isExistingOwner(usuarioId);
+      }
+
+      /**
+       * @description Ajustes de sincronización con Google Calendar y Google Tasks.
+       * @path /usuarios/{usuarioId}/configuracionesSincronizacionGoogle/{confId}
+       */
+      match /configuracionesSincronizacionGoogle/{confId} {
+        allow get, list: if isOwner(usuarioId);
+        allow create: if isValidCreation(usuarioId, 'usuarioId');
+        allow update: if isValidUpdate(usuarioId, 'usuarioId');
+        allow delete: if isExistingOwner(usuarioId);
+      }
+    }
+
+    /**
+     * @description Catálogo global de logros disponibles en BluePomodoro.
+     * @path /logros/{logroId}
+     * @allow get, list: para cualquier usuario autenticado (lectura pública).
+     * @deny create, update, delete: las escrituras están bloqueadas para clientes (requieren Admin).
+     * @principle Lectura pública con escrituras restringidas.
+     */
+    match /logros/{logroId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if false;
+    }
+  }
+}
