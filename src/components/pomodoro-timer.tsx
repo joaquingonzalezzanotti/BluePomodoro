@@ -2,16 +2,21 @@
 "use client"
 
 import * as React from "react"
-import { Timer as TimerIcon, Play, Pause, RotateCcw, Coffee } from "lucide-react"
+import { Timer as TimerIcon, Play, Pause, RotateCcw, Coffee, Trophy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
+import { useFirestore, useUser, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase"
+import { doc, collection, increment, serverTimestamp } from "firebase/firestore"
+import { useToast } from "@/hooks/use-toast"
 
 export function PomodoroTimer() {
   const [timeLeft, setTimeLeft] = React.useState(25 * 60)
   const [isActive, setIsActive] = React.useState(false)
   const [mode, setMode] = React.useState<"work" | "break">("work")
   const [sessionsCompleted, setSessionsCompleted] = React.useState(0)
+  const { user } = useUser()
+  const db = useFirestore()
+  const { toast } = useToast()
 
   const initialTime = mode === "work" ? 25 * 60 : 5 * 60
 
@@ -23,21 +28,54 @@ export function PomodoroTimer() {
         setTimeLeft((prev) => prev - 1)
       }, 1000)
     } else if (timeLeft === 0) {
-      if (mode === "work") {
-        setSessionsCompleted((prev) => prev + 1)
-        setMode("break")
-        setTimeLeft(5 * 60)
-      } else {
-        setMode("work")
-        setTimeLeft(25 * 60)
-      }
-      setIsActive(false)
+      handleSessionEnd()
     }
 
     return () => {
       if (interval) clearInterval(interval)
     }
   }, [isActive, timeLeft, mode])
+
+  const handleSessionEnd = () => {
+    setIsActive(false)
+    if (mode === "work") {
+      setSessionsCompleted((prev) => prev + 1)
+      setMode("break")
+      setTimeLeft(5 * 60)
+      
+      // Registrar sesión y dar puntos si el usuario está logueado
+      if (user && db) {
+        const userRef = doc(db, "usuarios", user.uid)
+        const sesionesRef = collection(db, "usuarios", user.uid, "sesionesPomodoro")
+        
+        // Sumar 100 puntos de XP
+        updateDocumentNonBlocking(userRef, {
+          puntosTotales: increment(100)
+        })
+
+        // Guardar registro de la sesión
+        addDocumentNonBlocking(sesionesRef, {
+          usuarioId: user.uid,
+          tipo: "trabajo",
+          duracionMinutos: 25,
+          fecha: serverTimestamp()
+        })
+
+        toast({
+          title: "¡Sesión Completada!",
+          description: "Has ganado 100 XP. Tómate un respiro.",
+          icon: <Trophy className="h-4 w-4 text-accent" />
+        })
+      }
+    } else {
+      setMode("work")
+      setTimeLeft(25 * 60)
+      toast({
+        title: "Descanso Terminado",
+        description: "¡Es hora de volver a enfocarse!",
+      })
+    }
+  }
 
   const toggleTimer = () => setIsActive(!isActive)
   const resetTimer = () => {
@@ -98,7 +136,7 @@ export function PomodoroTimer() {
           <Button
             size="lg"
             variant={isActive ? "outline" : "default"}
-            className="rounded-full w-14 h-14 p-0"
+            className="rounded-full w-14 h-14 p-0 shadow-lg"
             onClick={toggleTimer}
           >
             {isActive ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}

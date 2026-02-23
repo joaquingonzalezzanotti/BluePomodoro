@@ -8,9 +8,37 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { useFirestore, useUser, useDoc, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase"
+import { doc } from "firebase/firestore"
+import { useToast } from "@/hooks/use-toast"
 
 export function DistractionBlocker() {
-  const [isBlocking, setIsBlocking] = React.useState(false)
+  const { user } = useUser()
+  const db = useFirestore()
+  const { toast } = useToast()
+
+  const userRef = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return doc(db, "usuarios", user.uid)
+  }, [db, user])
+
+  const { data: userData } = useDoc(userRef)
+  const isBlocking = userData?.modoEstrictoActivo || false
+
+  const handleToggleBlocking = (checked: boolean) => {
+    if (!userRef) return
+    
+    updateDocumentNonBlocking(userRef, {
+      modoEstrictoActivo: checked
+    })
+
+    toast({
+      title: checked ? "Escudo Zen Activado" : "Escudo Zen Desactivado",
+      description: checked 
+        ? "Las distracciones han sido bloqueadas. ¡A trabajar!" 
+        : "Has vuelto al modo normal.",
+    })
+  }
 
   return (
     <Card className="w-full bg-card shadow-lg border-none">
@@ -37,12 +65,12 @@ export function DistractionBlocker() {
               <span className="text-[10px] text-muted-foreground">Bloquea Facebook, YouTube, X, Reddit</span>
             </div>
           </div>
-          <Switch checked={isBlocking} onCheckedChange={setIsBlocking} />
+          <Switch checked={isBlocking} onCheckedChange={handleToggleBlocking} />
         </div>
 
         <div className="text-xs space-y-2">
           <div className="flex justify-between text-muted-foreground">
-            <span>Sitios bloqueados</span>
+            <span>Sitios en lista negra</span>
             <span>4 sitios</span>
           </div>
           <div className="flex flex-wrap gap-1">
@@ -52,8 +80,8 @@ export function DistractionBlocker() {
           </div>
         </div>
 
-        <Button variant="outline" size="sm" className="w-full text-xs h-8">
-          <Settings className="h-3 w-3 mr-2" /> Gestionar Lista Negra
+        <Button variant="outline" size="sm" className="w-full text-xs h-8" disabled>
+          <Settings className="h-3 w-3 mr-2" /> Próximamente: Lista Personalizada
         </Button>
       </CardContent>
     </Card>
