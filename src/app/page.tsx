@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -183,7 +184,7 @@ export default function FocusFlowDashboard() {
             <div className="lg:col-span-2 space-y-8">
               <section>
                 <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-2xl font-extrabold tracking-tight">Tu flujo de trabajo</h3>
+                  <h3 className="text-2xl font-extrabold tracking-tight text-foreground">Tu flujo de trabajo</h3>
                   <Button 
                     variant="outline" 
                     size="sm" 
