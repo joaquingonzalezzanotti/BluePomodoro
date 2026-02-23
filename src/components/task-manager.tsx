@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -9,13 +10,12 @@ import {
   Trash2, 
   ChevronDown, 
   ChevronUp, 
-  AlertCircle,
   Zap,
   Calendar
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { aiAssistedTaskBreakdown } from "@/ai/flows/ai-assisted-task-breakdown-flow"
 import { useToast } from "@/hooks/use-toast"
@@ -32,9 +32,9 @@ interface Task {
   id: string
   text: string
   completed: boolean
-  priority: "High" | "Medium" | "Low"
+  priority: "Alta" | "Media" | "Baja"
   deadline: string
-  effort: "High" | "Medium" | "Low"
+  effort: "Alto" | "Medio" | "Bajo"
   subTasks: SubTask[]
   expanded?: boolean
 }
@@ -51,9 +51,9 @@ export function TaskManager() {
       id: Math.random().toString(36).substr(2, 9),
       text: newTaskText,
       completed: false,
-      priority: "Medium",
+      priority: "Media",
       deadline: new Date(Date.now() + 86400000).toISOString().split('T')[0],
-      effort: "Medium",
+      effort: "Medio",
       subTasks: [],
       expanded: false
     }
@@ -67,19 +67,6 @@ export function TaskManager() {
 
   const deleteTask = (taskId: string) => {
     setTasks(tasks.filter(t => t.id !== taskId))
-  }
-
-  const toggleSubTask = (taskId: string, subTaskId: string) => {
-    setTasks(tasks.map(t => {
-      if (t.id === taskId) {
-        const updatedSubTasks = t.subTasks.map(st => 
-          st.id === subTaskId ? { ...st, completed: !st.completed } : st
-        )
-        const allCompleted = updatedSubTasks.every(st => st.completed)
-        return { ...t, subTasks: updatedSubTasks, completed: allCompleted && updatedSubTasks.length > 0 }
-      }
-      return t
-    }))
   }
 
   const breakdownTask = async (taskId: string) => {
@@ -96,9 +83,9 @@ export function TaskManager() {
       }))
       
       setTasks(tasks.map(t => t.id === taskId ? { ...t, subTasks, expanded: true } : t))
-      toast({ title: "Task Broken Down", description: `Added ${subTasks.length} sub-tasks for clarity.` })
+      toast({ title: "Tarea Desglosada", description: `Se añadieron ${subTasks.length} sub-tareas.` })
     } catch (error) {
-      toast({ variant: "destructive", title: "Breakdown Failed", description: "AI could not process this task." })
+      toast({ variant: "destructive", title: "Error", description: "La IA no pudo procesar esta tarea." })
     } finally {
       setIsBreakingDown(null)
     }
@@ -108,20 +95,32 @@ export function TaskManager() {
     setTasks(tasks.map(t => t.id === taskId ? { ...t, expanded: !t.expanded } : t))
   }
 
+  const toggleSubTask = (taskId: string, subTaskId: string) => {
+    setTasks(tasks.map(t => {
+      if (t.id === taskId) {
+        const updatedSubTasks = t.subTasks.map(st => 
+          st.id === subTaskId ? { ...st, completed: !st.completed } : st
+        )
+        return { ...t, subTasks: updatedSubTasks }
+      }
+      return t
+    }))
+  }
+
   return (
     <div className="space-y-6">
       <Card className="border-none shadow-md overflow-hidden bg-white/50 backdrop-blur-sm">
         <CardContent className="pt-6">
           <div className="flex gap-2">
             <Input 
-              placeholder="What are you focusing on today?" 
+              placeholder="¿En qué te vas a enfocar hoy?" 
               value={newTaskText}
               onChange={(e) => setNewTaskText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && addTask()}
               className="bg-white border-primary/20 focus-visible:ring-primary"
             />
             <Button onClick={addTask} className="bg-primary hover:bg-primary/80">
-              <Plus className="h-4 w-4 mr-2" /> Add Task
+              <Plus className="h-4 w-4 mr-2" /> Añadir Tarea
             </Button>
           </div>
         </CardContent>
@@ -146,7 +145,7 @@ export function TaskManager() {
                         {task.text}
                       </h4>
                       <div className="flex items-center gap-2">
-                        <Badge variant={task.priority === "High" ? "destructive" : task.priority === "Medium" ? "default" : "secondary"}>
+                        <Badge variant={task.priority === "Alta" ? "destructive" : task.priority === "Media" ? "default" : "secondary"}>
                           {task.priority}
                         </Badge>
                         <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)} className="h-8 w-8 text-destructive/50 hover:text-destructive">
@@ -160,14 +159,14 @@ export function TaskManager() {
                         <Calendar className="h-3 w-3" /> {task.deadline}
                       </span>
                       <span className="flex items-center gap-1">
-                        <Zap className="h-3 w-3" /> {task.effort} effort
+                        <Zap className="h-3 w-3" /> Esfuerzo {task.effort}
                       </span>
                     </div>
 
                     {task.subTasks.length > 0 && (
                       <div className="mt-2 mb-4">
                         <div className="flex items-center justify-between text-xs mb-1">
-                          <span>Progress</span>
+                          <span>Progreso</span>
                           <span>{Math.round((task.subTasks.filter(s => s.completed).length / task.subTasks.length) * 100)}%</span>
                         </div>
                         <Progress value={(task.subTasks.filter(s => s.completed).length / task.subTasks.length) * 100} className="h-1.5" />
@@ -183,7 +182,7 @@ export function TaskManager() {
                         disabled={isBreakingDown === task.id}
                       >
                         <Sparkles className={`h-3 w-3 ${isBreakingDown === task.id ? "animate-pulse" : ""}`} />
-                        {isBreakingDown === task.id ? "Analyzing..." : "AI Breakdown"}
+                        {isBreakingDown === task.id ? "Analizando..." : "Desglose por IA"}
                       </Button>
                       {task.subTasks.length > 0 && (
                         <Button 
@@ -193,13 +192,13 @@ export function TaskManager() {
                           onClick={() => toggleExpand(task.id)}
                         >
                           {task.expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                          {task.subTasks.length} Steps
+                          {task.subTasks.length} pasos
                         </Button>
                       )}
                     </div>
 
                     {task.expanded && task.subTasks.length > 0 && (
-                      <div className="mt-4 pl-4 border-l-2 border-primary/20 space-y-2 animate-in slide-in-from-top-2 duration-200">
+                      <div className="mt-4 pl-4 border-l-2 border-primary/20 space-y-2">
                         {task.subTasks.map(subTask => (
                           <div key={subTask.id} className="flex items-center gap-2 text-sm py-1">
                             <button onClick={() => toggleSubTask(task.id, subTask.id)}>
@@ -227,7 +226,7 @@ export function TaskManager() {
               <div className="p-4 bg-primary/10 rounded-full mb-4">
                 <Plus className="h-10 w-10 text-primary/40" />
               </div>
-              <p className="text-sm font-medium">No tasks yet. Start your journey by adding one!</p>
+              <p className="text-sm font-medium">No hay tareas. ¡Añade una para empezar!</p>
             </div>
           )}
         </div>

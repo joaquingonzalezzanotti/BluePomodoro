@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -7,9 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
 
 const TRACKS = [
-  { id: 1, name: "Deep Focus Lo-Fi", artist: "FocusFlow Mix", duration: "3:45" },
-  { id: 2, name: "Ambient Rain", artist: "Nature Sounds", duration: "∞" },
-  { id: 3, name: "Piano Concentration", artist: "Classical Flow", duration: "4:12" },
+  { id: 1, name: "Deep Focus Lo-Fi", artist: "Mezcla BluePomodoro", duration: "3:45" },
+  { id: 2, name: "Lluvia Ambiental", artist: "Sonidos de la Naturaleza", duration: "∞" },
+  { id: 3, name: "Concentración Piano", artist: "Flujo Clásico", duration: "4:12" },
 ]
 
 export function FocusMusic() {
@@ -27,7 +28,7 @@ export function FocusMusic() {
       <CardHeader className="pb-2">
         <CardTitle className="text-lg font-bold flex items-center gap-2">
           <Headphones className="h-5 w-5 text-primary" />
-          Focus Music
+          Música de Enfoque
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -70,7 +71,7 @@ export function FocusMusic() {
           </div>
           
           <div className="text-[10px] text-center text-muted-foreground">
-            Integrating with Spotify / Google Music...
+            Integrando con Spotify / YouTube Music...
           </div>
         </div>
       </CardContent>

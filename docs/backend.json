@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Usuario": {
@@ -12,11 +13,11 @@
         },
         "googleAccountId": {
           "type": "string",
-          "description": "Identificador externo de la cuenta de Google del usuario. (Relación: Google 1:1 Usuario)"
+          "description": "Identificador externo de la cuenta de Google del usuario."
         },
         "nombre": {
           "type": "string",
-          "description": "Nombre del usuario, posiblemente obtenido de la cuenta de Google."
+          "description": "Nombre del usuario."
         },
         "email": {
           "type": "string",
@@ -25,20 +26,20 @@
         },
         "preferenciasIdioma": {
           "type": "string",
-          "description": "Idioma preferido del usuario para la interfaz de la aplicación (ej. 'es', 'en')."
+          "description": "Idioma preferido del usuario."
         },
         "zonaHoraria": {
           "type": "string",
-          "description": "Zona horaria del usuario para la correcta gestión de fechas y plazos (ej. 'America/Mexico_City')."
+          "description": "Zona horaria del usuario."
         },
         "fechaRegistro": {
           "type": "string",
-          "description": "Marca de tiempo de cuando el usuario se registró en la aplicación.",
+          "description": "Marca de tiempo de cuando el usuario se registró.",
           "format": "date-time"
         },
         "puntosTotales": {
           "type": "number",
-          "description": "Puntos acumulados por el usuario para la gamificación."
+          "description": "Puntos acumulados."
         }
       },
       "required": [
@@ -64,369 +65,52 @@
         },
         "usuarioId": {
           "type": "string",
-          "description": "Referencia al usuario propietario de la tarea. (Relación: Usuario 1:N Tarea)"
+          "description": "Referencia al usuario propietario de la tarea."
         },
         "titulo": {
           "type": "string",
-          "description": "Título breve y descriptivo de la tarea."
+          "description": "Título de la tarea."
         },
         "descripcion": {
           "type": "string",
-          "description": "Descripción detallada de la tarea."
+          "description": "Descripción de la tarea."
         },
         "fechaVencimiento": {
           "type": "string",
-          "description": "Fecha y hora límite para la finalización de la tarea.",
+          "description": "Fecha límite.",
           "format": "date-time"
         },
         "esfuerzoEstimadoPomodoros": {
           "type": "number",
-          "description": "Número estimado de sesiones Pomodoro necesarias para completar la tarea."
+          "description": "Sesiones estimadas."
         },
         "prioridad": {
           "type": "string",
-          "description": "Nivel de prioridad de la tarea (ej. 'Alta', 'Media', 'Baja', 'Crítica')."
-        },
-        "nivelEnergiaRequerido": {
-          "type": "string",
-          "description": "Nivel de energía recomendado para abordar esta tarea (ej. 'Bajo', 'Medio', 'Alto'). Utilizado por la herramienta de priorización de IA."
+          "description": "Prioridad (Alta, Media, Baja)."
         },
         "estado": {
           "type": "string",
-          "description": "Estado actual de la tarea (ej. 'Pendiente', 'En Progreso', 'Completada', 'Archivada')."
+          "description": "Estado actual (Pendiente, Completada)."
         },
         "fechaCreacion": {
           "type": "string",
-          "description": "Marca de tiempo de cuando se creó la tarea.",
+          "description": "Fecha de creación.",
           "format": "date-time"
-        },
-        "fechaCompletado": {
-          "type": "string",
-          "description": "Marca de tiempo de cuando se completó la tarea.",
-          "format": "date-time"
-        },
-        "esSubTareaDeId": {
-          "type": "string",
-          "description": "Referencia a la tarea principal si esta es una sub-tarea. (Relación: Tarea 1:N Tarea (auto-referencia))"
-        },
-        "googleTaskId": {
-          "type": "string",
-          "description": "Identificador de la tarea correspondiente en Google Tasks, si está sincronizada. (Relación: Google Tasks 1:1 Tarea)"
-        },
-        "googleEventId": {
-          "type": "string",
-          "description": "Identificador del evento correspondiente en Google Calendar, si está sincronizado. (Relación: Google Calendar 1:1 Tarea)"
         }
       },
       "required": [
         "id",
         "usuarioId",
         "titulo",
-        "descripcion",
         "prioridad",
         "estado",
         "fechaCreacion"
-      ]
-    },
-    "SesionPomodoro": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "SesionPomodoro",
-      "type": "object",
-      "description": "Registra una sesión individual del método Pomodoro realizada por un usuario.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Identificador único para la sesión Pomodoro."
-        },
-        "usuarioId": {
-          "type": "string",
-          "description": "Referencia al usuario que realizó la sesión. (Relación: Usuario 1:N SesionPomodoro)"
-        },
-        "tareaId": {
-          "type": "string",
-          "description": "Referencia a la tarea a la que se dedicó la sesión Pomodoro. (Relación: Tarea 1:N SesionPomodoro)"
-        },
-        "tipo": {
-          "type": "string",
-          "description": "Tipo de sesión (ej. 'Foco', 'Descanso Corto', 'Descanso Largo')."
-        },
-        "duracionMinutos": {
-          "type": "number",
-          "description": "Duración en minutos de la sesión."
-        },
-        "fechaInicio": {
-          "type": "string",
-          "description": "Marca de tiempo de cuando comenzó la sesión."
-        },
-        "fechaFin": {
-          "type": "string",
-          "description": "Marca de tiempo de cuando finalizó la sesión."
-        },
-        "completada": {
-          "type": "boolean",
-          "description": "Indica si la sesión se completó satisfactoriamente."
-        },
-        "interrumpida": {
-          "type": "boolean",
-          "description": "Indica si la sesión fue interrumpida antes de su finalización."
-        }
-      },
-      "required": [
-        "id",
-        "usuarioId",
-        "tipo",
-        "duracionMinutos",
-        "fechaInicio",
-        "fechaFin",
-        "completada",
-        "interrumpida"
-      ]
-    },
-    "NivelEnergiaDiario": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "NivelEnergiaDiario",
-      "type": "object",
-      "description": "Permite al usuario registrar su nivel de energía para un día específico, útil para la priorización de tareas por IA.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Identificador único para el registro del nivel de energía."
-        },
-        "usuarioId": {
-          "type": "string",
-          "description": "Referencia al usuario que registró el nivel de energía. (Relación: Usuario 1:N NivelEnergiaDiario)"
-        },
-        "fecha": {
-          "type": "string",
-          "description": "Fecha para la cual se registra el nivel de energía.",
-          "format": "date"
-        },
-        "nivel": {
-          "type": "number",
-          "description": "Nivel de energía reportado por el usuario (ej. una escala de 1 a 5)."
-        },
-        "observaciones": {
-          "type": "string",
-          "description": "Notas adicionales sobre el nivel de energía o factores influyentes."
-        },
-        "fechaRegistro": {
-          "type": "string",
-          "description": "Marca de tiempo de cuando se registró este nivel de energía.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "usuarioId",
-        "fecha",
-        "nivel",
-        "fechaRegistro"
-      ]
-    },
-    "PreferenciaMusicaFoco": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "PreferenciaMusicaFoco",
-      "type": "object",
-      "description": "Almacena las preferencias del usuario para la música de concentración, incluyendo la integración con servicios de streaming.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Identificador único para la preferencia de música de foco."
-        },
-        "usuarioId": {
-          "type": "string",
-          "description": "Referencia al usuario propietario de esta preferencia. (Relación: Usuario 1:N PreferenciaMusicaFoco)"
-        },
-        "nombrePlaylist": {
-          "type": "string",
-          "description": "Nombre de la playlist o fuente de música."
-        },
-        "urlPlaylist": {
-          "type": "string",
-          "description": "URL o URI de la playlist en el servicio de streaming o ruta local.",
-          "format": "uri"
-        },
-        "tipoServicio": {
-          "type": "string",
-          "description": "Tipo de servicio de streaming de música (ej. 'Spotify', 'YouTube Music', 'Local', 'Ninguno')."
-        },
-        "esActiva": {
-          "type": "boolean",
-          "description": "Indica si esta es la preferencia de música de foco actualmente activa para el usuario."
-        },
-        "volumen": {
-          "type": "number",
-          "description": "Volumen preferido para la música de foco (escala 0-100)."
-        }
-      },
-      "required": [
-        "id",
-        "usuarioId",
-        "nombrePlaylist",
-        "tipoServicio",
-        "esActiva"
-      ]
-    },
-    "Logro": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Logro",
-      "type": "object",
-      "description": "Define un logro o una insignia que un usuario puede obtener mediante la gamificación.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Identificador único para el logro."
-        },
-        "nombre": {
-          "type": "string",
-          "description": "Nombre del logro (ej. 'Maestro Pomodoro')."
-        },
-        "descripcion": {
-          "type": "string",
-          "description": "Descripción de cómo se obtiene el logro y su significado."
-        },
-        "criterio": {
-          "type": "string",
-          "description": "Criterio técnico o regla para desbloquear el logro (ej. 'Completar 100 sesiones Pomodoro')."
-        },
-        "puntosRecompensa": {
-          "type": "number",
-          "description": "Puntos que se otorgan al usuario al conseguir este logro."
-        },
-        "iconoUrl": {
-          "type": "string",
-          "description": "URL a la imagen del icono o insignia del logro.",
-          "format": "uri"
-        }
-      },
-      "required": [
-        "id",
-        "nombre",
-        "descripcion",
-        "criterio",
-        "puntosRecompensa"
-      ]
-    },
-    "LogroUsuario": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "LogroUsuario",
-      "type": "object",
-      "description": "Registra que un usuario específico ha obtenido un logro particular.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Identificador único para la instancia de logro de usuario."
-        },
-        "usuarioId": {
-          "type": "string",
-          "description": "Referencia al usuario que obtuvo el logro. (Relación: Usuario N:N Logro)"
-        },
-        "logroId": {
-          "type": "string",
-          "description": "Referencia al logro que fue obtenido. (Relación: Logro N:N Usuario)"
-        },
-        "fechaObtencion": {
-          "type": "string",
-          "description": "Marca de tiempo de cuando el usuario obtuvo el logro.",
-          "format": "date-time"
-        }
-      },
-      "required": [
-        "id",
-        "usuarioId",
-        "logroId",
-        "fechaObtencion"
-      ]
-    },
-    "UrlBloqueada": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "UrlBloqueada",
-      "type": "object",
-      "description": "Almacena URLs que el usuario desea bloquear temporalmente para evitar distracciones.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Identificador único para la URL bloqueada."
-        },
-        "usuarioId": {
-          "type": "string",
-          "description": "Referencia al usuario que configuró esta URL para ser bloqueada. (Relación: Usuario 1:N UrlBloqueada)"
-        },
-        "url": {
-          "type": "string",
-          "description": "La URL a ser bloqueada (ej. 'www.facebook.com').",
-          "format": "uri"
-        },
-        "fechaAdicion": {
-          "type": "string",
-          "description": "Marca de tiempo de cuando se añadió la URL a la lista de bloqueo.",
-          "format": "date-time"
-        },
-        "estaActiva": {
-          "type": "boolean",
-          "description": "Indica si el bloqueo de esta URL está actualmente activo para el usuario."
-        }
-      },
-      "required": [
-        "id",
-        "usuarioId",
-        "url",
-        "fechaAdicion",
-        "estaActiva"
-      ]
-    },
-    "ConfiguracionSincronizacionGoogle": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "ConfiguracionSincronizacionGoogle",
-      "type": "object",
-      "description": "Almacena la configuración y el estado de sincronización con los servicios de Google (Calendar, Tasks).",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Identificador único para esta configuración de sincronización."
-        },
-        "usuarioId": {
-          "type": "string",
-          "description": "Referencia al usuario propietario de esta configuración. (Relación: Usuario 1:N ConfiguracionSincronizacionGoogle)"
-        },
-        "tipoServicio": {
-          "type": "string",
-          "description": "Tipo de servicio de Google con el que se sincroniza (ej. 'Calendar', 'Tasks')."
-        },
-        "lastSyncToken": {
-          "type": "string",
-          "description": "Token utilizado por la API de Google para realizar sincronizaciones incrementales."
-        },
-        "lastSyncDateTime": {
-          "type": "string",
-          "description": "Marca de tiempo de la última sincronización exitosa con el servicio de Google.",
-          "format": "date-time"
-        },
-        "calendarId": {
-          "type": "string",
-          "description": "ID del calendario de Google específico con el que se sincronizan las tareas/eventos."
-        },
-        "taskListId": {
-          "type": "string",
-          "description": "ID de la lista de tareas de Google específica con la que se sincronizan las tareas."
-        },
-        "sincronizacionActiva": {
-          "type": "boolean",
-          "description": "Indica si la sincronización para este servicio está actualmente activa para el usuario."
-        }
-      },
-      "required": [
-        "id",
-        "usuarioId",
-        "tipoServicio",
-        "sincronizacionActiva"
       ]
     }
   },
   "auth": {
     "providers": [
-      "password",
-      "anonymous"
+      "google.com"
     ]
   },
   "firestore": {
@@ -438,11 +122,11 @@
           "schema": {
             "$ref": "#/backend/entities/Usuario"
           },
-          "description": "Documento raíz para un usuario. Su ID (`{usuarioId}`) debe coincidir con el 'uid' de Firebase Authentication. Contiene `googleAccountId` para vinculación con Google.",
+          "description": "Perfil de usuario.",
           "params": [
             {
               "name": "usuarioId",
-              "description": "El identificador único del usuario, que coincide con el 'uid' de Firebase Authentication."
+              "description": "ID del usuario."
             }
           ]
         }
@@ -454,156 +138,19 @@
           "schema": {
             "$ref": "#/backend/entities/Tarea"
           },
-          "description": "Colección de tareas específicas de un usuario. El `usuarioId` en el documento debe coincidir con el `{usuarioId}` de la ruta para asegurar la propiedad. Incluye `esSubTareaDeId` para tareas anidadas.",
+          "description": "Tareas del usuario.",
           "params": [
             {
               "name": "usuarioId",
-              "description": "El identificador único del usuario propietario de la tarea."
+              "description": "ID del usuario."
             },
             {
               "name": "tareaId",
-              "description": "El identificador único de la tarea."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/usuarios/{usuarioId}/sesionesPomodoro/{sesionPomodoroId}",
-        "definition": {
-          "entityName": "SesionPomodoro",
-          "schema": {
-            "$ref": "#/backend/entities/SesionPomodoro"
-          },
-          "description": "Colección de registros de las sesiones Pomodoro completadas por un usuario. El `usuarioId` en el documento debe coincidir con el `{usuarioId}` de la ruta.",
-          "params": [
-            {
-              "name": "usuarioId",
-              "description": "El identificador único del usuario que realizó la sesión Pomodoro."
-            },
-            {
-              "name": "sesionPomodoroId",
-              "description": "El identificador único de la sesión Pomodoro."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/usuarios/{usuarioId}/nivelesEnergiaDiarios/{nivelEnergiaDiarioId}",
-        "definition": {
-          "entityName": "NivelEnergiaDiario",
-          "schema": {
-            "$ref": "#/backend/entities/NivelEnergiaDiario"
-          },
-          "description": "Colección de registros diarios del nivel de energía del usuario, utilizado para la priorización de tareas por IA. El `usuarioId` en el documento debe coincidir con el `{usuarioId}` de la ruta.",
-          "params": [
-            {
-              "name": "usuarioId",
-              "description": "El identificador único del usuario que registró el nivel de energía."
-            },
-            {
-              "name": "nivelEnergiaDiarioId",
-              "description": "El identificador único del registro de nivel de energía diario."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/usuarios/{usuarioId}/preferenciasMusicaFoco/{preferenciaMusicaFocoId}",
-        "definition": {
-          "entityName": "PreferenciaMusicaFoco",
-          "schema": {
-            "$ref": "#/backend/entities/PreferenciaMusicaFoco"
-          },
-          "description": "Colección de preferencias de música para el foco de un usuario. El `usuarioId` en el documento debe coincidir con el `{usuarioId}` de la ruta.",
-          "params": [
-            {
-              "name": "usuarioId",
-              "description": "El identificador único del usuario propietario de la preferencia de música."
-            },
-            {
-              "name": "preferenciaMusicaFocoId",
-              "description": "El identificador único de la preferencia de música de foco."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/logros/{logroId}",
-        "definition": {
-          "entityName": "Logro",
-          "schema": {
-            "$ref": "#/backend/entities/Logro"
-          },
-          "description": "Colección de definiciones globales de los logros disponibles en la aplicación. Son accesibles para todos los usuarios (lectura) y solo modificables por administradores.",
-          "params": [
-            {
-              "name": "logroId",
-              "description": "El identificador único del logro."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/usuarios/{usuarioId}/logrosObtenidos/{logroUsuarioId}",
-        "definition": {
-          "entityName": "LogroUsuario",
-          "schema": {
-            "$ref": "#/backend/entities/LogroUsuario"
-          },
-          "description": "Colección que registra los logros obtenidos por un usuario específico. El `usuarioId` en el documento debe coincidir con el `{usuarioId}` de la ruta. Incluye `logroId` para referenciar la definición global del logro.",
-          "params": [
-            {
-              "name": "usuarioId",
-              "description": "El identificador único del usuario que obtuvo el logro."
-            },
-            {
-              "name": "logroUsuarioId",
-              "description": "El identificador único del registro de logro de usuario."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/usuarios/{usuarioId}/urlsBloqueadas/{urlBloqueadaId}",
-        "definition": {
-          "entityName": "UrlBloqueada",
-          "schema": {
-            "$ref": "#/backend/entities/UrlBloqueada"
-          },
-          "description": "Colección de URLs que un usuario ha decidido bloquear para evitar distracciones. El `usuarioId` en el documento debe coincidir con el `{usuarioId}` de la ruta.",
-          "params": [
-            {
-              "name": "usuarioId",
-              "description": "El identificador único del usuario que configuró la URL bloqueada."
-            },
-            {
-              "name": "urlBloqueadaId",
-              "description": "El identificador único de la URL bloqueada."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/usuarios/{usuarioId}/configuracionesSincronizacionGoogle/{configuracionSincronizacionGoogleId}",
-        "definition": {
-          "entityName": "ConfiguracionSincronizacionGoogle",
-          "schema": {
-            "$ref": "#/backend/entities/ConfiguracionSincronizacionGoogle"
-          },
-          "description": "Colección de configuraciones de sincronización con servicios de Google para un usuario. El `usuarioId` en el documento debe coincidir con el `{usuarioId}` de la ruta.",
-          "params": [
-            {
-              "name": "usuarioId",
-              "description": "El identificador único del usuario propietario de esta configuración de sincronización."
-            },
-            {
-              "name": "configuracionSincronizacionGoogleId",
-              "description": "El identificador único de la configuración de sincronización de Google."
+              "description": "ID de la tarea."
             }
           ]
         }
       }
-    ],
-    "reasoning": "La estructura de datos de Firestore está diseñada siguiendo principios clave para asegurar su escalabilidad, seguridad y facilidad de depuración para la aplicación BluePomodoro. La estrategia principal se centra en la **Independencia de Autorización** mediante la desnormalización y la **Segregación Estructural** de datos. Todas las colecciones específicas de usuario están anidadas bajo un documento de usuario raíz, como por ejemplo `/usuarios/{usuarioId}/tareas/{tareaId}`. Esto asegura que todas las reglas de seguridad puedan verificar la propiedad (`request.auth.uid == {usuarioId}`) directamente desde la ruta o el documento, eliminando la necesidad de `get()` para el documento padre. Esta aproximación mejora la atomicidad de las operaciones y la previsibilidad de las reglas.\n\nPara satisfacer el principio de **Autorización Independiente**, cada documento en las subcolecciones de usuario (como Tareas, Sesiones Pomodoro, Niveles de Energía, etc.) lleva implícito el `usuarioId` en su ruta (`/usuarios/{usuarioId}/...`). Además, el esquema de cada entidad también incluye explícitamente el campo `usuarioId`. Esta redundancia es crucial: permite que las reglas de seguridad validen rápidamente la propiedad (`request.auth.uid == usuarioId`) sin realizar lecturas adicionales, lo que simplifica enormemente las reglas y reduce la complejidad de la autorización. Por ejemplo, al crear una nueva Tarea, la regla de seguridad puede verificar que `request.auth.uid` coincide con el `{usuarioId}` de la ruta y con el `usuarioId` dentro de los datos que se están escribiendo (`request.resource.data.usuarioId`), garantizando que un usuario solo pueda escribir tareas para sí mismo de manera atómica.\n\nEn cuanto a las **Consultas Autorizadas y Predictibles (QAPs)**, la estructura adoptada facilita enormemente su cumplimiento:\n1.  **Segregación Estructural:** Al anidar todos los datos específicos de un usuario bajo `/usuarios/{usuarioId}/`, se garantiza que todas las lecturas y escrituras dentro de estas subcolecciones siempre se refieren al usuario autenticado. No se mezclan datos de diferentes usuarios o con diferentes posturas de seguridad en la misma colección lógica.\n2.  **Propiedad Basada en la Ruta:** Cuando un usuario autenticado realiza una operación de `list` en una de sus subcolecciones (ej. `/usuarios/{request.auth.uid}/tareas`), las reglas de seguridad pueden validar que el `{usuarioId}` en la ruta coincide con `request.auth.uid`. Esto significa que el cliente solo puede solicitar una lista de sus propias tareas, y el sistema de reglas de seguridad automáticamente aplica esta restricción, evitando que una consulta de lista actúe como un filtro sobre datos a los que el usuario no debería tener acceso. No hay datos que requieran filtrado posterior a la lectura en el cliente, lo cual es fundamental para las QAPs.\n3.  **Datos Globales:** La colección `/logros` se gestiona por separado, siendo de lectura pública y escritura restringida (ej. para administradores). Esto evita la mezcla de datos globales con datos de usuario y permite definir reglas de acceso claras y distintas para cada tipo de información.\n\nEn resumen, este diseño prioriza la seguridad y la depurabilidad al hacer que la propiedad y la autorización sean explícitas en la estructura de la base de datos, eliminando las dependencias jerárquicas en las reglas y asegurando que las operaciones de lista sean inherentemente seguras."
+    ]
   }
 }

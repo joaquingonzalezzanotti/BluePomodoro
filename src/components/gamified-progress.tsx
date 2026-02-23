@@ -1,19 +1,19 @@
+
 "use client"
 
 import * as React from "react"
 import { Trophy, Medal, Flame, Star, TrendingUp, Award } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Badge } from "@/components/ui/badge"
 
 const BADGES = [
-  { id: 1, name: "Early Bird", icon: <Star className="h-4 w-4" />, color: "bg-blue-100 text-blue-600" },
-  { id: 2, name: "Deep Focus", icon: <Flame className="h-4 w-4" />, color: "bg-orange-100 text-orange-600" },
-  { id: 3, name: "Consistency", icon: <Award className="h-4 w-4" />, color: "bg-purple-100 text-purple-600" },
+  { id: 1, name: "Madrugador", icon: <Star className="h-4 w-4" />, color: "bg-blue-100 text-blue-600" },
+  { id: 2, name: "Enfoque Profundo", icon: <Flame className="h-4 w-4" />, color: "bg-orange-100 text-orange-600" },
+  { id: 3, name: "Consistencia", icon: <Award className="h-4 w-4" />, color: "bg-purple-100 text-purple-600" },
 ]
 
 export function GamifiedProgress() {
-  const [points, setPoints] = React.useState(1250)
+  const points = 1250
   const nextLevel = 2000
   const progress = (points / nextLevel) * 100
 
@@ -22,14 +22,14 @@ export function GamifiedProgress() {
       <CardHeader>
         <CardTitle className="text-xl font-bold flex items-center gap-2">
           <Trophy className="h-6 w-6 text-accent" />
-          My Progress
+          Mi Progreso
         </CardTitle>
-        <CardDescription>Level 4: Master Focus</CardDescription>
+        <CardDescription>Nivel 4: Maestro del Enfoque</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
           <div className="flex justify-between text-sm font-medium">
-            <span>Experience Points (XP)</span>
+            <span>Puntos de Experiencia (XP)</span>
             <span>{points} / {nextLevel}</span>
           </div>
           <Progress value={progress} className="h-2" />
@@ -41,7 +41,7 @@ export function GamifiedProgress() {
               <TrendingUp className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Productivity</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Productividad</p>
               <p className="text-lg font-bold">+15%</p>
             </div>
           </div>
@@ -50,8 +50,8 @@ export function GamifiedProgress() {
               <Flame className="h-5 w-5 text-accent" />
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Daily Streak</p>
-              <p className="text-lg font-bold">7 Days</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Racha Diaria</p>
+              <p className="text-lg font-bold">7 Días</p>
             </div>
           </div>
         </div>
@@ -59,7 +59,7 @@ export function GamifiedProgress() {
         <div className="space-y-3">
           <h4 className="text-sm font-bold flex items-center gap-2">
             <Medal className="h-4 w-4 text-primary" />
-            Recent Badges
+            Insignias Recientes
           </h4>
           <div className="flex gap-2">
             {BADGES.map(badge => (

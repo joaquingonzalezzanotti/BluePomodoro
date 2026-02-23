@@ -1,7 +1,8 @@
+
 "use client"
 
 import * as React from "react"
-import { Shield, ShieldAlert, Lock, Unlock, Settings } from "lucide-react"
+import { Shield, Lock, Unlock, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
@@ -17,14 +18,14 @@ export function DistractionBlocker() {
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-bold flex items-center gap-2">
             <Shield className="h-5 w-5 text-primary" />
-            Zen Shield
+            Escudo Zen
           </CardTitle>
           <Badge variant={isBlocking ? "default" : "secondary"}>
-            {isBlocking ? "ACTIVE" : "INACTIVE"}
+            {isBlocking ? "ACTIVO" : "INACTIVO"}
           </Badge>
         </div>
         <CardDescription>
-          Temporarily block distracting sites to maintain deep focus.
+          Bloquea sitios distractores para mantener el enfoque profundo.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -32,8 +33,8 @@ export function DistractionBlocker() {
           <div className="flex items-center gap-3">
             {isBlocking ? <Lock className="h-4 w-4 text-primary" /> : <Unlock className="h-4 w-4 text-muted-foreground" />}
             <div className="flex flex-col">
-              <Label className="text-sm font-semibold">Strict Focus Mode</Label>
-              <span className="text-[10px] text-muted-foreground">Blocks Facebook, YouTube, X, Reddit</span>
+              <Label className="text-sm font-semibold">Modo Enfoque Estricto</Label>
+              <span className="text-[10px] text-muted-foreground">Bloquea Facebook, YouTube, X, Reddit</span>
             </div>
           </div>
           <Switch checked={isBlocking} onCheckedChange={setIsBlocking} />
@@ -41,8 +42,8 @@ export function DistractionBlocker() {
 
         <div className="text-xs space-y-2">
           <div className="flex justify-between text-muted-foreground">
-            <span>Blocked sites</span>
-            <span>4 sites</span>
+            <span>Sitios bloqueados</span>
+            <span>4 sitios</span>
           </div>
           <div className="flex flex-wrap gap-1">
             {["facebook.com", "youtube.com", "twitter.com", "reddit.com"].map(site => (
@@ -52,7 +53,7 @@ export function DistractionBlocker() {
         </div>
 
         <Button variant="outline" size="sm" className="w-full text-xs h-8">
-          <Settings className="h-3 w-3 mr-2" /> Manage Blacklist
+          <Settings className="h-3 w-3 mr-2" /> Gestionar Lista Negra
         </Button>
       </CardContent>
     </Card>

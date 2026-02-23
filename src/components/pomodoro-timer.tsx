@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -58,7 +59,7 @@ export function PomodoroTimer() {
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-bold flex items-center gap-2">
             {mode === "work" ? <TimerIcon className="h-5 w-5 text-primary" /> : <Coffee className="h-5 w-5 text-accent" />}
-            {mode === "work" ? "Deep Focus Session" : "Refreshing Break"}
+            {mode === "work" ? "Sesión de Enfoque" : "Descanso Relajante"}
           </CardTitle>
           <span className="text-xs font-semibold px-2 py-1 bg-primary/20 rounded-full text-primary">
             Sprints: {sessionsCompleted}
