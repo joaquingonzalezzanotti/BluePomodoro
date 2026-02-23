@@ -80,6 +80,10 @@ export default function FocusFlowDashboard() {
 
   const handleLogin = () => {
     const provider = new GoogleAuthProvider()
+    // Añadimos los permisos necesarios para Google Calendar y Google Tasks
+    provider.addScope('https://www.googleapis.com/auth/calendar.readonly')
+    provider.addScope('https://www.googleapis.com/auth/tasks.readonly')
+    
     signInWithPopup(auth, provider).catch((error: any) => {
       toast({
         variant: "destructive",
