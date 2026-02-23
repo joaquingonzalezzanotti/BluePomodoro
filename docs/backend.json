@@ -41,6 +41,17 @@
         "fechaCreacion": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "nombre", "tipo"]
+    },
+    "SesionPomodoro": {
+      "title": "Sesión Pomodoro",
+      "type": "object",
+      "description": "Registro de una sesión de estudio completada.",
+      "properties": {
+        "usuarioId": { "type": "string" },
+        "tipo": { "type": "string", "enum": ["trabajo", "descanso"] },
+        "duracionMinutos": { "type": "number" },
+        "fecha": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -58,6 +69,10 @@
     "/usuarios/{usuarioId}/proyectos/{proyectoId}": {
       "schema": { "$ref": "#/entities/Proyecto" },
       "description": "Colección de proyectos/materias del usuario."
+    },
+    "/usuarios/{usuarioId}/sesionesPomodoro/{sesionId}": {
+      "schema": { "$ref": "#/entities/SesionPomodoro" },
+      "description": "Historial de sesiones pomodoro."
     }
   }
 }

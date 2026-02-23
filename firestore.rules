@@ -4,6 +4,7 @@ service cloud.firestore {
 
     /**
      * BluePomodoro: Modelo de Seguridad de Firestore
+     * Acceso basado en la propiedad del documento (UID del usuario).
      */
 
     function isSignedIn() {
@@ -14,48 +15,29 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == usuarioId;
     }
 
-    function isExistingOwner(usuarioId) {
-      return isOwner(usuarioId) && resource != null;
-    }
-
-    function isValidCreation(usuarioId, fieldName) {
-      return isOwner(usuarioId) && request.resource.data[fieldName] == usuarioId;
-    }
-
-    function isValidUpdate(usuarioId, fieldName) {
-      return isExistingOwner(usuarioId) && request.resource.data[fieldName] == resource.data[fieldName];
-    }
-
+    // Reglas para la colección de usuarios y sus subcolecciones
     match /usuarios/{usuarioId} {
-      allow get, list: if isOwner(usuarioId);
-      allow create: if isValidCreation(usuarioId, 'id');
-      allow update: if isValidUpdate(usuarioId, 'id');
-      allow delete: if isExistingOwner(usuarioId);
+      // El usuario solo puede leer y escribir su propio perfil
+      allow read, write: if isOwner(usuarioId);
 
+      // Reglas para tareas
       match /tareas/{tareaId} {
-        allow get, list: if isOwner(usuarioId);
-        allow create: if isValidCreation(usuarioId, 'usuarioId');
-        allow update: if isValidUpdate(usuarioId, 'usuarioId');
-        allow delete: if isExistingOwner(usuarioId);
+        allow read, write: if isOwner(usuarioId);
       }
 
+      // Reglas para proyectos/materias
       match /proyectos/{proyectoId} {
-        allow get, list: if isOwner(usuarioId);
-        allow create, update: if isOwner(usuarioId);
-        allow delete: if isExistingOwner(usuarioId);
+        allow read, write: if isOwner(usuarioId);
       }
 
+      // Reglas para sesiones de pomodoro registradas
       match /sesionesPomodoro/{sesionId} {
-        allow get, list: if isOwner(usuarioId);
-        allow create: if isValidCreation(usuarioId, 'usuarioId');
-        allow update: if isValidUpdate(usuarioId, 'usuarioId');
-        allow delete: if isExistingOwner(usuarioId);
+        allow read, write: if isOwner(usuarioId);
       }
 
+      // Reglas para configuración de sincronización
       match /configuracionesSincronizacionGoogle/{confId} {
-        allow get, list: if isOwner(usuarioId);
-        allow create, update: if isOwner(usuarioId);
-        allow delete: if isExistingOwner(usuarioId);
+        allow read, write: if isOwner(usuarioId);
       }
     }
   }
