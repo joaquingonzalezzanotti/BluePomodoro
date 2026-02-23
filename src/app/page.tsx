@@ -22,7 +22,9 @@ import {
   Brain,
   ShieldCheck,
   Music,
-  Trophy
+  Trophy,
+  ArrowRight,
+  Zap
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -48,84 +50,157 @@ import { Badge } from "@/components/ui/badge"
 
 function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => void, onLoginGuest: () => void }) {
   return (
-    <div className="min-h-screen bg-white text-slate-900 selection:bg-primary/20">
+    <div className="min-h-screen bg-white text-slate-900 overflow-x-hidden">
+      {/* Header / Nav */}
       <nav className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-md border-b border-slate-100 h-20 flex items-center px-6 md:px-12 justify-between">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 relative">
-            <Image src="/logo.png" alt="Logo" fill className="object-contain" />
+            <Image src="/logo.png" alt="BluePomodoro Logo" fill className="object-contain" />
           </div>
           <span className="font-black text-xl tracking-tighter">BluePomodoro</span>
         </div>
         <div className="flex items-center gap-4">
-          <Button variant="ghost" className="hidden md:flex font-bold" onClick={onLoginGuest}>Probar Demo</Button>
-          <Button onClick={onLoginGoogle} className="rounded-full px-6 font-bold shadow-lg shadow-primary/20">Empezar ahora</Button>
+          <Button variant="ghost" className="hidden md:flex font-bold" onClick={onLoginGuest}>Demo Gratis</Button>
+          <Button onClick={onLoginGoogle} className="rounded-full px-6 font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-transform">
+            Empezar ahora
+          </Button>
         </div>
       </nav>
 
-      <section className="pt-40 pb-20 px-6 max-w-7xl mx-auto text-center">
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 text-primary text-xs font-black uppercase tracking-widest mb-8 border border-primary/10">
-          <Sparkles className="h-3.5 w-3.5" /> Impulsado por Inteligencia Artificial
-        </div>
-        <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.95] mb-8 text-slate-900">
-          Domina tu tiempo, <br />
-          <span className="text-primary italic">no al revés.</span>
-        </h1>
-        <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 font-medium mb-10 leading-relaxed">
-          La primera herramienta de productividad diseñada específicamente para el cerebro moderno y TDAH. 
-          Desglose de tareas con IA, gamificación real y enfoque profundo.
-        </p>
-        <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-16">
-          <Button size="lg" onClick={onLoginGoogle} className="h-16 px-10 rounded-2xl text-lg font-bold gap-3 shadow-xl shadow-primary/25 w-full md:w-auto">
-            <LogIn className="h-5 w-5" /> Iniciar con Google
-          </Button>
-          <Button size="lg" variant="outline" onClick={onLoginGuest} className="h-16 px-10 rounded-2xl text-lg font-bold border-2 w-full md:w-auto">
-             Acceso Invitado
-          </Button>
-        </div>
-        <div className="relative max-w-5xl mx-auto rounded-[2.5rem] overflow-hidden shadow-2xl border-8 border-slate-100">
-          <Image 
-            src="https://picsum.photos/seed/dashboard/1200/800" 
-            alt="App Preview" 
-            width={1200} 
-            height={800}
-            className="w-full object-cover"
-          />
-        </div>
-      </section>
+      <main>
+        {/* Hero Section */}
+        <section className="pt-40 pb-20 px-6 max-w-7xl mx-auto text-center">
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 text-primary text-xs font-black uppercase tracking-widest mb-8 border border-primary/10">
+              <Sparkles className="h-3.5 w-3.5" /> La Productividad del Futuro
+            </div>
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[0.95] mb-8 text-slate-900">
+              Domina tu tiempo, <br />
+              <span className="text-primary italic">con claridad mental.</span>
+            </h1>
+            <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 font-medium mb-10 leading-relaxed">
+              Diseñado específicamente para el cerebro moderno. Desglose de tareas con IA, 
+              temporizadores analógicos para TDAH y gamificación real.
+            </p>
+            <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-20">
+              <Button size="lg" onClick={onLoginGoogle} className="h-16 px-10 rounded-2xl text-lg font-bold gap-3 shadow-xl shadow-primary/25 w-full md:w-auto hover:bg-primary/90 transition-all">
+                <LogIn className="h-5 w-5" /> Iniciar con Google
+              </Button>
+              <Button size="lg" variant="outline" onClick={onLoginGuest} className="h-16 px-10 rounded-2xl text-lg font-bold border-2 w-full md:w-auto hover:bg-slate-50">
+                 Acceso Invitado
+              </Button>
+            </div>
+          </div>
 
-      <section className="py-24 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-16 space-y-4">
-            <h2 className="text-3xl md:text-5xl font-black">Tu cerebro externo.</h2>
-            <p className="text-slate-500 font-medium">Todo lo que necesitas para vencer la procrastinación.</p>
+          <div className="relative max-w-5xl mx-auto rounded-[2.5rem] overflow-hidden shadow-2xl border-8 border-slate-100 animate-in zoom-in-95 duration-1000">
+            <Image 
+              src="https://picsum.photos/seed/productivity-focus/1200/800" 
+              alt="BluePomodoro App Preview" 
+              width={1200} 
+              height={800}
+              className="w-full object-cover"
+              data-ai-hint="productivity workspace"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="p-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all">
-              <div className="h-14 w-14 bg-primary/10 rounded-2xl flex items-center justify-center mb-6">
-                <Brain className="h-7 w-7 text-primary" />
-              </div>
-              <h3 className="text-2xl font-black mb-4">IA Task Breakdown</h3>
-              <p className="text-slate-500 leading-relaxed font-medium">Nuestra IA desglosa tareas gigantes en pasos accionables de 25 minutos automáticamente.</p>
+        </section>
+
+        {/* Features Section */}
+        <section className="py-24 bg-slate-50">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="text-center mb-16 space-y-4">
+              <Badge variant="outline" className="px-4 py-1 text-primary border-primary/20 font-bold uppercase tracking-widest">Características Pro</Badge>
+              <h2 className="text-3xl md:text-5xl font-black">Tu aliado contra el hiperfoco.</h2>
+              <p className="text-slate-500 font-medium max-w-xl mx-auto">Herramientas diseñadas para vencer la procrastinación y la ceguera del tiempo.</p>
             </div>
-            <div className="p-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all">
-              <div className="h-14 w-14 bg-accent/10 rounded-2xl flex items-center justify-center mb-6">
-                <Target className="h-7 w-7 text-accent" />
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {/* IA Feature */}
+              <div className="group p-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
+                <div className="h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+                  <Brain className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-2xl font-black mb-4">IA Task Breakdown</h3>
+                <p className="text-slate-500 leading-relaxed font-medium">No más parálisis por análisis. Nuestra IA desglosa proyectos enormes en pasos accionables de 25 minutos.</p>
               </div>
-              <h3 className="text-2xl font-black mb-4">Neurodivergente</h3>
-              <p className="text-slate-500 leading-relaxed font-medium">Diseñado con temporizadores visuales y alertas de transición para mentes con TDAH.</p>
-            </div>
-            <div className="p-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-xl transition-all">
-              <div className="h-14 w-14 bg-green-500/10 rounded-2xl flex items-center justify-center mb-6">
-                <Trophy className="h-7 w-7 text-green-600" />
+
+              {/* TDAH Feature */}
+              <div className="group p-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
+                <div className="h-16 w-16 bg-accent/10 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+                  <Target className="h-8 w-8 text-accent" />
+                </div>
+                <h3 className="text-2xl font-black mb-4">Focus Analógico</h3>
+                <p className="text-slate-500 leading-relaxed font-medium">Relojes visuales que facilitan el procesamiento del tiempo, evitando la ansiedad de los números digitales.</p>
               </div>
-              <h3 className="text-2xl font-black mb-4">Gamificación Pura</h3>
-              <p className="text-slate-500 leading-relaxed font-medium">Gana XP, sube de nivel y desbloquea insignias mientras trabajas.</p>
+
+              {/* Social Feature */}
+              <div className="group p-10 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300">
+                <div className="h-16 w-16 bg-green-500/10 rounded-2xl flex items-center justify-center mb-8 group-hover:scale-110 transition-transform">
+                  <Users className="h-8 w-8 text-green-600" />
+                </div>
+                <h3 className="text-2xl font-black mb-4">Body Doubling</h3>
+                <p className="text-slate-500 leading-relaxed font-medium">Siente la compañía productiva de otros usuarios enfocados sin distracciones sociales reales.</p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+
+        {/* Benefits Section */}
+        <section className="py-24 px-6">
+          <div className="max-w-6xl mx-auto bg-slate-900 rounded-[3rem] p-12 md:p-24 overflow-hidden relative">
+            <div className="absolute top-0 right-0 h-64 w-64 bg-primary/20 blur-[100px] rounded-full" />
+            <div className="relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+              <div className="space-y-8">
+                <div className="inline-flex items-center gap-2 text-primary font-bold uppercase tracking-widest text-xs">
+                  <Zap className="h-4 w-4" /> Gamificación Real
+                </div>
+                <h2 className="text-4xl md:text-6xl font-black text-white leading-tight">Gana puntos por cada minuto de enfoque.</h2>
+                <p className="text-slate-400 text-lg font-medium leading-relaxed">
+                  Transformamos la productividad en un RPG. Sube de nivel, desbloquea insignias y visualiza tu racha diaria de una forma que realmente te motive.
+                </p>
+                <div className="flex flex-col gap-4">
+                   <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors">
+                      <div className="h-10 w-10 bg-primary/20 rounded-xl flex items-center justify-center"><Trophy className="h-5 w-5 text-primary" /></div>
+                      <span className="text-white font-bold">Insignias por logros reales</span>
+                   </div>
+                   <div className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/10 hover:bg-white/10 transition-colors">
+                      <div className="h-10 w-10 bg-accent/20 rounded-xl flex items-center justify-center"><BarChart3 className="h-5 w-5 text-accent" /></div>
+                      <span className="text-white font-bold">Estadísticas de energía y enfoque</span>
+                   </div>
+                </div>
+              </div>
+              <div className="relative">
+                <Image 
+                  src="https://picsum.photos/seed/stats-preview/600/600" 
+                  alt="Gamification View" 
+                  width={600} 
+                  height={600}
+                  className="rounded-[2rem] shadow-2xl border-4 border-white/10"
+                  data-ai-hint="gaming statistics"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Final CTA */}
+        <section className="py-24 text-center px-6">
+          <h2 className="text-4xl md:text-6xl font-black mb-8">¿Listo para retomar el control?</h2>
+          <p className="text-slate-500 font-medium mb-12 max-w-xl mx-auto">Únete a miles de mentes extraordinarias que ya están dominando su tiempo con BluePomodoro.</p>
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+             <Button onClick={onLoginGoogle} size="lg" className="h-16 px-12 rounded-2xl font-bold text-lg gap-2 shadow-2xl shadow-primary/30">
+               Empezar Gratis <ArrowRight className="h-5 w-5" />
+             </Button>
+          </div>
+        </section>
+      </main>
 
       <footer className="py-12 border-t border-slate-100 text-center text-slate-400 font-medium text-sm">
+        <div className="flex justify-center gap-8 mb-6">
+          <Link href="/privacy" className="hover:text-primary transition-colors">Privacidad</Link>
+          <Link href="#" className="hover:text-primary transition-colors">Términos</Link>
+          <Link href="#" className="hover:text-primary transition-colors">Soporte</Link>
+        </div>
         <p>© 2025 BluePomodoro. Diseñado para mentes extraordinarias.</p>
       </footer>
     </div>
