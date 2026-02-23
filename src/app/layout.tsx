@@ -1,3 +1,4 @@
+
 import type {Metadata} from 'next';
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase';
@@ -7,9 +8,9 @@ export const metadata: Metadata = {
   title: 'BluePomodoro - Domina tu Productividad',
   description: 'Gestión de tareas impulsada por IA y técnica Pomodoro.',
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon.ico',
-    apple: '/favicon.ico',
+    icon: '/favicon.ico?v=1',
+    shortcut: '/favicon.ico?v=1',
+    apple: '/favicon.ico?v=1',
   },
 };
 
