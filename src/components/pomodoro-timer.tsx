@@ -2,15 +2,20 @@
 "use client"
 
 import * as React from "react"
-import { Timer as TimerIcon, Play, Pause, RotateCcw, Coffee, Trophy } from "lucide-react"
+import { Timer as TimerIcon, Play, Pause, RotateCcw, Coffee, Trophy, Settings2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { useFirestore, useUser, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase"
 import { doc, collection, increment, serverTimestamp } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
 
 export function PomodoroTimer() {
-  const [timeLeft, setTimeLeft] = React.useState(25 * 60)
+  const [workMinutes, setWorkMinutes] = React.useState(25)
+  const [breakMinutes, setBreakMinutes] = React.useState(5)
+  const [timeLeft, setTimeLeft] = React.useState(workMinutes * 60)
   const [isActive, setIsActive] = React.useState(false)
   const [mode, setMode] = React.useState<"work" | "break">("work")
   const [sessionsCompleted, setSessionsCompleted] = React.useState(0)
@@ -18,7 +23,11 @@ export function PomodoroTimer() {
   const db = useFirestore()
   const { toast } = useToast()
 
-  const initialTime = mode === "work" ? 25 * 60 : 5 * 60
+  const initialTime = mode === "work" ? workMinutes * 60 : breakMinutes * 60
+
+  React.useEffect(() => {
+    setTimeLeft(initialTime)
+  }, [workMinutes, breakMinutes, mode])
 
   React.useEffect(() => {
     let interval: NodeJS.Timeout | null = null
@@ -34,30 +43,26 @@ export function PomodoroTimer() {
     return () => {
       if (interval) clearInterval(interval)
     }
-  }, [isActive, timeLeft, mode])
+  }, [isActive, timeLeft])
 
   const handleSessionEnd = () => {
     setIsActive(false)
     if (mode === "work") {
       setSessionsCompleted((prev) => prev + 1)
       setMode("break")
-      setTimeLeft(5 * 60)
       
-      // Registrar sesión y dar puntos si el usuario está logueado
       if (user && db) {
         const userRef = doc(db, "usuarios", user.uid)
         const sesionesRef = collection(db, "usuarios", user.uid, "sesionesPomodoro")
         
-        // Sumar 100 puntos de XP
         updateDocumentNonBlocking(userRef, {
           puntosTotales: increment(100)
         })
 
-        // Guardar registro de la sesión
         addDocumentNonBlocking(sesionesRef, {
           usuarioId: user.uid,
           tipo: "trabajo",
-          duracionMinutos: 25,
+          duracionMinutos: workMinutes,
           fecha: serverTimestamp()
         })
 
@@ -69,7 +74,6 @@ export function PomodoroTimer() {
       }
     } else {
       setMode("work")
-      setTimeLeft(25 * 60)
       toast({
         title: "Descanso Terminado",
         description: "¡Es hora de volver a enfocarse!",
@@ -99,9 +103,43 @@ export function PomodoroTimer() {
             {mode === "work" ? <TimerIcon className="h-5 w-5 text-primary" /> : <Coffee className="h-5 w-5 text-accent" />}
             {mode === "work" ? "Sesión de Enfoque" : "Descanso Relajante"}
           </CardTitle>
-          <span className="text-xs font-semibold px-2 py-1 bg-primary/20 rounded-full text-primary">
-            Sprints: {sessionsCompleted}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold px-2 py-1 bg-primary/20 rounded-full text-primary">
+              Sprints: {sessionsCompleted}
+            </span>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Settings2 className="h-4 w-4" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-60">
+                <div className="space-y-4">
+                  <h4 className="font-bold text-sm">Ajustar Tiempos</h4>
+                  <div className="grid gap-2">
+                    <Label htmlFor="work" className="text-xs">Trabajo (min)</Label>
+                    <Input 
+                      id="work" 
+                      type="number" 
+                      value={workMinutes} 
+                      onChange={(e) => setWorkMinutes(Number(e.target.value))}
+                      className="h-8"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="break" className="text-xs">Descanso (min)</Label>
+                    <Input 
+                      id="break" 
+                      type="number" 
+                      value={breakMinutes} 
+                      onChange={(e) => setBreakMinutes(Number(e.target.value))}
+                      className="h-8"
+                    />
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="flex flex-col items-center py-8">

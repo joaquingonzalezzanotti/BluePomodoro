@@ -18,7 +18,10 @@ import {
   Timer as TimerIcon,
   Shield,
   ShieldAlert,
-  Music
+  Music,
+  FolderKanban,
+  Library,
+  Cloud
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -27,8 +30,10 @@ import { TaskManager } from "@/components/task-manager"
 import { FocusMusic } from "@/components/focus-music"
 import { GamifiedProgress } from "@/components/gamified-progress"
 import { DistractionBlocker } from "@/components/distraction-blocker"
+import { KanbanBoard } from "@/components/kanban-board"
+import { ProjectManager } from "@/components/project-manager"
+import { GoogleSyncSettings } from "@/components/google-sync-settings"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { useAuth, useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, setDocumentNonBlocking, useDoc } from "@/firebase"
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -37,6 +42,7 @@ import { doc, collection, serverTimestamp } from "firebase/firestore"
 import { prioritizeTasks } from "@/ai/flows/ai-powered-task-prioritization-flow"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function FocusFlowDashboard() {
   const [activeTab, setActiveTab] = React.useState("dashboard")
@@ -46,7 +52,6 @@ export default function FocusFlowDashboard() {
   const db = useFirestore()
   const [isPrioritizing, setIsPrioritizing] = React.useState(false)
 
-  // Obtener datos del usuario para el Escudo Zen global
   const userRef = useMemoFirebase(() => {
     if (!db || !user) return null
     return doc(db, "usuarios", user.uid)
@@ -55,7 +60,6 @@ export default function FocusFlowDashboard() {
   const { data: userData } = useDoc(userRef)
   const isBlocking = userData?.modoEstrictoActivo || false
 
-  // Sincronizar perfil de usuario en Firestore al iniciar sesión
   React.useEffect(() => {
     if (user && db) {
       const userDocRef = doc(db, "usuarios", user.uid)
@@ -182,7 +186,7 @@ export default function FocusFlowDashboard() {
             <div className="lg:col-span-2 space-y-8">
               <section>
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xl font-bold">Mis Tareas</h3>
+                  <h3 className="text-xl font-bold">Resumen de Tareas</h3>
                   <Button 
                     variant="ghost" 
                     size="sm" 
@@ -191,19 +195,15 @@ export default function FocusFlowDashboard() {
                     disabled={isPrioritizing || !tasks?.length}
                   >
                     <Sparkles className={`h-3 w-3 ${isPrioritizing ? "animate-spin" : ""}`} />
-                    Priorizar por IA
+                    Optimizar IA
                   </Button>
                 </div>
                 <TaskManager />
               </section>
             </div>
             <div className="space-y-8">
-              <section>
-                <PomodoroTimer />
-              </section>
-              <section>
-                <GamifiedProgress />
-              </section>
+              <section><PomodoroTimer /></section>
+              <section><GamifiedProgress /></section>
             </div>
           </div>
         )
@@ -216,34 +216,27 @@ export default function FocusFlowDashboard() {
             </div>
             <div className="space-y-8">
               <GamifiedProgress />
-              <div className="p-6 bg-primary/10 rounded-2xl border border-primary/20">
-                <h4 className="font-bold mb-2 flex items-center gap-2 text-primary">
-                  <Zap className="h-4 w-4" /> Consejos de Enfoque
-                </h4>
-                <p className="text-sm text-muted-foreground italic">
-                  "El enfoque profundo no es solo hacer más, es hacer lo que importa sin distracciones."
-                </p>
-              </div>
+              <DistractionBlocker />
             </div>
           </div>
         )
       case "tasks":
         return (
-          <div className="max-w-4xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-2xl font-bold">Gestor de Tareas de Enfoque</h3>
-              <Button 
-                onClick={handleAIPrioritization}
-                disabled={isPrioritizing || !tasks?.length}
-                className="gap-2"
-              >
-                <Sparkles className={`h-4 w-4 ${isPrioritizing ? "animate-spin" : ""}`} />
-                Optimizar con IA
-              </Button>
-            </div>
-            <TaskManager />
+          <div className="space-y-6">
+            <Tabs defaultValue="list" className="w-full">
+              <TabsList className="bg-muted/50 p-1 mb-6">
+                <TabsTrigger value="list" className="gap-2"><CheckSquare className="h-4 w-4" /> Lista</TabsTrigger>
+                <TabsTrigger value="kanban" className="gap-2"><FolderKanban className="h-4 w-4" /> Tablero Kanban</TabsTrigger>
+              </TabsList>
+              <TabsContent value="list"><TaskManager /></TabsContent>
+              <TabsContent value="kanban"><KanbanBoard /></TabsContent>
+            </Tabs>
           </div>
         )
+      case "projects":
+        return <ProjectManager />
+      case "sync":
+        return <GoogleSyncSettings />
       case "stats":
         return (
           <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -251,9 +244,7 @@ export default function FocusFlowDashboard() {
             <div className="bg-card p-8 rounded-2xl border flex flex-col items-center justify-center text-center">
               <BarChart3 className="h-16 w-16 text-primary/20 mb-4" />
               <h4 className="font-bold text-lg mb-2">Estadísticas Detalladas</h4>
-              <p className="text-muted-foreground text-sm">
-                Completa más sesiones Pomodoro para desbloquear el análisis profundo de tu productividad semanal.
-              </p>
+              <p className="text-muted-foreground text-sm">Próximamente: Gráficos de productividad semanal y mensual.</p>
             </div>
           </div>
         )
@@ -294,26 +285,31 @@ export default function FocusFlowDashboard() {
                 <SidebarMenuItem>
                   <SidebarMenuButton isActive={activeTab === "tasks"} onClick={() => setActiveTab("tasks")}>
                     <CheckSquare className="h-4 w-4" />
-                    <span>Tareas</span>
+                    <span>Tareas & Kanban</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === "projects"} onClick={() => setActiveTab("projects")}>
+                    <Library className="h-4 w-4" />
+                    <span>Proyectos & Materias</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
             </SidebarGroup>
 
             <SidebarGroup>
-              <SidebarGroupLabel>Herramientas</SidebarGroupLabel>
+              <SidebarGroupLabel>Conectividad</SidebarGroupLabel>
               <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton isActive={activeTab === "sync"} onClick={() => setActiveTab("sync")}>
+                    <RefreshCw className="h-4 w-4" />
+                    <span>Google Sync</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
                 <SidebarMenuItem>
                   <SidebarMenuButton isActive={activeTab === "stats"} onClick={() => setActiveTab("stats")}>
                     <BarChart3 className="h-4 w-4" />
                     <span>Estadísticas</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton isActive={activeTab === "calendar"} onClick={() => setActiveTab("calendar")}>
-                    <CalendarIcon className="h-4 w-4" />
-                    <span>Calendario</span>
-                    <Badge variant="outline" className="ml-auto text-[10px] h-4">Beta</Badge>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
@@ -342,8 +338,8 @@ export default function FocusFlowDashboard() {
             <div className="flex items-center gap-4">
               <SidebarTrigger className="md:hidden" />
               <div>
-                <h2 className="text-lg font-bold flex items-center gap-2">
-                  {user.displayName?.split(" ")[0]} <span className="animate-wave text-base">✨</span>
+                <h2 className="text-lg font-bold flex items-center gap-2 uppercase tracking-tighter">
+                  {activeTab === "dashboard" ? "Mi Día" : activeTab === "pomodoro" ? "Enfoque" : activeTab}
                 </h2>
               </div>
             </div>
