@@ -11,7 +11,9 @@ import {
   Zap,
   Calendar,
   MinusCircle,
-  PlusCircle
+  PlusCircle,
+  Edit2,
+  Check
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,6 +29,8 @@ import { collection, doc, serverTimestamp, query, orderBy } from "firebase/fires
 export function TaskManager() {
   const [newTaskText, setNewTaskText] = React.useState("")
   const [isBreakingDown, setIsBreakingDown] = React.useState<string | null>(null)
+  const [editingTaskId, setEditingTaskId] = React.useState<string | null>(null)
+  const [editText, setEditText] = React.useState("")
   const { toast } = useToast()
   const db = useFirestore()
   const { user } = useUser()
@@ -57,6 +61,18 @@ export function TaskManager() {
       subtareas: []
     })
     setNewTaskText("")
+  }
+
+  const startEditing = (id: string, currentTitle: string) => {
+    setEditingTaskId(id)
+    setEditText(currentTitle)
+  }
+
+  const saveEdit = (taskId: string) => {
+    if (!user || !db || !editText.trim()) return
+    const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
+    updateDocumentNonBlocking(taskRef, { titulo: editText })
+    setEditingTaskId(null)
   }
 
   const toggleTask = (taskId: string, currentStatus: string) => {
@@ -139,6 +155,7 @@ export function TaskManager() {
             const totalSubTasks = task.subtareas?.length || 0
             const progress = totalSubTasks > 0 ? (completedSubTasks / totalSubTasks) * 100 : 0
             const isCompleted = task.estado === "Completada"
+            const isEditing = editingTaskId === task.id
 
             return (
               <Card key={task.id} className="border-none shadow-sm group hover:shadow-md transition-all duration-300">
@@ -153,10 +170,30 @@ export function TaskManager() {
                     </button>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-2">
-                        <h4 className={`text-base font-bold truncate ${isCompleted ? "line-through text-muted-foreground opacity-60" : "text-foreground"}`}>
-                          {task.titulo}
-                        </h4>
-                        <div className="flex items-center gap-2">
+                        {isEditing ? (
+                          <div className="flex gap-2 flex-1 mr-4">
+                            <Input 
+                              value={editText} 
+                              onChange={(e) => setEditText(e.target.value)}
+                              className="h-8 text-sm"
+                              autoFocus
+                              onKeyDown={(e) => e.key === "Enter" && saveEdit(task.id)}
+                            />
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-primary" onClick={() => saveEdit(task.id)}>
+                              <Check className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <h4 className={`text-base font-bold truncate ${isCompleted ? "line-through text-muted-foreground opacity-60" : "text-foreground"}`}>
+                            {task.titulo}
+                          </h4>
+                        )}
+                        <div className="flex items-center gap-1">
+                          {!isEditing && (
+                            <Button variant="ghost" size="icon" onClick={() => startEditing(task.id, task.titulo)} className="h-8 w-8 text-muted-foreground/40 hover:text-primary hover:bg-primary/5">
+                              <Edit2 className="h-3 w-3" />
+                            </Button>
+                          )}
                           <Badge variant={task.prioridad === "Alta" ? "destructive" : task.prioridad === "Media" ? "default" : "secondary"} className="text-[10px] uppercase font-extrabold tracking-wider px-2 py-0">
                             {task.prioridad}
                           </Badge>
@@ -184,7 +221,9 @@ export function TaskManager() {
                       {totalSubTasks > 0 && (
                         <div className="mt-2 mb-4 bg-muted/30 p-3 rounded-xl">
                           <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider mb-2">
-                            <span>Progreso IA</span>
+                            <span className="text-primary flex items-center gap-1.5">
+                              <Sparkles className="h-3 w-3" /> Progreso de Sub-tareas
+                            </span>
                             <span>{Math.round(progress)}%</span>
                           </div>
                           <Progress value={progress} className="h-1.5 bg-primary/10" />
@@ -193,14 +232,14 @@ export function TaskManager() {
 
                       <div className="flex gap-2">
                         <Button 
-                          variant="ghost" 
+                          variant="outline" 
                           size="sm" 
-                          className="h-8 text-[11px] font-bold uppercase tracking-wider gap-2 text-primary hover:bg-primary/5 rounded-full px-4"
+                          className="h-8 text-[11px] font-bold uppercase tracking-wider gap-2 text-primary border-primary/20 hover:bg-primary/5 rounded-full px-4"
                           onClick={() => breakdownTask(task.id, task.titulo)}
-                          disabled={isBreakingDown === task.id}
+                          disabled={isBreakingDown === task.id || isCompleted}
                         >
                           <Sparkles className={`h-3.5 w-3.5 ${isBreakingDown === task.id ? "animate-spin" : ""}`} />
-                          {isBreakingDown === task.id ? "Analizando..." : "Desglose por IA"}
+                          {isBreakingDown === task.id ? "Analizando..." : totalSubTasks > 0 ? "Actualizar Desglose" : "Desglosar con IA"}
                         </Button>
                       </div>
 
