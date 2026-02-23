@@ -23,10 +23,13 @@ Para que el inicio de sesión funcione en tu dominio de Vercel:
 3. Haz clic en **Add domain** y añade el dominio de tu app (ej: `blue-pomodoro.vercel.app`).
 4. **Google Cloud Console**: Asegúrate de añadir la URL de Vercel en los "Orígenes de JavaScript autorizados" de tu ID de cliente OAuth 2.0.
 
-## 🧠 Funcionalidades de IA
-- **Desglose de Tareas**: Divide tareas complejas en pasos accionables en español.
-- **Priorización Inteligente**: Organiza tu día basándose en niveles de energía y fechas límite.
-- **Música Personalizada**: Widget de Spotify integrado en la barra lateral.
+## 💰 ¿Es Gratis? (Costos y Límites)
+
+Esta app utiliza servicios con niveles gratuitos muy amplios:
+- **Firebase (Plan Spark)**: Gratis hasta 50k lecturas/día. Ideal para uso personal y pequeños grupos.
+- **Gemini AI**: El nivel gratuito de Google AI Studio es suficiente para cientos de desgloses diarios.
+- **Vercel (Hobby)**: Alojamiento gratuito para proyectos personales.
+- **Spotify**: El reproductor integrado no tiene costo adicional.
 
 ## 📝 Licencia
 Este proyecto es parte de un prototipo generado en Firebase Studio.
