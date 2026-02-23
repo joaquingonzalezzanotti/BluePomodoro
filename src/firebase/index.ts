@@ -1,4 +1,3 @@
-
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -7,18 +6,13 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
 
 /**
- * Inicializa Firebase de forma robusta.
- * Evita errores durante el build de Vercel si las variables de entorno no están presentes.
+ * Inicializa Firebase de forma estándar.
+ * Si las variables de entorno no están configuradas, Firebase lanzará un error
+ * descriptivo en lugar de intentar usar credenciales falsas.
  */
 export function initializeFirebase() {
   if (getApps().length > 0) {
     return getSdks(getApp());
-  }
-
-  // Si no hay API Key (común en el primer build de Vercel), evitamos que crashee
-  if (!firebaseConfig.apiKey) {
-    const app = initializeApp({ ...firebaseConfig, apiKey: "placeholder" });
-    return getSdks(app);
   }
 
   const firebaseApp = initializeApp(firebaseConfig);

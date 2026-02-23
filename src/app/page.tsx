@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -14,9 +13,6 @@ import {
   FolderKanban,
   UserCircle,
   Sparkles,
-  Play,
-  Pause,
-  RotateCcw,
   Flame,
   Brain,
   Shield,
@@ -241,6 +237,7 @@ function DashboardContent({
                       setWorkMinutes={setWorkMinutes}
                       breakMinutes={breakMinutes}
                       setBreakMinutes={setBreakMinutes}
+                      large
                     />
                   </div>
                 </div>
@@ -377,27 +374,27 @@ export default function AppEntry() {
       />
 
       <AlertDialog open={isAlarmModalOpen}>
-          <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl p-10 max-w-sm">
-            <AlertDialogHeader className="items-center text-center">
-              <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 animate-bounce">
-                <TimerIcon className="h-10 w-10 text-primary" />
-              </div>
-              <AlertDialogTitle className="text-2xl font-black">¡Tiempo Cumplido!</AlertDialogTitle>
-              <AlertDialogDescription className="text-sm font-medium">
-                Has completado tu sesión de {mode === "work" ? "enfoque" : "descanso"}.
-                Es momento de cambiar el ritmo.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="sm:justify-center mt-6">
-              <AlertDialogAction 
-                onClick={stopAlarm}
-                className="w-full h-14 rounded-2xl bg-primary text-white font-black text-lg hover:bg-primary/90"
-              >
-                {mode === "work" ? "TOMAR DESCANSO" : "VOLVER AL FOCUS"}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl p-10 max-w-sm">
+          <AlertDialogHeader className="items-center text-center">
+            <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 animate-bounce">
+              <TimerIcon className="h-10 w-10 text-primary" />
+            </div>
+            <AlertDialogTitle className="text-2xl font-black">¡Tiempo Cumplido!</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium">
+              Has completado tu sesión de {mode === "work" ? "enfoque" : "descanso"}.
+              Es momento de cambiar el ritmo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-center mt-6">
+            <AlertDialogAction 
+              onClick={stopAlarm}
+              className="w-full h-14 rounded-2xl bg-primary text-white font-black text-lg hover:bg-primary/90"
+            >
+              {mode === "work" ? "TOMAR DESCANSO" : "VOLVER AL FOCUS"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Toaster />
     </>
