@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Music, Play, Pause, SkipForward, SkipBack, Volume2, Headphones, Radio, Save, ExternalLink, RefreshCw, LogIn } from "lucide-react"
+import { Music, Play, Pause, SkipForward, SkipBack, Volume2, Headphones, Radio, Save, ExternalLink, RefreshCw, LogIn, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Slider } from "@/components/ui/slider"
@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input"
 import { useUser, useFirestore, useDoc, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase"
 import { doc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 const DEFAULT_PLAYLIST = "https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator"
 
@@ -40,7 +41,7 @@ export function FocusMusic() {
       toast({
         variant: "destructive",
         title: "Configuración requerida",
-        description: "Falta el SPOTIFY_CLIENT_ID en las variables de entorno.",
+        description: "Falta la variable NEXT_PUBLIC_SPOTIFY_CLIENT_ID en Vercel.",
       })
       return
     }
@@ -89,6 +90,15 @@ export function FocusMusic() {
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {!SPOTIFY_CLIENT_ID && (
+          <Alert variant="destructive" className="mb-4 text-[10px] py-2">
+            <AlertCircle className="h-3 w-3" />
+            <AlertDescription>
+              Falta <b>NEXT_PUBLIC_SPOTIFY_CLIENT_ID</b> en las variables de entorno de Vercel.
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Tabs defaultValue="spotify" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4 bg-muted/50">
             <TabsTrigger value="spotify" className="text-xs font-bold flex gap-2">
@@ -107,7 +117,7 @@ export function FocusMusic() {
                   <p className="text-sm font-bold">Vincula tu cuenta</p>
                   <p className="text-[10px] text-muted-foreground px-6">Accede a tus playlists personales directamente.</p>
                 </div>
-                <Button onClick={handleSpotifyLogin} disabled={isConnecting} className="gap-2 bg-green-500 hover:bg-green-600 text-white rounded-full font-bold text-xs h-9 px-6">
+                <Button onClick={handleSpotifyLogin} disabled={isConnecting || !SPOTIFY_CLIENT_ID} className="gap-2 bg-green-500 hover:bg-green-600 text-white rounded-full font-bold text-xs h-9 px-6">
                   <LogIn className="h-3.5 w-3.5" />
                   {isConnecting ? "CONECTANDO..." : "CONECTAR CON SPOTIFY"}
                 </Button>
