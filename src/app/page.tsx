@@ -16,7 +16,8 @@ import {
   Flame,
   Brain,
   Shield,
-  Trophy
+  Trophy,
+  Headphones
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -42,7 +43,7 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
       <nav className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-md border-b border-slate-100 h-20 flex items-center px-6 md:px-12 justify-between">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 relative">
-            <Image src="/logo.png" alt="BluePomodoro Logo" fill className="object-contain" />
+             <Image src="https://picsum.photos/seed/blue-logo/200/200" alt="Logo" width={40} height={40} className="rounded-xl" />
           </div>
           <span className="font-black text-xl tracking-tighter">BluePomodoro</span>
         </div>
@@ -154,7 +155,7 @@ function DashboardContent({
           <SidebarHeader className="p-6">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 shrink-0 relative overflow-hidden rounded-xl bg-white shadow-sm border border-slate-100">
-                <Image src="/logo.png" alt="Logo" fill className="object-contain p-1.5" />
+                <Image src="https://picsum.photos/seed/blue-logo/200/200" alt="Logo" width={40} height={40} className="rounded-lg p-1" />
               </div>
               <h1 className="text-lg font-black group-data-[collapsible=icon]:hidden tracking-tight">BluePomodoro</h1>
             </div>
@@ -212,17 +213,19 @@ function DashboardContent({
 
           <div className="flex-1 p-8 max-w-7xl mx-auto w-full">
             {activeTab === "dashboard" && (
-              <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 items-start">
-                <div className="xl:col-span-1 space-y-4">
-                   <h3 className="text-sm font-black uppercase tracking-wider text-muted-foreground">Mis Tareas</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                {/* Bento Grid: Tareas (Izquierda) */}
+                <div className="lg:col-span-3 space-y-4">
+                   <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground/60 px-2">Siguiente Paso</h3>
                    <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                 </div>
 
-                <div className="xl:col-span-2 flex flex-col gap-6">
-                  <div className="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100 flex flex-col items-center justify-center animate-in zoom-in-95 duration-500 min-h-[500px]">
+                {/* Bento Grid: Enfoque (Centro) */}
+                <div className="lg:col-span-6 flex flex-col gap-6">
+                  <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100 flex flex-col items-center justify-center animate-in zoom-in-95 duration-500 min-h-[500px]">
                     {activeTask && (
-                      <div className="mb-6 text-center">
-                        <Badge className="bg-primary/10 text-primary border-none text-[10px] font-black uppercase tracking-widest mb-2">Focus Activo</Badge>
+                      <div className="mb-6 text-center animate-in fade-in slide-in-from-top-2 duration-700">
+                        <Badge className="bg-primary/10 text-primary border-none text-[10px] font-black uppercase tracking-widest mb-2 px-3 py-1">Enfoque Profundo</Badge>
                         <h2 className="text-2xl font-black tracking-tight">{activeTask.titulo}</h2>
                       </div>
                     )}
@@ -242,7 +245,8 @@ function DashboardContent({
                   </div>
                 </div>
 
-                <div className="xl:col-span-1 space-y-6">
+                {/* Bento Grid: Progreso y Proyectos (Derecha) */}
+                <div className="lg:col-span-3 space-y-6">
                    <GamifiedProgress />
                    <ProjectManager compact />
                 </div>
@@ -255,9 +259,10 @@ function DashboardContent({
           </div>
         </main>
         
+        {/* Barra de Música Fija (Music Dock) */}
         <div className="fixed bottom-0 left-0 right-0 z-50 px-6 pb-6 pointer-events-none">
           <div className="max-w-4xl mx-auto w-full pointer-events-auto">
-            <FocusMusic layout="dock" />
+             <FocusMusic layout="dock" />
           </div>
         </div>
       </div>

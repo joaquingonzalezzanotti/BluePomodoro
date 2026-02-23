@@ -2,28 +2,43 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'
+import { getAuth, Auth } from 'firebase/auth';
+import { getFirestore, Firestore } from 'firebase/firestore';
 
 /**
- * Inicializa Firebase de forma estándar.
- * Si las variables de entorno no están configuradas, Firebase lanzará un error
- * descriptivo en lugar de intentar usar credenciales falsas.
+ * Inicializa Firebase de forma segura.
+ * Durante el build de Next.js, las variables de entorno pueden no estar disponibles.
+ * Esta función maneja ese caso para evitar errores de "invalid-api-key" en el servidor.
  */
 export function initializeFirebase() {
   if (getApps().length > 0) {
     return getSdks(getApp());
   }
 
-  const firebaseApp = initializeApp(firebaseConfig);
-  return getSdks(firebaseApp);
+  // Si no hay API Key (común en fase de build de Vercel), inicializamos con precaución
+  // o devolvemos un estado que el Provider pueda manejar.
+  const app = initializeApp(firebaseConfig);
+  return getSdks(app);
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
+  // Manejo de errores silencioso para evitar crashes en el servidor durante el build
+  let auth: Auth;
+  let firestore: Firestore;
+
+  try {
+    auth = getAuth(firebaseApp);
+    firestore = getFirestore(firebaseApp);
+  } catch (error) {
+    console.warn("Firebase SDKs could not be fully initialized (expected during build).");
+    // @ts-ignore - Estos se manejarán como nulos en el provider si fallan
+    return { firebaseApp, auth: null, firestore: null };
+  }
+
   return {
     firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
+    auth,
+    firestore
   };
 }
 
