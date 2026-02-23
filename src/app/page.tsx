@@ -87,15 +87,25 @@ export default function FocusFlowDashboard() {
 
   const handleLogin = () => {
     const provider = new GoogleAuthProvider()
+    // Añadimos scopes para Google Calendar y Tasks como se requiere para la sincro real
     provider.addScope('https://www.googleapis.com/auth/calendar.readonly')
     provider.addScope('https://www.googleapis.com/auth/tasks.readonly')
     
     signInWithPopup(auth, provider).catch((error: any) => {
-      toast({
-        variant: "destructive",
-        title: "Error de Inicio de Sesión",
-        description: "Asegúrate de permitir el acceso en la ventana de Google (Configuración avanzada -> Ir a BluePomodoro).",
-      })
+      // Manejo de errores de dominio no autorizado (común en Vercel)
+      if (error.code === 'auth/unauthorized-domain') {
+        toast({
+          variant: "destructive",
+          title: "Dominio no autorizado",
+          description: "Debes añadir este dominio a la lista blanca en la consola de Firebase.",
+        })
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error de Inicio de Sesión",
+          description: "Asegúrate de permitir el acceso en la ventana de Google (Configuración avanzada -> Ir a BluePomodoro).",
+        })
+      }
     })
   }
 
