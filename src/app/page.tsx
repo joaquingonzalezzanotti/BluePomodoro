@@ -27,19 +27,41 @@ import { Badge } from "@/components/ui/badge"
 import { useAuth, useUser } from "@/firebase"
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useToast } from "@/hooks/use-toast"
 
 export default function FocusFlowDashboard() {
   const [activeTab, setActiveTab] = React.useState("dashboard")
   const { user, isUserLoading } = useUser()
+  const { toast } = useToast()
   const auth = useAuth()
 
   const handleLogin = () => {
     const provider = new GoogleAuthProvider()
-    signInWithPopup(auth, provider)
+    signInWithPopup(auth, provider).catch((error: any) => {
+      if (error.code === 'auth/operation-not-allowed') {
+        toast({
+          variant: "destructive",
+          title: "Error de Configuración",
+          description: "El inicio de sesión con Google no está habilitado en la consola de Firebase. Por favor, actívalo en Authentication > Sign-in method.",
+        })
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error de Inicio de Sesión",
+          description: error.message || "No se pudo iniciar sesión con Google.",
+        })
+      }
+    })
   }
 
   const handleLogout = () => {
-    signOut(auth)
+    signOut(auth).catch((error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error al cerrar sesión",
+        description: error.message || "Ocurrió un problema inesperado.",
+      })
+    })
   }
 
   if (isUserLoading) {
@@ -63,6 +85,7 @@ export default function FocusFlowDashboard() {
         <Button size="lg" onClick={handleLogin} className="gap-2 px-8 py-6 text-lg rounded-2xl">
           <LogIn className="h-5 w-5" /> Iniciar sesión con Google
         </Button>
+        <Toaster />
       </div>
     )
   }
