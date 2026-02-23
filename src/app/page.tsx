@@ -439,7 +439,7 @@ export default function AppEntry() {
               <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 animate-bounce">
                 <TimerIcon className="h-10 w-10 text-primary" />
               </div>
-              <AlertDialogTitle className="text-2xl font-black">¡Tiempo Cumplido!</AlertDialogTitle>
+              <AlertDialogTitle className="text-2xl font-black">¡Tiempo Cumplido!</AlertDialogTitleEditor>
               <AlertDialogDescription className="text-sm font-medium">
                 Has completado tu sesión de {mode === "work" ? "enfoque" : "descanso"}.
                 Es momento de cambiar el ritmo.
