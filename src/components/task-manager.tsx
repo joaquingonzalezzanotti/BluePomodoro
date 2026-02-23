@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -14,8 +15,8 @@ import {
   Edit2,
   Check,
   ChevronDown,
-  ChevronUp,
-  X
+  X,
+  AlertCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,6 +29,12 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useFirestore, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase"
 import { collection, doc, serverTimestamp, query, orderBy } from "firebase/firestore"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu"
 
 export function TaskManager() {
   const [newTaskText, setNewTaskText] = React.useState("")
@@ -35,7 +42,6 @@ export function TaskManager() {
   const [editingTaskId, setEditingTaskId] = React.useState<string | null>(null)
   const [editText, setEditText] = React.useState("")
   
-  // Estado para edición de sub-tareas: { taskId, subTaskId }
   const [editingSubTask, setEditingSubTask] = React.useState<{taskId: string, subId: string} | null>(null)
   const [editSubText, setEditSubText] = React.useState("")
 
@@ -88,6 +94,12 @@ export function TaskManager() {
     const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
     const newStatus = currentStatus === "Completada" ? "Pendiente" : "Completada"
     updateDocumentNonBlocking(taskRef, { estado: newStatus })
+  }
+
+  const updatePriority = (taskId: string, newPriority: string) => {
+    if (!user || !db) return
+    const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
+    updateDocumentNonBlocking(taskRef, { prioridad: newPriority })
   }
 
   const updatePomodoroCount = (taskId: string, current: number, delta: number) => {
@@ -233,9 +245,22 @@ export function TaskManager() {
                                 <Edit2 className="h-3 w-3" />
                               </Button>
                             )}
-                            <Badge variant={task.prioridad === "Alta" ? "destructive" : task.prioridad === "Media" ? "default" : "secondary"} className="text-[10px] uppercase font-extrabold tracking-wider px-2 py-0">
-                              {task.prioridad}
-                            </Badge>
+                            
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-8 px-2 p-0 hover:bg-transparent">
+                                  <Badge variant={task.prioridad === "Alta" ? "destructive" : task.prioridad === "Media" ? "default" : "secondary"} className="text-[10px] uppercase font-extrabold tracking-wider px-2 py-0 cursor-pointer">
+                                    {task.prioridad || "Media"}
+                                  </Badge>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => updatePriority(task.id, "Alta")} className="text-xs font-bold text-destructive">Alta (Compleja)</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => updatePriority(task.id, "Media")} className="text-xs font-bold">Media</DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => updatePriority(task.id, "Baja")} className="text-xs font-bold text-muted-foreground">Baja (Simple)</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+
                             <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)} className="h-8 w-8 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/5 transition-colors">
                               <Trash2 className="h-4 w-4" />
                             </Button>

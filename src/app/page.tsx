@@ -18,7 +18,10 @@ import {
   ShieldAlert,
   FolderKanban,
   Library,
-  Cloud
+  Music,
+  Play,
+  Pause,
+  SkipForward
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -49,6 +52,7 @@ export default function FocusFlowDashboard() {
   const auth = useAuth()
   const db = useFirestore()
   const [isPrioritizing, setIsPrioritizing] = React.useState(false)
+  const [isMusicPlaying, setIsMusicPlaying] = React.useState(false)
 
   const userRef = useMemoFirebase(() => {
     if (!db || !user) return null
@@ -80,7 +84,6 @@ export default function FocusFlowDashboard() {
 
   const handleLogin = () => {
     const provider = new GoogleAuthProvider()
-    // Añadimos los permisos necesarios para Google Calendar y Google Tasks
     provider.addScope('https://www.googleapis.com/auth/calendar.readonly')
     provider.addScope('https://www.googleapis.com/auth/tasks.readonly')
     
@@ -306,6 +309,29 @@ export default function FocusFlowDashboard() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>
+            </SidebarGroup>
+
+            <SidebarGroup className="mt-4">
+              <SidebarGroupLabel className="text-[10px] font-extrabold text-muted-foreground/50 tracking-[0.2em] uppercase mb-2">Audio Zen</SidebarGroupLabel>
+              <div className="px-2 py-3 bg-muted/30 rounded-2xl border border-primary/5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className={`h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center ${isMusicPlaying ? "animate-pulse" : ""}`}>
+                    <Music className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] font-bold truncate">Focus Beats</p>
+                    <p className="text-[8px] text-muted-foreground uppercase font-black">Lo-Fi Study</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-center gap-2">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => setIsMusicPlaying(!isMusicPlaying)}>
+                    {isMusicPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 fill-current" />}
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
+                    <SkipForward className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
             </SidebarGroup>
           </SidebarContent>
 
