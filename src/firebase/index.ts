@@ -1,3 +1,4 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -5,24 +6,21 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION UNLESS NECESSARY FOR ROBUSTNESS
+/**
+ * Inicializa Firebase de forma robusta.
+ * Evita el error 'app/no-options' prefiriendo la configuración manual
+ * sobre la automática cuando no estamos en un entorno de App Hosting.
+ */
 export function initializeFirebase() {
-  if (!getApps().length) {
-    let firebaseApp;
-    try {
-      // It is critical that we attempt to call initializeApp() without arguments for App Hosting compatibility.
-      firebaseApp = initializeApp();
-    } catch (e) {
-      // Fallback silently to the provided config if automatic init fails.
-      // We don't log the error here to avoid confusion in logs as this is an expected path.
-      firebaseApp = initializeApp(firebaseConfig);
-    }
-
-    return getSdks(firebaseApp);
+  // Si ya hay apps inicializadas, devolvemos los SDKs de la primera.
+  if (getApps().length > 0) {
+    return getSdks(getApp());
   }
 
-  // If already initialized, return the SDKs with the already initialized App
-  return getSdks(getApp());
+  // Forzamos la inicialización con el objeto de configuración para evitar warnings
+  // en entornos de desarrollo o despliegues en Vercel.
+  const firebaseApp = initializeApp(firebaseConfig);
+  return getSdks(firebaseApp);
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
