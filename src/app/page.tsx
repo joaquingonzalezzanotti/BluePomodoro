@@ -35,7 +35,7 @@ import { ProjectManager } from "@/components/project-manager"
 import { GoogleSyncSettings } from "@/components/google-sync-settings"
 import { StatsView } from "@/components/stats-view"
 import { Button } from "@/components/ui/button"
-import { useAuth, useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking, setDocumentNonBlocking, useDoc } from "@/firebase"
+import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, setDocumentNonBlocking, useDoc, useCollection } from "@/firebase"
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
@@ -45,6 +45,8 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
+const DEFAULT_PLAYLIST = "https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKHA6V9KWm?utm_source=generator&theme=0"
+
 export default function FocusFlowDashboard() {
   const [activeTab, setActiveTab] = React.useState("dashboard")
   const { user, isUserLoading } = useUser()
@@ -52,7 +54,6 @@ export default function FocusFlowDashboard() {
   const auth = useAuth()
   const db = useFirestore()
   const [isPrioritizing, setIsPrioritizing] = React.useState(false)
-  const [isMusicPlaying, setIsMusicPlaying] = React.useState(false)
 
   const userRef = useMemoFirebase(() => {
     if (!db || !user) return null
@@ -91,7 +92,7 @@ export default function FocusFlowDashboard() {
       toast({
         variant: "destructive",
         title: "Error de Inicio de Sesión",
-        description: "Asegúrate de haber habilitado el proveedor de Google en la consola de Firebase.",
+        description: "Asegúrate de permitir el acceso en la ventana de Google (Configuración avanzada -> Ir a BluePomodoro).",
       })
     })
   }
@@ -156,6 +157,21 @@ export default function FocusFlowDashboard() {
       setIsPrioritizing(false)
     }
   }
+
+  const getEmbedUrl = (url: string) => {
+    if (!url) return DEFAULT_PLAYLIST
+    if (url.includes("/embed/")) return url
+    try {
+      const parts = url.split("spotify.com/")[1].split("?")[0].split("/")
+      const type = parts[0]
+      const id = parts[1]
+      return `https://open.spotify.com/embed/${type}/${id}?utm_source=generator&theme=0`
+    } catch (e) {
+      return DEFAULT_PLAYLIST
+    }
+  }
+
+  const activeSpotifyUrl = getEmbedUrl(userData?.spotifyPlaylistUrl || "")
 
   if (isUserLoading) {
     return (
@@ -311,27 +327,22 @@ export default function FocusFlowDashboard() {
               </SidebarMenu>
             </SidebarGroup>
 
+            {/* Spotify Player en Sidebar */}
             <SidebarGroup className="mt-4">
-              <SidebarGroupLabel className="text-[10px] font-extrabold text-muted-foreground/50 tracking-[0.2em] uppercase mb-2">Audio Zen</SidebarGroupLabel>
-              <div className="px-2 py-3 bg-muted/30 rounded-2xl border border-primary/5">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className={`h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center ${isMusicPlaying ? "animate-pulse" : ""}`}>
-                    <Music className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-bold truncate">Focus Beats</p>
-                    <p className="text-[8px] text-muted-foreground uppercase font-black">Lo-Fi Study</p>
-                  </div>
-                </div>
-                <div className="flex items-center justify-center gap-2">
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => setIsMusicPlaying(!isMusicPlaying)}>
-                    {isMusicPlaying ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5 fill-current" />}
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground">
-                    <SkipForward className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
+              <SidebarGroupLabel className="text-[10px] font-extrabold text-muted-foreground/50 tracking-[0.2em] uppercase mb-2">Mi Música Spotify</SidebarGroupLabel>
+              <div className="rounded-2xl overflow-hidden shadow-lg border border-primary/5 bg-slate-900 min-h-[80px]">
+                <iframe 
+                  src={activeSpotifyUrl} 
+                  width="100%" 
+                  height="80" 
+                  frameBorder="0" 
+                  allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
+                  loading="lazy"
+                ></iframe>
               </div>
+              <p className="text-[8px] text-muted-foreground text-center mt-2 uppercase font-black tracking-widest">
+                Configura tu lista en la Zona de Enfoque
+              </p>
             </SidebarGroup>
           </SidebarContent>
 

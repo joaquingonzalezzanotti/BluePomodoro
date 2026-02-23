@@ -246,6 +246,7 @@ export function TaskManager() {
                               </Button>
                             )}
                             
+                            {/* Selector de Prioridad/Complejidad */}
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button variant="ghost" className="h-8 px-2 p-0 hover:bg-transparent">
@@ -282,6 +283,7 @@ export function TaskManager() {
                           </div>
                         </div>
 
+                        {/* Barra de Progreso y Trigger de Colapso */}
                         {totalSubTasks > 0 && (
                           <div className="mb-4">
                             <div className="flex items-center justify-between mb-2">
