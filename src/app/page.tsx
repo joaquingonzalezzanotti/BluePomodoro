@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -10,24 +9,12 @@ import {
   CheckSquare,
   BarChart3,
   CloudLightning,
-  RefreshCw,
   LogIn,
-  Sparkles,
   Timer as TimerIcon,
-  Shield,
-  ShieldAlert,
-  FolderKanban,
-  Library,
-  Music,
-  Play,
-  Pause,
-  SkipForward,
-  Trophy,
   Maximize2,
-  ChevronLeft,
-  ChevronRight
+  Play
 } from "lucide-react"
-import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarGroupLabel, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
+import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
 import { PomodoroTimer } from "@/components/pomodoro-timer"
 import { TaskManager } from "@/components/task-manager"
@@ -35,16 +22,12 @@ import { FocusMusic } from "@/components/focus-music"
 import { ConfigurationView } from "@/components/configuration-view"
 import { StatsView } from "@/components/stats-view"
 import { Button } from "@/components/ui/button"
-import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, setDocumentNonBlocking, useDoc, useCollection, addDocumentNonBlocking } from "@/firebase"
+import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useDoc, useCollection, addDocumentNonBlocking } from "@/firebase"
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
 import { doc, collection, serverTimestamp, increment } from "firebase/firestore"
-import { prioritizeTasks } from "@/ai/flows/ai-powered-task-prioritization-flow"
 import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import Link from "next/link"
 
 const DEFAULT_PLAYLIST = "https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator"
 
@@ -54,7 +37,6 @@ export default function FocusFlowDashboard() {
   const { toast } = useToast()
   const auth = useAuth()
   const db = useFirestore()
-  const [isPrioritizing, setIsPrioritizing] = React.useState(false)
 
   // ESTADO GLOBAL DEL POMODORO
   const [workMinutes, setWorkMinutes] = React.useState(25)
@@ -148,12 +130,14 @@ export default function FocusFlowDashboard() {
     signOut(auth).catch((e) => toast({ variant: "destructive", title: "Error al cerrar sesión", description: e.message }))
   }
 
-  const toggleZenMode = (checked: boolean) => {
+  const toggleFocusMode = (checked: boolean) => {
     if (!userRef) return
     updateDocumentNonBlocking(userRef, { modoEstrictoActivo: checked })
+    toast({
+      title: checked ? "Modo Focus Activado" : "Modo Focus Desactivado",
+      description: checked ? "Tiempo de concentración profunda." : "Regresando al modo normal."
+    })
   }
-
-  const activeSpotifyUrl = userData?.spotifyPlaylistUrl || DEFAULT_PLAYLIST
 
   if (isUserLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><CloudLightning className="h-12 w-12 text-primary animate-pulse" /></div>
 
@@ -186,7 +170,7 @@ export default function FocusFlowDashboard() {
               <TaskManager onTaskSelect={(id) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
             </div>
             <div className="space-y-6">
-              <FocusMusic layout="dashboard" />
+               <FocusMusic layout="dashboard" />
             </div>
           </div>
         )
@@ -287,8 +271,8 @@ export default function FocusFlowDashboard() {
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <Switch checked={isBlocking} onCheckedChange={toggleZenMode} className="scale-75" />
-                <span className="text-[10px] font-black uppercase text-muted-foreground">Zen</span>
+                <Switch checked={isBlocking} onCheckedChange={toggleFocusMode} className="scale-75" />
+                <span className="text-[10px] font-black uppercase text-muted-foreground">Focus</span>
               </div>
             </div>
           </header>

@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "Usuario": {
@@ -12,7 +11,12 @@
         "puntosTotales": { "type": "number" },
         "modoEstrictoActivo": { "type": "boolean" },
         "spotifyPlaylistUrl": { "type": "string", "description": "URL personalizada de la lista de Spotify del usuario." },
-        "fechaRegistro": { "type": "string", "format": "date-time" }
+        "fechaRegistro": { "type": "string", "format": "date-time" },
+        "sitiosBloqueados": { 
+          "type": "array", 
+          "items": { "type": "string" },
+          "description": "Lista de dominios a bloquear durante el modo Focus."
+        }
       },
       "required": ["id", "nombre", "email"]
     },
