@@ -14,7 +14,9 @@ import {
   Timer as TimerIcon,
   Maximize2,
   Play,
-  Flame
+  Flame,
+  FolderKanban,
+  Bell
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -23,8 +25,9 @@ import { TaskManager } from "@/components/task-manager"
 import { FocusMusic } from "@/components/focus-music"
 import { ConfigurationView } from "@/components/configuration-view"
 import { StatsView } from "@/components/stats-view"
+import { ProjectManager } from "@/components/project-manager"
 import { Button } from "@/components/ui/button"
-import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useDoc, useCollection, addDocumentNonBlocking } from "@/firebase"
+import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useDoc, addDocumentNonBlocking } from "@/firebase"
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
@@ -38,7 +41,6 @@ export default function FocusFlowDashboard() {
   const auth = useAuth()
   const db = useFirestore()
 
-  // CONFIGURACIÓN DE TIEMPOS POR DEFECTO: 40 Focus / 10 Descanso / 20 Descanso Largo
   const [workMinutes, setWorkMinutes] = React.useState(40)
   const [breakMinutes, setBreakMinutes] = React.useState(10)
   const [longBreakMinutes] = React.useState(20)
@@ -56,7 +58,6 @@ export default function FocusFlowDashboard() {
   const { data: userData } = useDoc(userRef)
   const isBlocking = userData?.modoEstrictoActivo || false
 
-  // Lógica del Timer Global
   React.useEffect(() => {
     let interval: NodeJS.Timeout | null = null
     if (isActive && timeLeft > 0) {
@@ -76,7 +77,6 @@ export default function FocusFlowDashboard() {
       setSessionsCompleted(nextCount)
       setMode("break")
       
-      // Lógica de descanso largo cada 3 sesiones
       const isLongBreak = nextCount > 0 && nextCount % 3 === 0
       const nextMinutes = isLongBreak ? longBreakMinutes : breakMinutes
       setTimeLeft(nextMinutes * 60)
@@ -85,7 +85,7 @@ export default function FocusFlowDashboard() {
         const uRef = doc(db, "usuarios", user.uid)
         const sesionesRef = collection(db, "usuarios", user.uid, "sesionesPomodoro")
         
-        updateDocumentNonBlocking(uRef, { puntosTotales: increment(150) }) // Más puntos por sesión de 40m
+        updateDocumentNonBlocking(uRef, { puntosTotales: increment(150) })
 
         addDocumentNonBlocking(sesionesRef, {
           usuarioId: user.uid,
@@ -100,16 +100,16 @@ export default function FocusFlowDashboard() {
         }
 
         toast({ 
-          title: isLongBreak ? "¡Descanso Largo Alcanzado!" : "¡Sesión Completada!", 
+          title: isLongBreak ? "¡Descanso Largo!" : "¡Sesión Completada!", 
           description: isLongBreak 
             ? "Has completado 3 ciclos. Disfruta de 20 minutos de relax." 
-            : "Has ganado 150 XP. Tómate un respiro de 10 minutos." 
+            : "XP ganado. Tómate 10 minutos." 
         })
       }
     } else {
       setMode("work")
       setTimeLeft(workMinutes * 60)
-      toast({ title: "Descanso Terminado", description: "¡Es hora de volver a enfocarse!" })
+      toast({ title: "Enfoque", description: "¡A trabajar!" })
     }
   }
 
@@ -132,21 +132,12 @@ export default function FocusFlowDashboard() {
   const handleLogin = () => {
     const provider = new GoogleAuthProvider()
     signInWithPopup(auth, provider).catch(() => {
-      toast({ variant: "destructive", title: "Error de Inicio de Sesión" })
+      toast({ variant: "destructive", title: "Error" })
     })
   }
 
   const handleLogout = () => {
-    signOut(auth).catch((e) => toast({ variant: "destructive", title: "Error al cerrar sesión", description: e.message }))
-  }
-
-  const toggleFocusMode = (checked: boolean) => {
-    if (!userRef) return
-    updateDocumentNonBlocking(userRef, { modoEstrictoActivo: checked })
-    toast({
-      title: checked ? "Modo Focus Activado" : "Modo Focus Desactivado",
-      description: checked ? "Tiempo de concentración profunda." : "Regresando al modo normal."
-    })
+    signOut(auth).catch((e) => toast({ variant: "destructive", title: "Error", description: e.message }))
   }
 
   if (isUserLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><CloudLightning className="h-12 w-12 text-primary animate-pulse" /></div>
@@ -172,15 +163,21 @@ export default function FocusFlowDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-black">Mi Día</h3>
+                <h3 className="text-xl font-black">Tablero de Tareas</h3>
                 <Button variant="outline" size="sm" onClick={() => setActiveTab("pomodoro")} className="gap-2 rounded-xl">
-                  <Maximize2 className="h-4 w-4" /> Ver Reloj
+                  <Maximize2 className="h-4 w-4" /> Modo Focus
                 </Button>
               </div>
               <TaskManager onTaskSelect={(id) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
             </div>
             <div className="space-y-6">
-               <FocusMusic layout="dashboard" />
+              <FocusMusic layout="dashboard" />
+              <div className="p-6 bg-primary/5 border border-primary/10 rounded-3xl">
+                <h4 className="text-xs font-black uppercase text-muted-foreground mb-4 flex items-center gap-2">
+                  <Bell className="h-3 w-3" /> Próximas Alertas
+                </h4>
+                <p className="text-[10px] text-muted-foreground italic">Las notificaciones web y mobile se habilitarán en la próxima actualización.</p>
+              </div>
             </div>
           </div>
         )
@@ -201,19 +198,21 @@ export default function FocusFlowDashboard() {
               large
             />
             {activeTaskId && (
-              <div className="mt-10 px-6 py-3 bg-primary/5 border border-primary/10 rounded-2xl flex items-center gap-3">
+              <div className="mt-10 px-6 py-3 bg-primary/10 border border-primary/20 rounded-2xl flex items-center gap-3 animate-bounce">
                 <CheckSquare className="h-5 w-5 text-primary" />
-                <span className="text-sm font-bold">Enfocado en ID: {activeTaskId.substring(0, 8)}...</span>
+                <span className="text-sm font-bold">Enfocado en tarea activa</span>
               </div>
             )}
           </div>
         )
+      case "proyectos":
+        return <ProjectManager />
       case "config":
         return <ConfigurationView />
       case "stats":
         return <StatsView />
       default:
-        return <div className="py-20 text-center">Sección en construcción...</div>
+        return null
     }
   }
 
@@ -233,8 +232,9 @@ export default function FocusFlowDashboard() {
                 {[
                   { id: "dashboard", icon: LayoutDashboard, label: "Tablero" },
                   { id: "pomodoro", icon: TimerIcon, label: "Enfoque" },
-                  { id: "stats", icon: BarChart3, label: "Logros" },
-                  { id: "config", icon: Settings, label: "Ajustes" },
+                  { id: "proyectos", icon: FolderKanban, label: "Proyectos" },
+                  { id: "stats", icon: BarChart3, label: "Estadísticas" },
+                  { id: "config", icon: Settings, label: "Configuración" },
                 ].map((item) => (
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton isActive={activeTab === item.id} onClick={() => setActiveTab(item.id)} className="rounded-xl h-12">
@@ -281,7 +281,7 @@ export default function FocusFlowDashboard() {
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <Switch checked={isBlocking} onCheckedChange={toggleFocusMode} className="scale-75" />
+                <Switch checked={isBlocking} onCheckedChange={(c) => updateDocumentNonBlocking(userRef!, { modoEstrictoActivo: c })} className="scale-75" />
                 <span className="text-[10px] font-black uppercase text-muted-foreground">Focus</span>
               </div>
             </div>
