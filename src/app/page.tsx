@@ -14,7 +14,8 @@ import {
   FolderKanban,
   Users,
   XCircle,
-  ChevronLeft
+  ChevronLeft,
+  UserCircle
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger, useSidebar } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -26,7 +27,7 @@ import { StatsView } from "@/components/stats-view"
 import { ProjectManager } from "@/components/project-manager"
 import { KanbanBoard } from "@/components/kanban-board"
 import { Button } from "@/components/ui/button"
-import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useDoc, addDocumentNonBlocking } from "@/firebase"
+import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useDoc, addDocumentNonBlocking, initiateAnonymousSignIn } from "@/firebase"
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
@@ -164,25 +165,39 @@ export default function FocusFlowDashboard() {
     setTimeLeft(mode === "work" ? workMinutes * 60 : breakMinutes * 60)
   }
 
+  const handleGuestSignIn = () => {
+    initiateAnonymousSignIn(auth)
+  }
+
   if (isUserLoading) return <div className="min-h-screen flex items-center justify-center bg-background"><CloudLightning className="h-12 w-12 text-primary animate-pulse" /></div>
 
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center">
-        <div className="mb-10 shadow-2xl relative">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-6 text-center">
+        <div className="mb-10 shadow-2xl relative bg-white p-4 rounded-[2.5rem]">
           <Image 
             src="/logo.png" 
             alt="BluePomodoro Logo" 
             width={120} 
             height={120} 
-            className="rounded-[2.5rem]"
+            className="rounded-[1.5rem]"
           />
         </div>
-        <h1 className="text-4xl font-black mb-4">BluePomodoro</h1>
-        <p className="text-muted-foreground mb-8 max-w-sm">Gestiona tus tareas con IA y domina la técnica Pomodoro en un entorno de alto enfoque.</p>
-        <Button size="lg" onClick={() => signInWithPopup(auth, new GoogleAuthProvider())} className="gap-3 rounded-2xl px-10 h-14 font-bold text-lg">
-          <LogIn className="h-5 w-5" /> Entrar con Google
-        </Button>
+        <h1 className="text-4xl font-black mb-4 tracking-tight text-slate-900">BluePomodoro</h1>
+        <p className="text-slate-500 mb-8 max-w-sm font-medium leading-relaxed">
+          Gestiona tus tareas con IA y domina la técnica Pomodoro en un entorno diseñado para el enfoque profundo.
+        </p>
+        <div className="flex flex-col gap-4 w-full max-w-xs">
+          <Button size="lg" onClick={() => signInWithPopup(auth, new GoogleAuthProvider())} className="gap-3 rounded-2xl h-14 font-bold text-lg shadow-xl shadow-primary/20">
+            <LogIn className="h-5 w-5" /> Entrar con Google
+          </Button>
+          <Button size="lg" variant="outline" onClick={handleGuestSignIn} className="gap-3 rounded-2xl h-14 font-bold text-lg border-2 hover:bg-white bg-transparent">
+            <UserCircle className="h-5 w-5" /> Probar como Invitado
+          </Button>
+          <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-4">
+            El modo invitado no requiere cuenta ni correo
+          </p>
+        </div>
       </div>
     )
   }
@@ -195,15 +210,15 @@ export default function FocusFlowDashboard() {
         <Sidebar collapsible="icon" className="border-r border-primary/5 bg-white/80 backdrop-blur-xl">
           <SidebarHeader className="p-6">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 shrink-0 relative overflow-hidden rounded-xl">
+              <div className="h-10 w-10 shrink-0 relative overflow-hidden rounded-xl bg-white shadow-sm border border-slate-100 p-1.5">
                 <Image 
                   src="/logo.png" 
                   alt="Logo" 
                   fill
-                  className="object-cover"
+                  className="object-contain p-1"
                 />
               </div>
-              <h1 className="text-lg font-black group-data-[collapsible=icon]:hidden">BluePomodoro</h1>
+              <h1 className="text-lg font-black group-data-[collapsible=icon]:hidden tracking-tight">BluePomodoro</h1>
             </div>
           </SidebarHeader>
           <SidebarContent className="px-4">
@@ -241,11 +256,11 @@ export default function FocusFlowDashboard() {
                 <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-xl group-data-[collapsible=icon]:justify-center">
                   <Avatar className="h-8 w-8">
                     <AvatarImage src={user.photoURL || ""} />
-                    <AvatarFallback>{user.displayName?.charAt(0)}</AvatarFallback>
+                    <AvatarFallback>{user.displayName?.charAt(0) || <UserCircle className="h-5 w-5" />}</AvatarFallback>
                   </Avatar>
                   <div className="flex-1 group-data-[collapsible=icon]:hidden overflow-hidden">
-                    <p className="text-[10px] font-black truncate">{user.displayName}</p>
-                    <p className="text-[8px] text-muted-foreground truncate">{user.email}</p>
+                    <p className="text-[10px] font-black truncate">{user.isAnonymous ? "Invitado" : user.displayName}</p>
+                    <p className="text-[8px] text-muted-foreground truncate">{user.isAnonymous ? "Sesión Temporal" : user.email}</p>
                   </div>
                   <Button variant="ghost" size="icon" className="h-8 w-8 group-data-[collapsible=icon]:hidden" onClick={() => signOut(auth)}>
                     <LogOut className="h-4 w-4" />
