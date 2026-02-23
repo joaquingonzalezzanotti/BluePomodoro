@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -13,7 +12,9 @@ import {
   MinusCircle,
   PlusCircle,
   Edit2,
-  Check
+  Check,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +26,7 @@ import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useFirestore, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase"
 import { collection, doc, serverTimestamp, query, orderBy } from "firebase/firestore"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 export function TaskManager() {
   const [newTaskText, setNewTaskText] = React.useState("")
@@ -100,17 +102,25 @@ export function TaskManager() {
     setIsBreakingDown(taskId)
     try {
       const result = await aiAssistedTaskBreakdown({ largeTaskDescription: taskText })
-      const subTasks = result.subTasks.map(text => ({
-        id: Math.random().toString(36).substr(2, 9),
+      const newSubTasks = result.subTasks.map(text => ({
+        id: Math.random().toString(36).substring(2, 9),
         text,
         completed: false
       }))
       
       const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
-      updateDocumentNonBlocking(taskRef, { subtareas: subTasks })
-      toast({ title: "Tarea Desglosada", description: `Se añadieron ${subTasks.length} sub-tareas.` })
+      updateDocumentNonBlocking(taskRef, { subtareas: newSubTasks })
+      
+      toast({ 
+        title: "Desglose completado", 
+        description: `IA ha generado ${newSubTasks.length} pasos accionables en español.` 
+      })
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "La IA no pudo procesar esta tarea." })
+      toast({ 
+        variant: "destructive", 
+        title: "Error de IA", 
+        description: "No se pudo realizar el desglose. Inténtalo de nuevo." 
+      })
     } finally {
       setIsBreakingDown(null)
     }
@@ -122,7 +132,15 @@ export function TaskManager() {
       st.id === subTaskId ? { ...st, completed: !st.completed } : st
     )
     const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
-    updateDocumentNonBlocking(taskRef, { subtareas: updatedSubTasks })
+    
+    // Si todas las subtareas se completan, podríamos sugerir completar la tarea principal
+    const allCompleted = updatedSubTasks.every(st => st.completed)
+    const updates: any = { subtareas: updatedSubTasks }
+    if (allCompleted && updatedSubTasks.length > 0) {
+      // updates.estado = "Completada" // Opcional: auto-completar
+    }
+
+    updateDocumentNonBlocking(taskRef, updates)
   }
 
   if (isLoading) {
@@ -219,48 +237,51 @@ export function TaskManager() {
                       </div>
 
                       {totalSubTasks > 0 && (
-                        <div className="mt-2 mb-4 bg-muted/30 p-3 rounded-xl">
-                          <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider mb-2">
-                            <span className="text-primary flex items-center gap-1.5">
-                              <Sparkles className="h-3 w-3" /> Progreso de Sub-tareas
+                        <div className="mt-2 mb-4 bg-muted/30 p-4 rounded-2xl border border-primary/5">
+                          <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.1em] mb-3">
+                            <span className="text-primary flex items-center gap-2">
+                              <Sparkles className="h-3.5 w-3.5" /> Progreso del desglose
                             </span>
-                            <span>{Math.round(progress)}%</span>
+                            <span className="bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                              {completedSubTasks}/{totalSubTasks} · {Math.round(progress)}%
+                            </span>
                           </div>
-                          <Progress value={progress} className="h-1.5 bg-primary/10" />
+                          <Progress value={progress} className="h-2 bg-primary/10" />
+                          
+                          <div className="mt-4 space-y-2.5">
+                            {task.subtareas.map((subTask: any) => (
+                              <div key={subTask.id} className="flex items-center gap-3 text-sm font-semibold group/sub bg-white/40 p-2 rounded-lg hover:bg-white/80 transition-all border border-transparent hover:border-primary/10">
+                                <button 
+                                  onClick={() => toggleSubTask(task.id, task.subtareas, subTask.id)} 
+                                  className="transition-transform active:scale-90"
+                                >
+                                  {subTask.completed ? (
+                                    <CheckCircle2 className="h-4.5 w-4.5 text-primary" />
+                                  ) : (
+                                    <Circle className="h-4.5 w-4.5 text-muted-foreground/30 group-hover/sub:text-primary/40" />
+                                  )}
+                                </button>
+                                <span className={`flex-1 transition-colors ${subTask.completed ? "line-through text-muted-foreground/50 italic" : "text-foreground/90"}`}>
+                                  {subTask.text}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
 
-                      <div className="flex gap-2">
+                      <div className="flex gap-3">
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="h-8 text-[11px] font-bold uppercase tracking-wider gap-2 text-primary border-primary/20 hover:bg-primary/5 rounded-full px-4"
+                          className="h-9 text-[11px] font-black uppercase tracking-widest gap-2 text-primary border-primary/20 hover:bg-primary/5 rounded-xl px-5 transition-all active:scale-95"
                           onClick={() => breakdownTask(task.id, task.titulo)}
                           disabled={isBreakingDown === task.id || isCompleted}
                         >
-                          <Sparkles className={`h-3.5 w-3.5 ${isBreakingDown === task.id ? "animate-spin" : ""}`} />
-                          {isBreakingDown === task.id ? "Analizando..." : totalSubTasks > 0 ? "Actualizar Desglose" : "Desglosar con IA"}
+                          <Sparkles className={`h-4 w-4 ${isBreakingDown === task.id ? "animate-spin" : ""}`} />
+                          {isBreakingDown === task.id ? "IA Pensando..." : totalSubTasks > 0 ? "Actualizar con IA" : "Desglosar con IA"}
                         </Button>
                       </div>
-
-                      {task.subtareas && task.subtareas.length > 0 && (
-                        <div className="mt-4 pl-4 border-l-2 border-primary/10 space-y-3 animate-in slide-in-from-left-2 duration-300">
-                          {task.subtareas.map((subTask: any) => (
-                            <div key={subTask.id} className="flex items-center gap-3 text-sm font-medium py-0.5 group/sub">
-                              <button onClick={() => toggleSubTask(task.id, task.subtareas, subTask.id)} className="transition-transform active:scale-90">
-                                {subTask.completed ? (
-                                  <CheckCircle2 className="h-4 w-4 text-primary" />
-                                ) : (
-                                  <Circle className="h-4 w-4 text-muted-foreground/30 group-hover/sub:text-primary/40" />
-                                )}
-                              </button>
-                              <span className={`transition-colors ${subTask.completed ? "line-through text-muted-foreground/60" : "text-foreground/80"}`}>
-                                {subTask.text}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </CardContent>
