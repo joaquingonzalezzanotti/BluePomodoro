@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast"
 import { DistractionBlocker } from "@/components/distraction-blocker"
 import { GoogleSyncSettings } from "@/components/google-sync-settings"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { Separator } from "@/components/ui/separator"
 
 export function ConfigurationView() {
   const { user } = useUser()
@@ -28,7 +29,7 @@ export function ConfigurationView() {
   const { data: userData } = useDoc(userRef)
 
   React.useEffect(() => {
-    if ("Notification" in window) {
+    if (typeof window !== "undefined" && "Notification" in window) {
       setNotifPermission(Notification.permission)
     }
   }, [])

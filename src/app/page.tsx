@@ -42,6 +42,8 @@ import { doc, collection, serverTimestamp, increment } from "firebase/firestore"
 import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
 
 export default function FocusFlowDashboard() {
   const [activeTab, setActiveTab] = React.useState("dashboard")
@@ -77,10 +79,10 @@ export default function FocusFlowDashboard() {
     if (!user) return
     
     const showMessage = () => {
-      const usersCount = Math.floor(Math.random() * 20) + 6 // Simulación > 5 usuarios
+      const usersCount = Math.floor(Math.random() * 20) + 6 
       if (usersCount > 5) {
         setBodyDoublingMessage(`${usersCount} personas están enfocadas contigo ahora`)
-        setTimeout(() => setBodyDoublingMessage(null), 8000) // Desaparece tras 8 seg
+        setTimeout(() => setBodyDoublingMessage(null), 8000) 
       }
       
       const nextInterval = (Math.floor(Math.random() * (30 - 10 + 1)) + 10) * 60 * 1000
@@ -99,7 +101,7 @@ export default function FocusFlowDashboard() {
         
         // Alertas de Transición TDAH
         const threshold = workMinutes >= 30 ? 5 : 2
-        if (prev === threshold * 60) {
+        if (timeLeft === threshold * 60) {
           toast({ 
             title: "Aviso de Transición", 
             description: `Te quedan ${threshold} minutos para terminar. ¡Ve cerrando ideas!`,
@@ -111,13 +113,12 @@ export default function FocusFlowDashboard() {
       handleSessionEnd()
     }
     return () => { if (interval) clearInterval(interval) }
-  }, [isActive, timeLeft, workMinutes])
+  }, [isActive, timeLeft, workMinutes, toast])
 
   const handleSessionEnd = () => {
     setIsActive(false)
     setIsAlarmModalOpen(true)
     
-    // Alarma Intrusiva
     if (typeof window !== "undefined") {
       const audio = new Audio("https://actions.google.com/sounds/v1/alarms/alarm_clock_beeping.ogg")
       audio.loop = true
@@ -157,7 +158,7 @@ export default function FocusFlowDashboard() {
     
     if (mode === "work") {
       setMode("break")
-      const isLongBreak = (sessionsCompleted) % 3 === 0 && sessionsCompleted > 0
+      const isLongBreak = (sessionsCompleted + 1) % 4 === 0 && sessionsCompleted > 0
       setTimeLeft((isLongBreak ? longBreakMinutes : breakMinutes) * 60)
     } else {
       setMode("work")
@@ -220,6 +221,9 @@ export default function FocusFlowDashboard() {
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>
+            </SidebarGroup>
+            <SidebarGroup className="mt-auto">
+               <FocusMusic layout="sidebar" />
             </SidebarGroup>
           </SidebarContent>
           <SidebarFooter className="p-4 border-t border-primary/5">
