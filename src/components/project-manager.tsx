@@ -2,7 +2,19 @@
 "use client"
 
 import * as React from "react"
-import { FolderPlus, Book, Briefcase, GraduationCap, Trash2, Plus, LayoutGrid, Folder, ChevronRight, Hash } from "lucide-react"
+import { 
+  FolderPlus, 
+  Book, 
+  Briefcase, 
+  GraduationCap, 
+  Trash2, 
+  Plus, 
+  LayoutGrid, 
+  Folder, 
+  ChevronRight, 
+  Hash,
+  FolderKanban 
+} from "lucide-react"
 import { useFirestore, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase"
 import { collection, query, orderBy, serverTimestamp, doc, where } from "firebase/firestore"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
@@ -64,7 +76,7 @@ export function ProjectManager() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700">
       <div className="flex items-center gap-4">
         <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center">
           <FolderKanban className="text-white h-6 w-6" />
@@ -76,7 +88,6 @@ export function ProjectManager() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Columna Proyectos */}
         <div className="lg:col-span-4 space-y-4">
           <Card className="border-none shadow-xl rounded-[2rem] bg-white overflow-hidden">
             <CardHeader className="bg-primary/5 pb-4">
@@ -92,7 +103,7 @@ export function ProjectManager() {
                   onChange={(e) => setNewProjectName(e.target.value)}
                   className="rounded-xl border-none bg-muted/30 font-bold"
                 />
-                <Button onClick={addProject} size="icon" className="rounded-xl shrink-0"><Plus /></Button>
+                <Button onClick={addProject} size="icon" className="rounded-xl shrink-0"><Plus className="h-4 w-4" /></Button>
               </div>
             </CardContent>
           </Card>
@@ -124,7 +135,6 @@ export function ProjectManager() {
           </div>
         </div>
 
-        {/* Columna Materias */}
         <div className="lg:col-span-8">
           {selectedProjectId ? (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">

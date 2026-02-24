@@ -101,7 +101,7 @@ function DashboardContent({
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full bg-slate-50/50 pb-24 overflow-hidden">
-        <Sidebar collapsible="icon" className="border-r border-primary/5 bg-white/80 backdrop-blur-xl">
+        <Sidebar collapsible="icon" className="border-r border-primary/5 bg-white/80 backdrop-blur-xl transition-all duration-300">
           <SidebarHeader className="p-6">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 shrink-0 relative overflow-hidden rounded-xl bg-white shadow-sm border border-slate-100">
@@ -123,7 +123,7 @@ function DashboardContent({
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton isActive={activeTab === item.id} onClick={() => setActiveTab(item.id)} className="rounded-xl h-12">
                       <item.icon className="h-5 w-5" />
-                      <span className="font-bold">{item.label}</span>
+                      <span className="font-bold group-data-[collapsible=icon]:hidden">{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
@@ -164,7 +164,7 @@ function DashboardContent({
             {activeTab === "dashboard" && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 <div className="lg:col-span-12 flex flex-col gap-8">
-                  <div className="bg-white rounded-[3rem] p-12 shadow-xl border border-slate-100 flex flex-col items-center justify-center">
+                  <div className="bg-white rounded-[3rem] p-12 shadow-xl border border-slate-100 flex flex-col items-center justify-center animate-in zoom-in-95 duration-700">
                     <PomodoroTimer 
                       timeLeft={timeLeft}
                       isActive={isActive}
@@ -194,10 +194,10 @@ function DashboardContent({
                       <TabsTrigger value="kanban" className="rounded-lg px-6 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">Kanban</TabsTrigger>
                     </TabsList>
                   </div>
-                  <TabsContent value="lista">
+                  <TabsContent value="lista" className="animate-in fade-in duration-500">
                     <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                   </TabsContent>
-                  <TabsContent value="kanban">
+                  <TabsContent value="kanban" className="animate-in slide-in-from-bottom-4 duration-500">
                     <KanbanBoard />
                   </TabsContent>
                 </Tabs>
