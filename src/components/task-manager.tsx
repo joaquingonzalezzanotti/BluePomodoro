@@ -220,12 +220,12 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                             <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => updateTaskTitle(task.id)}><Check className="h-4 w-4" /></Button>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-2 group">
+                          <div className="flex items-center gap-2 group min-w-0">
                             <h4 className={cn("text-lg font-black truncate leading-tight", task.estado === "Completada" && "line-through text-slate-400")}>{task.titulo}</h4>
-                            <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); setEditingTaskId(task.id); setEditingText(task.titulo); }}><Edit2 className="h-3 w-3" /></Button>
+                            <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100 shrink-0" onClick={(e) => { e.stopPropagation(); setEditingTaskId(task.id); setEditingText(task.titulo); }}><Edit2 className="h-3 w-3" /></Button>
                           </div>
                         )}
-                        {materia && <span className="text-[10px] font-black uppercase text-primary/60 flex items-center gap-1 mt-1"><BookOpen className="h-3 w-3" /> {materia.nombre}</span>}
+                        {materia && <span className="text-[10px] font-black uppercase text-primary/60 flex items-center gap-1 mt-1 truncate"><BookOpen className="h-3 w-3 shrink-0" /> {materia.nombre}</span>}
                       </div>
                     </div>
 
@@ -258,9 +258,9 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
 
                   <CollapsibleContent className="mt-6 pt-6 border-t border-slate-50 space-y-3">
                      {normalizedSubTasks.length > 0 ? normalizedSubTasks.map(sub => (
-                       <div key={sub.id} className="flex items-center gap-3 group/sub animate-in slide-in-from-top-2 duration-300">
+                       <div key={sub.id} className="flex items-center gap-3 group/sub animate-in slide-in-from-top-2 duration-300 min-w-0">
                           <div 
-                            className={cn("h-5 w-5 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all", sub.completed ? "bg-green-500 border-green-500 text-white" : "border-slate-200 hover:border-primary/40")}
+                            className={cn("h-5 w-5 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all shrink-0", sub.completed ? "bg-green-500 border-green-500 text-white" : "border-slate-200 hover:border-primary/40")}
                             onClick={() => toggleSubTask(task.id, normalizedSubTasks, sub.id)}
                           >
                             {sub.completed && <Check className="h-3.5 w-3.5" />}
@@ -268,9 +268,9 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                           {editingSubTaskId?.subId === sub.id ? (
                             <Input value={editingSubText} onChange={(e) => setEditingSubText(e.target.value)} onBlur={() => updateSubTaskText(task.id, normalizedSubTasks, sub.id)} className="h-8 text-sm font-medium" autoFocus />
                           ) : (
-                            <span className={cn("text-sm font-medium flex-1", sub.completed ? "line-through text-slate-400" : "text-slate-600")}>{sub.text}</span>
+                            <span className={cn("text-sm font-medium flex-1 truncate", sub.completed ? "line-through text-slate-400" : "text-slate-600")}>{sub.text}</span>
                           )}
-                          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/sub:opacity-100" onClick={() => { setEditingSubTaskId({taskId: task.id, subId: sub.id}); setEditingSubText(sub.text); }}><Edit2 className="h-3 w-3" /></Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/sub:opacity-100 shrink-0" onClick={() => { setEditingSubTaskId({taskId: task.id, subId: sub.id}); setEditingSubText(sub.text); }}><Edit2 className="h-3 w-3" /></Button>
                        </div>
                      )) : (
                        <p className="text-xs text-center text-muted-foreground font-medium italic">Sin subtareas. ¡Usa la IA para desglosar este pendiente!</p>

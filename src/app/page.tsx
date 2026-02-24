@@ -130,7 +130,7 @@ function DashboardContent({
 }: any) {
   return (
     <SidebarProvider defaultOpen={true} style={{ "--sidebar-width": "16rem", "--sidebar-width-icon": "5rem" } as React.CSSProperties}>
-      <div className="flex min-h-screen w-full bg-slate-50/50 pb-24 overflow-hidden">
+      <div className="flex min-h-screen w-full bg-slate-50/50 pb-24">
         <Sidebar collapsible="icon" className="border-r border-primary/5 bg-white/80 backdrop-blur-xl transition-all duration-300">
           <SidebarHeader className="p-6 flex-shrink-0">
             <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
@@ -185,7 +185,7 @@ function DashboardContent({
           </SidebarFooter>
         </Sidebar>
 
-        <main className="flex-1 overflow-auto flex flex-col">
+        <main className="flex-1 min-w-0 overflow-auto flex flex-col">
           <header className="h-16 border-b border-primary/5 bg-white/70 backdrop-blur-md sticky top-0 z-20 px-8 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">{activeTab}</h2>
@@ -198,13 +198,13 @@ function DashboardContent({
             </div>
           </header>
 
-          <div className="flex-1 p-8 max-w-7xl mx-auto w-full">
+          <div className="flex-1 p-8 w-full max-w-[1600px] mx-auto">
             {activeTab === "dashboard" && (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                <div className="lg:col-span-8">
+              <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-8 items-start">
+                <div className="min-w-0">
                   <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                 </div>
-                <div className="lg:col-span-4 sticky top-24">
+                <div className="sticky top-24 w-full max-w-md mx-auto xl:mx-0">
                   <Card className="bg-white rounded-[2.5rem] p-8 shadow-xl border border-slate-100 flex flex-col items-center justify-center overflow-hidden">
                     <PomodoroTimer 
                       timeLeft={timeLeft}
@@ -240,7 +240,7 @@ function DashboardContent({
                     large
                   />
                 </div>
-                <div className="max-w-xl w-full">
+                <div className="max-w-2xl w-full">
                    <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} onlyActive />
                 </div>
               </div>
