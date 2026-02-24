@@ -13,7 +13,8 @@ import {
   Edit2,
   Check,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Minus
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -123,6 +124,13 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
     setEditingTaskId(null)
   }
 
+  const updatePomodoros = (taskId: string, current: number, delta: number) => {
+    if (!user || !db) return
+    const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
+    const newVal = Math.max(1, current + delta)
+    updateDocumentNonBlocking(taskRef, { esfuerzoEstimadoPomodoros: newVal })
+  }
+
   const updateSubTaskText = (taskId: string, subTasks: SubTask[], subId: string) => {
     if (!user || !db || !editingSubText.trim()) return
     const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
@@ -199,6 +207,7 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
           const totalCount = normalizedSubTasks.length
           const progressValue = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
           const isExpanded = !!expandedTasks[task.id]
+          const esfuerzo = task.esfuerzoEstimadoPomodoros || 1
 
           return (
             <Collapsible key={task.id} open={isExpanded} onOpenChange={() => toggleExpand(task.id)}>
@@ -244,7 +253,27 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                       )}
                       
                       <div className="flex items-center gap-4 text-[10px] font-black uppercase text-muted-foreground/60">
-                        <span className="flex items-center gap-1.5 bg-primary/5 px-2 py-1 rounded-lg"><Zap className="h-3.5 w-3.5 text-primary" /> {task.esfuerzoEstimadoPomodoros || 1}</span>
+                        {/* Selector de Pomodoros */}
+                        <div className="flex items-center gap-2 bg-primary/5 px-2 py-1 rounded-lg group/pomodoro">
+                          <Zap className="h-3.5 w-3.5 text-primary" />
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="ghost" size="icon" 
+                              className="h-4 w-4 p-0 opacity-0 group-hover/pomodoro:opacity-100 transition-opacity"
+                              onClick={(e) => { e.stopPropagation(); updatePomodoros(task.id, esfuerzo, -1); }}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="min-w-[1ch] text-center">{esfuerzo}</span>
+                            <Button 
+                              variant="ghost" size="icon" 
+                              className="h-4 w-4 p-0 opacity-0 group-hover/pomodoro:opacity-100 transition-opacity"
+                              onClick={(e) => { e.stopPropagation(); updatePomodoros(task.id, esfuerzo, 1); }}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
                         <span className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-lg"><Layout className="h-3.5 w-3.5 text-blue-500" /> {totalCount}</span>
                       </div>
 
