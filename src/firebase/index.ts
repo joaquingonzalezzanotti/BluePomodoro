@@ -12,18 +12,22 @@ import { getFirestore, Firestore } from 'firebase/firestore';
  */
 export function initializeFirebase() {
   // Verificamos si tenemos los requisitos mínimos para inicializar
-  if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+  if (typeof window === 'undefined' || !firebaseConfig.apiKey || !firebaseConfig.projectId || firebaseConfig.apiKey === "") {
     return { firebaseApp: null, auth: null, firestore: null };
   }
 
   let app: FirebaseApp;
-  if (getApps().length > 0) {
-    app = getApp();
-  } else {
-    app = initializeApp(firebaseConfig);
+  try {
+    if (getApps().length > 0) {
+      app = getApp();
+    } else {
+      app = initializeApp(firebaseConfig);
+    }
+    return getSdks(app);
+  } catch (error) {
+    console.warn("Firebase initialization skipped or failed.");
+    return { firebaseApp: null, auth: null, firestore: null };
   }
-
-  return getSdks(app);
 }
 
 export function getSdks(firebaseApp: FirebaseApp) {
@@ -34,7 +38,7 @@ export function getSdks(firebaseApp: FirebaseApp) {
     auth = getAuth(firebaseApp);
     firestore = getFirestore(firebaseApp);
   } catch (error) {
-    console.warn("Firebase SDKs could not be fully initialized (expected during build or missing keys).");
+    console.warn("Firebase SDKs could not be fully initialized.");
   }
 
   return {

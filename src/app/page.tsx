@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -44,7 +43,7 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
       <nav className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-md border-b border-slate-100 h-20 flex items-center px-6 md:px-12 justify-between">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 relative">
-             <Image src="https://picsum.photos/seed/blue-logo/200/200" alt="Logo" width={40} height={40} className="rounded-xl" />
+             <Image src="/logo.png" alt="Logo BluePomodoro" width={40} height={40} className="rounded-xl object-contain" />
           </div>
           <span className="font-black text-xl tracking-tighter">BluePomodoro</span>
         </div>
@@ -68,7 +67,7 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
             </h1>
             <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 font-medium mb-10 leading-relaxed">
               Diseñado específicamente para el cerebro moderno. Desglose de tareas con IA, 
-              temporizadores analógicos para TDAH y gamificación real.
+              temporizadores visuales para TDAH y gamificación real.
             </p>
             <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-20">
               <Button size="lg" onClick={onLoginGoogle} className="h-16 px-10 rounded-2xl text-lg font-bold gap-3 shadow-xl shadow-primary/25 w-full md:w-auto hover:bg-primary/90 transition-all">
@@ -156,7 +155,7 @@ function DashboardContent({
           <SidebarHeader className="p-6">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 shrink-0 relative overflow-hidden rounded-xl bg-white shadow-sm border border-slate-100">
-                <Image src="https://picsum.photos/seed/blue-logo/200/200" alt="Logo" width={40} height={40} className="rounded-lg p-1" />
+                <Image src="/logo.png" alt="Logo BluePomodoro" width={40} height={40} className="rounded-lg p-1 object-contain" />
               </div>
               <h1 className="text-lg font-black group-data-[collapsible=icon]:hidden tracking-tight">BluePomodoro</h1>
             </div>
@@ -206,7 +205,7 @@ function DashboardContent({
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <Switch checked={isBlocking} onCheckedChange={(c) => updateDocumentNonBlocking(userRef!, { modoEstrictoActivo: c })} className="scale-75" />
+                <Switch checked={isBlocking} onCheckedChange={(c) => userRef && updateDocumentNonBlocking(userRef, { modoEstrictoActivo: c })} className="scale-75" />
                 <span className="text-[10px] font-black uppercase text-muted-foreground">Modo Focus</span>
               </div>
             </div>

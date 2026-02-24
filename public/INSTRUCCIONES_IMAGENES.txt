@@ -1,3 +1,0 @@
-IMPORTANTE:
-Por favor, arrastra tus archivos 'logo.png' y 'favicon.ico' desde la carpeta 'srcBluePomodoro' a esta carpeta 'public'.
-Next.js requiere que los activos estáticos estén aquí para servirlos correctamente en las rutas '/' que el código ya está utilizando.

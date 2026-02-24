@@ -1,4 +1,3 @@
-
 import type {Metadata} from 'next';
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase';
@@ -16,7 +15,7 @@ export const metadata: Metadata = {
     siteName: 'BluePomodoro',
     images: [
       {
-        url: 'https://picsum.photos/seed/productivity/1200/630',
+        url: '/logo.png',
         width: 1200,
         height: 630,
         alt: 'BluePomodoro Preview',
@@ -26,9 +25,9 @@ export const metadata: Metadata = {
     type: 'website',
   },
   icons: {
-    icon: '/favicon.ico?v=3',
-    shortcut: '/favicon.ico?v=3',
-    apple: '/favicon.ico?v=3',
+    icon: '/logo.png',
+    shortcut: '/logo.png',
+    apple: '/logo.png',
   },
 };
 
