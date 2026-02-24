@@ -54,7 +54,7 @@ export function ConfigurationView() {
 
   const handleLinkSpotifyReal = () => {
     const clientId = "b5df5cc5dcbc45e8a34738bd946675ac"
-    const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/` : ''
+    const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/app` : ''
     const scopes = "user-read-currently-playing user-read-playback-state"
     window.location.href = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}`
   }

@@ -1,7 +1,6 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase';
-import { PersistentMusicPlayer } from '@/components/persistent-music-player';
 
 export const metadata: Metadata = {
   title: 'BluePomodoro - Domina tu Productividad con IA y Focus TDAH',
@@ -34,7 +33,7 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.Node;
+  children: React.ReactNode;
 }>) {
   return (
     <html lang="es">
@@ -46,7 +45,6 @@ export default function RootLayout({
       <body className="font-sans antialiased selection:bg-primary/20">
         <FirebaseClientProvider>
           {children}
-          <PersistentMusicPlayer />
         </FirebaseClientProvider>
       </body>
     </html>
