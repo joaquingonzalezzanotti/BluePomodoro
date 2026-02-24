@@ -54,7 +54,7 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
           <div className="h-10 w-10 relative">
              <Image src="/logo.png" alt="Logo BluePomodoro" width={40} height={40} className="rounded-xl object-contain" />
           </div>
-          <span className="font-black text-xl tracking-tighter">BluePomodoro</span>
+          <span className="font-black text-xl tracking-tighter text-primary">BluePomodoro</span>
         </div>
         <div className="flex items-center gap-4">
           <Button variant="ghost" className="hidden md:flex font-bold" onClick={onLoginGuest}>Demo Gratis</Button>
@@ -120,7 +120,7 @@ function DashboardContent({
               <div className="h-10 w-10 shrink-0 relative overflow-hidden rounded-xl bg-white shadow-sm border border-slate-100">
                 <Image src="/logo.png" alt="Logo BluePomodoro" width={40} height={40} className="rounded-lg p-1 object-contain" />
               </div>
-              <h1 className="text-lg font-bold group-data-[collapsible=icon]:hidden tracking-tight">BluePomodoro</h1>
+              <h1 className="text-lg font-bold group-data-[collapsible=icon]:hidden tracking-tight text-primary">BluePomodoro</h1>
             </div>
           </SidebarHeader>
           <SidebarContent className="px-4">
@@ -247,9 +247,7 @@ function DashboardContent({
             {activeTab === "stats" && <StatsView />}
           </div>
 
-          <footer className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 pointer-events-none z-50">
-             <FocusMusic layout="dock" />
-          </footer>
+          <FocusMusic layout="dock" />
         </main>
       </div>
     </SidebarProvider>
@@ -418,7 +416,7 @@ export default function AppEntry() {
             <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 animate-bounce">
               <TimerIcon className="h-10 w-10 text-primary" />
             </div>
-            <AlertDialogTitle className="text-2xl font-black">¡Tiempo Cumplido!</AlertDialogTitle>
+            <AlertDialogTitle className="text-2xl font-black text-primary">¡Tiempo Cumplido!</AlertDialogTitle>
             <AlertDialogDescription className="text-sm font-medium">
               Has completado tu sesión de {mode === "work" ? "enfoque" : "descanso"}.
             </AlertDialogDescription>
