@@ -201,11 +201,13 @@ function DashboardContent({
           <div className="flex-1 p-8 w-full max-w-[1600px] mx-auto">
             {activeTab === "dashboard" && (
               <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-8 items-start">
+                {/* Lista de Tareas (Flexible) */}
                 <div className="min-w-0">
                   <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                 </div>
-                <div className="sticky top-24 w-full max-w-md mx-auto xl:mx-0">
-                  <Card className="bg-white rounded-[2.5rem] p-8 shadow-xl border border-slate-100 flex flex-col items-center justify-center overflow-hidden">
+                {/* Temporizador (Side / Bottom Bar) */}
+                <div className="xl:sticky xl:top-24 w-full">
+                  <Card className="bg-white rounded-[2.5rem] p-6 xl:p-8 shadow-xl border border-slate-100 flex flex-col items-center justify-center overflow-hidden min-h-[140px] xl:min-h-0">
                     <PomodoroTimer 
                       timeLeft={timeLeft}
                       isActive={isActive}
