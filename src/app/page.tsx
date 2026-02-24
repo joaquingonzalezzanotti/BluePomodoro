@@ -291,11 +291,17 @@ export default function AppEntry() {
     setTimeLeft(mode === "work" ? workMinutes * 60 : breakMinutes * 60)
   }
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     if (!auth) return
-    signInWithPopup(auth, new GoogleAuthProvider())
+    try {
+      await signInWithPopup(auth, new GoogleAuthProvider())
+    } catch (e: any) {
+      if (e.code !== 'auth/popup-closed-by-user') {
+        console.error("Login Error:", e)
+      }
+    }
   }
-  const handleGuestSignIn = () => {
+  const handleGuestSignIn = async () => {
     if (!auth) return
     initiateAnonymousSignIn(auth)
   }
