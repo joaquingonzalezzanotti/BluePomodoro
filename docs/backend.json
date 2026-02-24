@@ -1,63 +1,53 @@
+
 {
   "entities": {
     "Usuario": {
       "title": "Usuario",
       "type": "object",
-      "description": "Perfil de usuario de BluePomodoro.",
       "properties": {
         "id": { "type": "string" },
         "nombre": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
+        "email": { "type": "string" },
         "puntosTotales": { "type": "number" },
         "modoEstrictoActivo": { "type": "boolean" },
-        "spotifyPlaylistUrl": { "type": "string", "description": "URL personalizada de la lista de Spotify del usuario." },
-        "fechaRegistro": { "type": "string", "format": "date-time" },
-        "sitiosBloqueados": { 
-          "type": "array", 
-          "items": { "type": "string" },
-          "description": "Lista de dominios a bloquear durante el modo Focus."
-        }
+        "spotifyPlaylistUrl": { "type": "string" }
       },
       "required": ["id", "nombre", "email"]
-    },
-    "Tarea": {
-      "title": "Tarea",
-      "type": "object",
-      "description": "Tarea individual vinculada a un usuario.",
-      "properties": {
-        "id": { "type": "string" },
-        "usuarioId": { "type": "string" },
-        "titulo": { "type": "string" },
-        "estado": { "type": "string", "enum": ["Pendiente", "En Proceso", "Completada"] },
-        "prioridad": { "type": "string", "enum": ["Alta", "Media", "Baja"] },
-        "esfuerzoEstimadoPomodoros": { "type": "number" },
-        "fechaVencimiento": { "type": "string" },
-        "subtareas": { "type": "array", "items": { "type": "object" } }
-      },
-      "required": ["id", "usuarioId", "titulo", "estado"]
     },
     "Proyecto": {
       "title": "Proyecto",
       "type": "object",
-      "description": "Materia o proyecto para organizar tareas.",
       "properties": {
         "id": { "type": "string" },
         "nombre": { "type": "string" },
-        "tipo": { "type": "string", "enum": ["Materia", "Proyecto"] },
-        "fechaCreacion": { "type": "string", "format": "date-time" }
+        "color": { "type": "string" },
+        "fechaCreacion": { "type": "string" }
       },
-      "required": ["id", "nombre", "tipo"]
+      "required": ["id", "nombre"]
     },
-    "SesionPomodoro": {
-      "title": "Sesión Pomodoro",
+    "Materia": {
+      "title": "Materia",
       "type": "object",
-      "description": "Registro de una sesión de estudio completada.",
       "properties": {
-        "usuarioId": { "type": "string" },
-        "tipo": { "type": "string", "enum": ["trabajo", "descanso"] },
-        "duracionMinutos": { "type": "number" },
-        "fecha": { "type": "string", "format": "date-time" }
-      }
+        "id": { "type": "string" },
+        "proyectoId": { "type": "string" },
+        "nombre": { "type": "string" }
+      },
+      "required": ["id", "proyectoId", "nombre"]
+    },
+    "Tarea": {
+      "title": "Tarea",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "materiaId": { "type": "string" },
+        "titulo": { "type": "string" },
+        "estado": { "type": "string", "enum": ["Pendiente", "En Proceso", "Completada"] },
+        "esfuerzoEstimadoPomodoros": { "type": "number" },
+        "completadosPomodoros": { "type": "number" },
+        "subtareas": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "titulo", "estado"]
     }
   },
   "auth": {
@@ -65,20 +55,16 @@
   },
   "firestore": {
     "/usuarios/{usuarioId}": {
-      "schema": { "$ref": "#/entities/Usuario" },
-      "description": "Documentos raíz de usuario."
-    },
-    "/usuarios/{usuarioId}/tareas/{tareaId}": {
-      "schema": { "$ref": "#/entities/Tarea" },
-      "description": "Colección de tareas del usuario."
+      "schema": { "$ref": "#/entities/Usuario" }
     },
     "/usuarios/{usuarioId}/proyectos/{proyectoId}": {
-      "schema": { "$ref": "#/entities/Proyecto" },
-      "description": "Colección de proyectos/materias del usuario."
+      "schema": { "$ref": "#/entities/Proyecto" }
     },
-    "/usuarios/{usuarioId}/sesionesPomodoro/{sesionId}": {
-      "schema": { "$ref": "#/entities/SesionPomodoro" },
-      "description": "Historial de sesiones pomodoro."
+    "/usuarios/{usuarioId}/materias/{materiaId}": {
+      "schema": { "$ref": "#/entities/Materia" }
+    },
+    "/usuarios/{usuarioId}/tareas/{tareaId}": {
+      "schema": { "$ref": "#/entities/Tarea" }
     }
   }
 }

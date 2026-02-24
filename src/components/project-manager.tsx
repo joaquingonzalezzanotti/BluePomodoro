@@ -2,27 +2,24 @@
 "use client"
 
 import * as React from "react"
-import { FolderPlus, Book, Briefcase, GraduationCap, Trash2, Plus, LayoutGrid, Folder } from "lucide-react"
+import { FolderPlus, Book, Briefcase, GraduationCap, Trash2, Plus, LayoutGrid, Folder, ChevronRight, Hash } from "lucide-react"
 import { useFirestore, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase"
-import { collection, query, orderBy, serverTimestamp, doc } from "firebase/firestore"
+import { collection, query, orderBy, serverTimestamp, doc, where } from "firebase/firestore"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
-interface ProjectManagerProps {
-  compact?: boolean
-}
-
-export function ProjectManager({ compact = false }: ProjectManagerProps) {
+export function ProjectManager() {
   const { user } = useUser()
   const db = useFirestore()
   const { toast } = useToast()
+  
   const [newProjectName, setNewProjectName] = React.useState("")
-  const [projectType, setProjectType] = React.useState("Materia")
+  const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null)
+  const [newMateriaName, setNewMateriaName] = React.useState("")
 
   const projectsQuery = useMemoFirebase(() => {
     if (!db || !user) return null
@@ -31,116 +28,157 @@ export function ProjectManager({ compact = false }: ProjectManagerProps) {
 
   const { data: projects } = useCollection(projectsQuery)
 
+  const materiasQuery = useMemoFirebase(() => {
+    if (!db || !user || !selectedProjectId) return null
+    return query(collection(db, "usuarios", user.uid, "materias"), where("proyectoId", "==", selectedProjectId))
+  }, [db, user, selectedProjectId])
+
+  const { data: materias } = useCollection(materiasQuery)
+
   const addProject = () => {
     if (!newProjectName.trim() || !user || !db) return
     const projectsRef = collection(db, "usuarios", user.uid, "proyectos")
     addDocumentNonBlocking(projectsRef, {
       nombre: newProjectName,
-      tipo: projectType,
       fechaCreacion: serverTimestamp(),
     })
     setNewProjectName("")
     toast({ title: "Proyecto creado" })
   }
 
-  const deleteProject = (id: string) => {
-    if (!user || !db) return
-    const projectRef = doc(db, "usuarios", user.uid, "proyectos", id)
-    deleteDocumentNonBlocking(projectRef)
-    toast({ title: "Proyecto eliminado" })
+  const addMateria = () => {
+    if (!newMateriaName.trim() || !selectedProjectId || !user || !db) return
+    const materiasRef = collection(db, "usuarios", user.uid, "materias")
+    addDocumentNonBlocking(materiasRef, {
+      nombre: newMateriaName,
+      proyectoId: selectedProjectId,
+    })
+    setNewMateriaName("")
+    toast({ title: "Materia añadida" })
   }
 
-  if (compact) {
-    return (
-      <Card className="border-none shadow-sm bg-white rounded-[2rem] overflow-hidden">
-        <CardHeader className="pb-3 border-b border-slate-50">
-          <CardTitle className="text-xs font-black uppercase flex items-center gap-2">
-            <Folder className="h-3.5 w-3.5 text-primary" /> Proyectos
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 space-y-2">
-          {projects?.slice(0, 3).map(p => (
-            <div key={p.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-primary/5 transition-colors cursor-pointer group">
-              <span className="text-xs font-bold truncate">{p.nombre}</span>
-              <Badge variant="outline" className="text-[9px] h-4">{p.tipo}</Badge>
-            </div>
-          ))}
-          {(!projects || projects.length === 0) && (
-            <p className="text-[10px] text-muted-foreground italic text-center py-2">Sin proyectos activos</p>
-          )}
-        </CardContent>
-      </Card>
-    )
+  const deleteProject = (id: string) => {
+    if (!user || !db) return
+    deleteDocumentNonBlocking(doc(db, "usuarios", user.uid, "proyectos", id))
+    if (selectedProjectId === id) setSelectedProjectId(null)
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center">
-            <LayoutGrid className="text-white h-6 w-6" />
-          </div>
-          <div>
-            <h2 className="text-2xl font-black">Mis Proyectos y Materias</h2>
-            <p className="text-sm text-muted-foreground">Organiza tus tareas por categorías académicas o profesionales.</p>
-          </div>
+    <div className="max-w-6xl mx-auto space-y-8">
+      <div className="flex items-center gap-4">
+        <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center">
+          <FolderKanban className="text-white h-6 w-6" />
+        </div>
+        <div>
+          <h2 className="text-2xl font-black">Mis Proyectos</h2>
+          <p className="text-sm text-muted-foreground">Estructura tus estudios: Proyectos → Materias → Tareas.</p>
         </div>
       </div>
 
-      <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden">
-        <CardHeader className="bg-primary/5">
-          <CardTitle className="text-sm font-black flex items-center gap-2">
-            <Plus className="h-4 w-4 text-primary" /> NUEVO REGISTRO
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <Input 
-              placeholder="Nombre del proyecto o materia..." 
-              value={newProjectName}
-              onChange={(e) => setNewProjectName(e.target.value)}
-              className="rounded-xl bg-muted/30 border-none h-12 flex-1 font-bold"
-            />
-            <Select value={projectType} onValueChange={setProjectType}>
-              <SelectTrigger className="w-[180px] h-12 rounded-xl bg-muted/30 border-none font-bold">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Materia">Materia</SelectItem>
-                <SelectItem value="Proyecto">Proyecto</SelectItem>
-              </SelectContent>
-            </Select>
-            <Button onClick={addProject} className="h-12 px-8 rounded-xl font-bold shadow-lg shadow-primary/20">
-              Crear
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {projects?.map(project => (
-          <Card key={project.id} className="border-none shadow-lg hover:shadow-xl transition-all rounded-[2rem] bg-white group overflow-hidden">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <div className={cn(
-                  "h-12 w-12 rounded-2xl flex items-center justify-center",
-                  project.tipo === "Materia" ? "bg-blue-100 text-blue-600" : "bg-purple-100 text-purple-600"
-                )}>
-                  {project.tipo === "Materia" ? <GraduationCap className="h-6 w-6" /> : <Briefcase className="h-6 w-6" />}
-                </div>
-                <Button variant="ghost" size="icon" onClick={() => deleteProject(project.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-              <div>
-                <Badge variant="secondary" className="mb-2 text-[10px] font-black uppercase tracking-tighter">
-                  {project.tipo}
-                </Badge>
-                <h4 className="font-black text-xl leading-tight">{project.nombre}</h4>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Columna Proyectos */}
+        <div className="lg:col-span-4 space-y-4">
+          <Card className="border-none shadow-xl rounded-[2rem] bg-white overflow-hidden">
+            <CardHeader className="bg-primary/5 pb-4">
+               <CardTitle className="text-xs font-black uppercase tracking-widest flex items-center gap-2">
+                 <Plus className="h-4 w-4" /> Nuevo Proyecto
+               </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="flex gap-2">
+                <Input 
+                  placeholder="Ej: Universidad" 
+                  value={newProjectName}
+                  onChange={(e) => setNewProjectName(e.target.value)}
+                  className="rounded-xl border-none bg-muted/30 font-bold"
+                />
+                <Button onClick={addProject} size="icon" className="rounded-xl shrink-0"><Plus /></Button>
               </div>
             </CardContent>
           </Card>
-        ))}
+
+          <div className="space-y-2">
+            {projects?.map(p => (
+              <div 
+                key={p.id} 
+                onClick={() => setSelectedProjectId(p.id)}
+                className={cn(
+                  "p-4 rounded-2xl flex items-center justify-between cursor-pointer transition-all border-2",
+                  selectedProjectId === p.id ? "bg-primary text-white border-primary shadow-lg scale-[1.02]" : "bg-white border-transparent hover:border-primary/20 text-slate-600"
+                )}
+              >
+                <div className="flex items-center gap-3">
+                  <Folder className={cn("h-5 w-5", selectedProjectId === p.id ? "text-white" : "text-primary")} />
+                  <span className="font-black text-sm">{p.nombre}</span>
+                </div>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={(e) => { e.stopPropagation(); deleteProject(p.id); }}
+                  className={cn("h-8 w-8", selectedProjectId === p.id ? "text-white/60 hover:text-white" : "text-slate-200 hover:text-destructive")}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Columna Materias */}
+        <div className="lg:col-span-8">
+          {selectedProjectId ? (
+            <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-black">Materias de {projects?.find(p => p.id === selectedProjectId)?.nombre}</h3>
+                <Badge className="bg-primary/10 text-primary border-none">{materias?.length || 0} materias</Badge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <Card className="border-2 border-dashed border-slate-200 bg-transparent rounded-[2rem] flex items-center justify-center p-8 hover:border-primary/40 transition-colors">
+                    <div className="flex flex-col gap-4 w-full text-center">
+                       <p className="text-xs font-black uppercase text-slate-400">Añadir Materia</p>
+                       <div className="flex gap-2">
+                          <Input 
+                            placeholder="Nombre de la materia..." 
+                            value={newMateriaName}
+                            onChange={(e) => setNewMateriaName(e.target.value)}
+                            className="rounded-xl border-none bg-white shadow-sm font-bold"
+                          />
+                          <Button onClick={addMateria} className="rounded-xl px-6">OK</Button>
+                       </div>
+                    </div>
+                 </Card>
+
+                 {materias?.map(m => (
+                   <Card key={m.id} className="border-none shadow-lg rounded-[2.5rem] bg-white p-6 group">
+                      <div className="flex items-center justify-between">
+                         <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-500">
+                               <Hash className="h-6 w-6" />
+                            </div>
+                            <div>
+                               <h4 className="font-black text-lg">{m.nombre}</h4>
+                               <p className="text-[10px] text-muted-foreground uppercase font-black">ID: {m.id.slice(0,6)}</p>
+                            </div>
+                         </div>
+                         <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 text-slate-200 hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                         </Button>
+                      </div>
+                   </Card>
+                 ))}
+              </div>
+            </div>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-center p-20 bg-slate-100/50 rounded-[3rem] border-2 border-dashed border-slate-200">
+               <div className="h-20 w-20 bg-slate-200 rounded-full flex items-center justify-center mb-6">
+                  <ChevronRight className="h-10 w-10 text-slate-400" />
+               </div>
+               <h3 className="text-2xl font-black text-slate-400">Selecciona un Proyecto</h3>
+               <p className="text-slate-400 font-medium max-w-xs">Para gestionar tus materias y tareas vinculadas, primero elige un proyecto de la izquierda.</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

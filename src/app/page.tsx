@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -14,7 +15,6 @@ import {
   UserCircle,
   Sparkles,
   Brain,
-  Shield,
   Trophy
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
@@ -33,7 +33,6 @@ import { doc, increment } from "firebase/firestore"
 import { Switch } from "@/components/ui/switch"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
-import { GamifiedProgress } from "@/components/gamified-progress"
 
 function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => void, onLoginGuest: () => void }) {
   return (
@@ -77,39 +76,7 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
             </div>
           </div>
         </section>
-
-        <section className="py-24 bg-slate-50">
-          <div className="max-w-7xl auto px-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-              <div className="space-y-4">
-                <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                  <Brain className="h-6 w-6" />
-                </div>
-                <h3 className="text-xl font-black">Enfoque TDAH</h3>
-                <p className="text-slate-500 font-medium">Temporizadores visuales y analógicos que combaten la ceguera del tiempo y reducen la ansiedad.</p>
-              </div>
-              <div className="space-y-4">
-                <div className="h-12 w-12 bg-accent/10 rounded-2xl flex items-center justify-center text-accent">
-                  <Sparkles className="h-6 w-6" />
-                </div>
-                <h3 className="text-xl font-black">Desglose con IA</h3>
-                <p className="text-slate-500 font-medium">Nuestra IA descompone tareas grandes en pasos atómicos de menos de 25 minutos automáticamente.</p>
-              </div>
-              <div className="space-y-4">
-                <div className="h-12 w-12 bg-green-100 rounded-2xl flex items-center justify-center text-green-600">
-                  <Trophy className="h-6 w-6" />
-                </div>
-                <h3 className="text-xl font-black">Gamificación Real</h3>
-                <p className="text-slate-500 font-medium">Gana XP, desbloquea insignias y sube de nivel mientras completas tus sesiones de enfoque profundo.</p>
-              </div>
-            </div>
-          </div>
-        </section>
       </main>
-
-      <footer className="py-12 border-t border-slate-100 text-center text-slate-400 font-medium text-sm">
-        <p>© 2025 BluePomodoro. Diseñado para mentes extraordinarias.</p>
-      </footer>
     </div>
   )
 }
@@ -167,19 +134,17 @@ function DashboardContent({
             </SidebarGroup>
           </SidebarContent>
           <SidebarFooter className="p-4 border-t border-primary/5">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-xl group-data-[collapsible=icon]:justify-center">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user.photoURL || ""} />
-                  <AvatarFallback>{user.displayName?.charAt(0) || <UserCircle className="h-5 w-5" />}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 group-data-[collapsible=icon]:hidden overflow-hidden">
-                  <p className="text-[10px] font-black truncate">{user.isAnonymous ? "Invitado" : user.displayName}</p>
-                </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8 group-data-[collapsible=icon]:hidden" onClick={signOutAction}>
-                  <LogOut className="h-4 w-4" />
-                </Button>
+            <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-xl group-data-[collapsible=icon]:justify-center">
+              <Avatar className="h-8 w-8">
+                <AvatarImage src={user.photoURL || ""} />
+                <AvatarFallback>{user.displayName?.charAt(0) || <UserCircle className="h-5 w-5" />}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 group-data-[collapsible=icon]:hidden overflow-hidden">
+                <p className="text-[10px] font-black truncate">{user.isAnonymous ? "Invitado" : user.displayName}</p>
               </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8 group-data-[collapsible=icon]:hidden" onClick={signOutAction}>
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </SidebarFooter>
         </Sidebar>
@@ -200,18 +165,18 @@ function DashboardContent({
 
           <div className="flex-1 p-8 max-w-7xl mx-auto w-full">
             {activeTab === "dashboard" && (
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                <div className="lg:col-span-3 space-y-4">
-                   <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground/60 px-2">Siguiente Paso</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                <div className="lg:col-span-4">
+                   <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground/60 px-2 mb-4">Gestión de Tareas</h3>
                    <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                 </div>
 
-                <div className="lg:col-span-6 flex flex-col gap-6">
-                  <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100 flex flex-col items-center justify-center animate-in zoom-in-95 duration-500">
+                <div className="lg:col-span-8 flex flex-col gap-8">
+                  <div className="bg-white rounded-[3rem] p-12 shadow-xl border border-slate-100 flex flex-col items-center justify-center">
                     {activeTask && (
-                      <div className="mb-6 text-center animate-in fade-in slide-in-from-top-2 duration-700">
-                        <Badge className="bg-primary/10 text-primary border-none text-[10px] font-black uppercase tracking-widest mb-2 px-3 py-1">Enfoque Profundo</Badge>
-                        <h2 className="text-2xl font-black tracking-tight">{activeTask.titulo}</h2>
+                      <div className="mb-8 text-center">
+                        <Badge className="bg-primary/10 text-primary border-none text-[10px] font-black uppercase tracking-widest mb-2 px-3 py-1">Enfoque Actual</Badge>
+                        <h2 className="text-3xl font-black tracking-tight">{activeTask.titulo}</h2>
                       </div>
                     )}
                     <PomodoroTimer 
@@ -228,11 +193,6 @@ function DashboardContent({
                       large
                     />
                   </div>
-                </div>
-
-                <div className="lg:col-span-3 space-y-6">
-                   <GamifiedProgress />
-                   <ProjectManager compact />
                 </div>
               </div>
             )}
@@ -260,9 +220,9 @@ export default function AppEntry() {
   const auth = useAuth()
   const db = useFirestore()
 
-  const [workMinutes, setWorkMinutes] = React.useState(40)
-  const [breakMinutes, setBreakMinutes] = React.useState(10)
-  const [timeLeft, setTimeLeft] = React.useState(40 * 60)
+  const [workMinutes, setWorkMinutes] = React.useState(25)
+  const [breakMinutes, setBreakMinutes] = React.useState(5)
+  const [timeLeft, setTimeLeft] = React.useState(25 * 60)
   const [isActive, setIsActive] = React.useState(false)
   const [mode, setMode] = React.useState<"work" | "break">("work")
   const [sessionsCompleted, setSessionsCompleted] = React.useState(0)
@@ -317,10 +277,10 @@ export default function AppEntry() {
     setIsAlarmModalOpen(false)
     if (mode === "work") {
       setMode("break")
-      const isLongBreak = (sessionsCompleted) % 4 === 0 && sessionsCompleted > 0
-      setTimeLeft((isLongBreak ? 20 : breakMinutes) * 60)
+      setTimeLeft(breakMinutes * 60)
     } else {
-      setMode("work"); setTimeLeft(workMinutes * 60)
+      setMode("work")
+      setTimeLeft(workMinutes * 60)
     }
   }
 
@@ -343,7 +303,6 @@ export default function AppEntry() {
     signOut(auth)
   }
 
-  // Prevención de errores de hidratación
   if (!mounted) return null
 
   if (isUserLoading) return <div className="min-h-screen flex items-center justify-center bg-white"><CloudLightning className="h-12 w-12 text-primary animate-pulse" /></div>
@@ -387,7 +346,6 @@ export default function AppEntry() {
             <AlertDialogTitle className="text-2xl font-black">¡Tiempo Cumplido!</AlertDialogTitle>
             <AlertDialogDescription className="text-sm font-medium">
               Has completado tu sesión de {mode === "work" ? "enfoque" : "descanso"}.
-              Es momento de cambiar el ritmo.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="sm:justify-center mt-6">
