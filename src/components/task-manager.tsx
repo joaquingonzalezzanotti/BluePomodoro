@@ -240,8 +240,8 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                       )}
                       
                       <div className="flex items-center gap-4 text-[10px] font-black uppercase text-muted-foreground/60">
-                        <span className="flex items-center gap-1.5 bg-primary/5 px-2 py-1 rounded-lg"><Zap className="h-3.5 w-3.5 text-primary" /> {task.esfuerzoEstimadoPomodoros || 1} Pomos</span>
-                        <span className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-lg"><Layout className="h-3.5 w-3.5 text-blue-500" /> {totalCount} Subtareas</span>
+                        <span className="flex items-center gap-1.5 bg-primary/5 px-2 py-1 rounded-lg"><Zap className="h-3.5 w-3.5 text-primary" /> {task.esfuerzoEstimadoPomodoros || 1}</span>
+                        <span className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-lg"><Layout className="h-3.5 w-3.5 text-blue-500" /> {totalCount}</span>
                       </div>
 
                       <div className="flex items-center gap-1 border-l pl-4 border-slate-100">
