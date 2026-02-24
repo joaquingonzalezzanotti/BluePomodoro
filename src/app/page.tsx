@@ -45,7 +45,7 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
     setMounted(true)
   }, [])
 
-  if (!mounted) return null
+  if (!mounted) return <div className="min-h-screen bg-white" />
 
   return (
     <div className="min-h-screen bg-white text-slate-900 overflow-x-hidden font-sans">
