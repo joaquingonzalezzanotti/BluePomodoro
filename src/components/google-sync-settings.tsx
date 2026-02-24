@@ -7,11 +7,11 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
 import { useFirestore, useUser, useMemoFirebase, setDocumentNonBlocking, useDoc, addDocumentNonBlocking } from "@/firebase"
 import { doc, collection, serverTimestamp } from "firebase/firestore"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 
 export function GoogleSyncSettings() {
