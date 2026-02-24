@@ -13,9 +13,7 @@ import {
   Timer as TimerIcon,
   FolderKanban,
   UserCircle,
-  Sparkles,
-  Brain,
-  Trophy
+  Sparkles
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -167,7 +165,6 @@ function DashboardContent({
             {activeTab === "dashboard" && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 <div className="lg:col-span-4">
-                   <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground/60 px-2 mb-4">Gestión de Tareas</h3>
                    <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                 </div>
 
@@ -215,8 +212,8 @@ function DashboardContent({
 
 export default function AppEntry() {
   const [mounted, setMounted] = React.useState(false)
-  const [activeTab, setActiveTab] = React.useState("dashboard")
   const { user, isUserLoading } = useUser()
+  const [activeTab, setActiveTab] = React.useState("dashboard")
   const auth = useAuth()
   const db = useFirestore()
 
