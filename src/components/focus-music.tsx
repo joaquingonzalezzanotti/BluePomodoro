@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Music, Headphones, Maximize2, ExternalLink } from "lucide-react"
+import { Music, Headphones, ChevronUp, ChevronDown, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
@@ -16,6 +16,7 @@ interface FocusMusicProps {
 export function FocusMusic({ layout = "dashboard" }: FocusMusicProps) {
   const { user } = useUser()
   const db = useFirestore()
+  const [isExpanded, setIsExpanded] = React.useState(false)
 
   const userRef = useMemoFirebase(() => {
     if (!db || !user) return null
@@ -39,21 +40,40 @@ export function FocusMusic({ layout = "dashboard" }: FocusMusicProps) {
 
   if (layout === "dock") {
     return (
-      <div className="fixed bottom-6 right-6 z-50 animate-in slide-in-from-bottom-8 duration-700">
-        <div className="bg-white/80 backdrop-blur-xl border border-white/40 shadow-[0_10px_40px_rgba(0,0,0,0.08)] rounded-[2rem] p-4 w-[360px] space-y-3">
-          <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 bg-primary rounded-full animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-primary/70">Focus Radio</span>
+      <div className={cn(
+        "fixed bottom-6 right-6 z-50 transition-all duration-500 ease-in-out",
+        isExpanded ? "w-[380px]" : "w-[180px]"
+      )}>
+        <div className={cn(
+          "bg-white/70 backdrop-blur-2xl border border-white/40 shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[2rem] overflow-hidden transition-all duration-500",
+          isExpanded ? "p-4 h-[180px]" : "p-3 h-[56px]"
+        )}>
+          <div className="flex items-center justify-between mb-3 h-8 px-2">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <div className={cn(
+                "h-2 w-2 bg-primary rounded-full shrink-0",
+                isExpanded && "animate-pulse"
+              )} />
+              <span className="text-[10px] font-black uppercase tracking-widest text-primary/80 truncate">
+                Focus Radio
+              </span>
             </div>
-            <div className="flex items-center gap-1">
-              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full hover:bg-primary/5 text-primary/40 hover:text-primary transition-all">
-                <ExternalLink className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-1 shrink-0">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="h-8 w-8 rounded-full hover:bg-primary/5 text-primary/60 transition-transform duration-300"
+              >
+                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
               </Button>
             </div>
           </div>
           
-          <div className="rounded-2xl overflow-hidden bg-slate-100/50 border border-slate-200/50">
+          <div className={cn(
+            "rounded-2xl overflow-hidden transition-opacity duration-500",
+            isExpanded ? "opacity-100" : "opacity-0 pointer-events-none"
+          )}>
             <iframe 
               src={finalUrl} 
               width="100%" 
@@ -62,7 +82,7 @@ export function FocusMusic({ layout = "dashboard" }: FocusMusicProps) {
               allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" 
               loading="lazy"
               title="Spotify Focus Player"
-              className="rounded-xl shadow-inner"
+              className="rounded-xl"
             ></iframe>
           </div>
         </div>
