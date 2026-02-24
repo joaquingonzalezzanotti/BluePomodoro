@@ -334,25 +334,40 @@ export default function AppEntry() {
     setTimeLeft(mode === "work" ? workMinutes * 60 : breakMinutes * 60)
   }
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = () => {
     if (!auth) {
-      toast({ variant: "destructive", title: "Error", description: "Firebase no listo." })
+      toast({ variant: "destructive", title: "Error", description: "Firebase Auth no está inicializado." })
       return
     }
-    try {
-      const provider = new GoogleAuthProvider();
-      provider.addScope('https://www.googleapis.com/auth/tasks.readonly');
-      provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
-      const result = await signInWithPopup(auth, provider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      if (credential?.accessToken) {
-        sessionStorage.setItem('google_access_token', credential.accessToken);
-      }
-    } catch (e: any) {
-      if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/popup-blocked') {
-        toast({ variant: "destructive", title: "Error", description: e.message })
-      }
-    }
+
+    const provider = new GoogleAuthProvider();
+    provider.addScope('https://www.googleapis.com/auth/tasks.readonly');
+    provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+    
+    signInWithPopup(auth, provider)
+      .then((result) => {
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        if (credential?.accessToken) {
+          sessionStorage.setItem('google_access_token', credential.accessToken);
+        }
+        toast({ title: "¡Éxito!", description: "Sesión iniciada con Google." });
+      })
+      .catch((e: any) => {
+        console.error("Login Error Details:", e);
+        let errorMsg = "Ocurrió un error al iniciar sesión.";
+        
+        if (e.code === 'auth/popup-blocked') {
+          errorMsg = "El navegador bloqueó la ventana emergente. Por favor, habilita los popups para este sitio.";
+        } else if (e.code === 'auth/popup-closed-by-user') {
+          errorMsg = "Cerraste la ventana de inicio de sesión antes de completar el proceso.";
+        } else if (e.code === 'auth/unauthorized-domain') {
+          errorMsg = "Este dominio no está autorizado en la consola de Firebase.";
+        } else {
+          errorMsg = e.message;
+        }
+
+        toast({ variant: "destructive", title: "Error de Login", description: errorMsg });
+      });
   }
 
   const handleGuestSignIn = async () => {
