@@ -14,7 +14,7 @@ import {
   FolderKanban,
   UserCircle,
   Sparkles,
-  Columns as KanbanIcon
+  CheckSquare
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -32,7 +32,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { doc, increment } from "firebase/firestore"
 import { Switch } from "@/components/ui/switch"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
-import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
 function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => void, onLoginGuest: () => void }) {
   return (
@@ -52,30 +52,28 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
         </div>
       </nav>
 
-      <main>
-        <section className="pt-40 pb-20 px-6 max-w-7xl mx-auto text-center">
-          <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 text-primary text-xs font-black uppercase tracking-widest mb-8 border border-primary/10">
-              <Sparkles className="h-3.5 w-3.5" /> La Productividad del Futuro
-            </div>
-            <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.95] mb-8 text-slate-900">
-              Domina tu tiempo, <br />
-              <span className="text-primary italic">con claridad mental.</span>
-            </h1>
-            <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 font-medium mb-10 leading-relaxed">
-              Diseñado específicamente para el cerebro moderno. Desglose de tareas con IA, 
-              temporizadores visuales para TDAH y gamificación real.
-            </p>
-            <div className="flex flex-col md:flex-row items-center justify-center gap-4 mb-20">
-              <Button size="lg" onClick={onLoginGoogle} className="h-16 px-10 rounded-2xl text-lg font-bold gap-3 shadow-xl shadow-primary/25 w-full md:w-auto hover:bg-primary/90 transition-all">
-                <LogIn className="h-5 w-5" /> Iniciar con Google
-              </Button>
-              <Button size="lg" variant="outline" onClick={onLoginGuest} className="h-16 px-10 rounded-2xl text-lg font-bold border-2 w-full md:w-auto hover:bg-slate-50">
-                 Acceso Invitado
-              </Button>
-            </div>
+      <main className="pt-40 pb-20 px-6 max-w-7xl mx-auto text-center">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 text-primary text-xs font-black uppercase tracking-widest mb-8 border border-primary/10">
+            <Sparkles className="h-3.5 w-3.5" /> La Productividad del Futuro
           </div>
-        </section>
+          <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.95] mb-8 text-slate-900">
+            Domina tu tiempo, <br />
+            <span className="text-primary italic">con claridad mental.</span>
+          </h1>
+          <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 font-medium mb-10 leading-relaxed">
+            Diseñado específicamente para el cerebro moderno. Desglose de tareas con IA, 
+            temporizadores visuales para TDAH y gamificación real.
+          </p>
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+            <Button size="lg" onClick={onLoginGoogle} className="h-16 px-10 rounded-2xl text-lg font-bold gap-3 shadow-xl shadow-primary/25 w-full md:w-auto hover:bg-primary/90 transition-all">
+              <LogIn className="h-5 w-5" /> Iniciar con Google
+            </Button>
+            <Button size="lg" variant="outline" onClick={onLoginGuest} className="h-16 px-10 rounded-2xl text-lg font-bold border-2 w-full md:w-auto hover:bg-slate-50">
+               Acceso Invitado
+            </Button>
+          </div>
+        </div>
       </main>
     </div>
   )
@@ -118,7 +116,7 @@ function DashboardContent({
               <SidebarMenu>
                 {[
                   { id: "dashboard", icon: LayoutDashboard, label: "Tablero" },
-                  { id: "kanban", icon: KanbanIcon, label: "Kanban" },
+                  { id: "tareas", icon: CheckSquare, label: "Tareas" },
                   { id: "proyectos", icon: FolderKanban, label: "Proyectos" },
                   { id: "stats", icon: BarChart3, label: "Estadísticas" },
                   { id: "config", icon: Settings, label: "Configuración" },
@@ -167,9 +165,8 @@ function DashboardContent({
             {activeTab === "dashboard" && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 <div className="lg:col-span-5">
-                   <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
+                   <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} compact />
                 </div>
-
                 <div className="lg:col-span-7 flex flex-col gap-8">
                   <div className="bg-white rounded-[3rem] p-12 shadow-xl border border-slate-100 flex flex-col items-center justify-center">
                     <PomodoroTimer 
@@ -190,7 +187,26 @@ function DashboardContent({
               </div>
             )}
 
-            {activeTab === "kanban" && <KanbanBoard />}
+            {activeTab === "tareas" && (
+              <div className="space-y-6">
+                <Tabs defaultValue="lista" className="w-full">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-3xl font-black">Gestión de Tareas</h2>
+                    <TabsList className="bg-white p-1 rounded-xl shadow-sm border border-slate-100">
+                      <TabsTrigger value="lista" className="rounded-lg px-6 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">Lista</TabsTrigger>
+                      <TabsTrigger value="kanban" className="rounded-lg px-6 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">Kanban</TabsTrigger>
+                    </TabsList>
+                  </div>
+                  <TabsContent value="lista">
+                    <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
+                  </TabsContent>
+                  <TabsContent value="kanban">
+                    <KanbanBoard />
+                  </TabsContent>
+                </Tabs>
+              </div>
+            )}
+
             {activeTab === "proyectos" && <ProjectManager />}
             {activeTab === "config" && <ConfigurationView />}
             {activeTab === "stats" && <StatsView />}

@@ -7,7 +7,7 @@ import { collection, doc, query, orderBy } from "firebase/firestore"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ChevronRight, ChevronLeft, Zap, Calendar, Layout, CheckCircle2 } from "lucide-react"
+import { ChevronRight, ChevronLeft, Zap, Layout, CheckCircle2 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 
 const COLUMNS = [
@@ -37,7 +37,7 @@ export function KanbanBoard() {
     const colTasks = tasks?.filter(t => t.estado === col.id || (!t.estado && col.id === "Pendiente")) || []
 
     return (
-      <div key={col.id} className="flex flex-col gap-4 min-w-[320px] flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div key={col.id} className="flex flex-col gap-4 min-w-[320px] flex-1">
         <div className={`p-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-between ${col.color}`}>
           <span>{col.title}</span>
           <Badge variant="outline" className="bg-white/50 border-none font-black">{colTasks.length}</Badge>
@@ -46,11 +46,11 @@ export function KanbanBoard() {
           {colTasks.map(task => {
             const subTasks = (task.subtareas || [])
             const totalCount = subTasks.length
-            const completedCount = subTasks.filter((st: any) => st.completed).length
+            const completedCount = subTasks.filter((st: any) => typeof st === 'object' && st.completed).length
             const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
 
             return (
-              <Card key={task.id} className="border-none shadow-sm hover:shadow-md transition-all group rounded-2xl overflow-hidden bg-white">
+              <Card key={task.id} className="border-none shadow-sm hover:shadow-md transition-all rounded-2xl bg-white overflow-hidden">
                 <CardContent className="p-5 space-y-4">
                   <div className="flex justify-between items-start gap-2">
                     <h4 className="text-sm font-black leading-tight flex-1">{task.titulo}</h4>
@@ -68,27 +68,15 @@ export function KanbanBoard() {
                   )}
 
                   <div className="flex items-center gap-3 text-[10px] font-black uppercase text-muted-foreground/60">
-                    <span className="flex items-center gap-1"><Layout className="h-3.5 w-3.5" /> {totalCount} Pasos</span>
+                    <span className="flex items-center gap-1"><Layout className="h-3.5 w-3.5" /> {totalCount} Subtareas</span>
                     <span className="flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-primary" /> {task.esfuerzoEstimadoPomodoros || 1}</span>
                   </div>
 
                   <div className="flex justify-between pt-2 border-t border-slate-50">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 rounded-xl hover:bg-slate-100" 
-                      disabled={col.id === "Pendiente"}
-                      onClick={() => moveTask(task.id, col.id === "En Proceso" ? "Pendiente" : "En Proceso")}
-                    >
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" disabled={col.id === "Pendiente"} onClick={() => moveTask(task.id, col.id === "En Proceso" ? "Pendiente" : "En Proceso")}>
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 rounded-xl hover:bg-slate-100" 
-                      disabled={col.id === "Completada"}
-                      onClick={() => moveTask(task.id, col.id === "Pendiente" ? "En Proceso" : "Completada")}
-                    >
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-xl" disabled={col.id === "Completada"} onClick={() => moveTask(task.id, col.id === "Pendiente" ? "En Proceso" : "Completada")}>
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>
@@ -102,7 +90,7 @@ export function KanbanBoard() {
   }
 
   return (
-    <div className="flex gap-8 overflow-x-auto pb-8 scrollbar-hide">
+    <div className="flex gap-8 overflow-x-auto pb-8">
       {COLUMNS.map(renderColumn)}
     </div>
   )
