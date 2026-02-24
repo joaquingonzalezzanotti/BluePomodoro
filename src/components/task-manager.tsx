@@ -13,7 +13,8 @@ import {
   Edit2,
   Check,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Minus
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -123,6 +124,13 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
     setEditingTaskId(null)
   }
 
+  const updatePomodoros = (taskId: string, current: number, delta: number) => {
+    if (!user || !db) return
+    const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
+    const newVal = Math.max(1, current + delta)
+    updateDocumentNonBlocking(taskRef, { esfuerzoEstimadoPomodoros: newVal })
+  }
+
   const updateSubTaskText = (taskId: string, subTasks: SubTask[], subId: string) => {
     if (!user || !db || !editingSubText.trim()) return
     const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
@@ -199,13 +207,17 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
           const totalCount = normalizedSubTasks.length
           const progressValue = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
           const isExpanded = !!expandedTasks[task.id]
+          const esfuerzo = task.esfuerzoEstimadoPomodoros || 1
 
           return (
             <Collapsible key={task.id} open={isExpanded} onOpenChange={() => toggleExpand(task.id)}>
               <Card className={cn("border-none shadow-sm transition-all rounded-[2rem] overflow-hidden bg-white", activeTaskId === task.id && "ring-2 ring-primary/40", task.estado === "Completada" && "opacity-60")}>
                 <CardContent className="p-6">
-                  <div className="flex items-center justify-between gap-6">
-                    <div className="flex items-center gap-4 flex-1 min-w-0" onClick={() => onTaskSelect?.(task.id)}>
+                  {/* Layout de 2 Filas obligatorio */}
+                  <div className="flex flex-col gap-4">
+                    
+                    {/* Fila 1 (Nombre de la Tarea) - Ocupa todo el ancho */}
+                    <div className="flex items-center gap-4 w-full" onClick={() => onTaskSelect?.(task.id)}>
                       <Button 
                         variant="ghost" size="icon" 
                         className={cn("h-10 w-10 rounded-full shrink-0 border-2", task.estado === "Completada" ? "text-green-500 border-green-500" : "text-slate-200 border-slate-100")}
@@ -229,7 +241,8 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-6 shrink-0">
+                    {/* Fila 2 (Acciones y Metadatos) - Alineado a la derecha */}
+                    <div className="flex items-center justify-end gap-6 w-full">
                       {totalCount > 0 && (
                         <div className="w-24 space-y-1 hidden sm:block">
                           <div className="flex justify-between text-[9px] font-black uppercase text-muted-foreground/60">
@@ -240,7 +253,27 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                       )}
                       
                       <div className="flex items-center gap-4 text-[10px] font-black uppercase text-muted-foreground/60">
-                        <span className="flex items-center gap-1.5 bg-primary/5 px-2 py-1 rounded-lg"><Zap className="h-3.5 w-3.5 text-primary" /> {task.esfuerzoEstimadoPomodoros || 1}</span>
+                        {/* Selector de Pomodoros con edición */}
+                        <div className="flex items-center gap-2 bg-primary/5 px-2 py-1 rounded-lg group/pomodoro">
+                          <Zap className="h-3.5 w-3.5 text-primary" />
+                          <div className="flex items-center gap-1">
+                            <Button 
+                              variant="ghost" size="icon" 
+                              className="h-4 w-4 p-0 opacity-0 group-hover/pomodoro:opacity-100 transition-opacity"
+                              onClick={(e) => { e.stopPropagation(); updatePomodoros(task.id, esfuerzo, -1); }}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="min-w-[1ch] text-center">{esfuerzo}</span>
+                            <Button 
+                              variant="ghost" size="icon" 
+                              className="h-4 w-4 p-0 opacity-0 group-hover/pomodoro:opacity-100 transition-opacity"
+                              onClick={(e) => { e.stopPropagation(); updatePomodoros(task.id, esfuerzo, 1); }}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </div>
                         <span className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-lg"><Layout className="h-3.5 w-3.5 text-blue-500" /> {totalCount}</span>
                       </div>
 

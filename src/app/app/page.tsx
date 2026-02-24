@@ -1,0 +1,407 @@
+
+"use client"
+
+import * as React from "react"
+import Image from "next/image"
+import { 
+  LayoutDashboard, 
+  Settings, 
+  LogOut,
+  BarChart3,
+  CloudLightning,
+  LogIn,
+  Timer as TimerIcon,
+  FolderKanban,
+  UserCircle,
+  CheckSquare,
+  Target,
+  PanelLeft
+} from "lucide-react"
+import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, useSidebar } from "@/components/ui/sidebar"
+import { Toaster } from "@/components/ui/toaster"
+import { PomodoroTimer } from "@/components/pomodoro-timer"
+import { TaskManager } from "@/components/task-manager"
+import { ConfigurationView } from "@/components/configuration-view"
+import { StatsView } from "@/components/stats-view"
+import { ProjectManager } from "@/components/project-manager"
+import { KanbanBoard } from "@/components/kanban-board"
+import { FocusMusic } from "@/components/focus-music"
+import { SpotifyRealTime } from "@/components/spotify-real-time"
+import { Button } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useDoc } from "@/firebase"
+import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { doc, increment } from "firebase/firestore"
+import { Switch } from "@/components/ui/switch"
+import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
+import { useRouter } from "next/navigation"
+
+function SidebarToggle() {
+  const { toggleSidebar, state } = useSidebar()
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton 
+        onClick={toggleSidebar} 
+        className="rounded-xl h-10 w-full flex items-center justify-center hover:bg-primary/5 transition-colors"
+        tooltip={state === "expanded" ? "Colapsar menú" : "Expandir menú"}
+      >
+        <PanelLeft className={cn("h-5 w-5 text-primary transition-transform duration-300", state === "collapsed" && "rotate-180")} />
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  )
+}
+
+function DashboardContent({ 
+  user, 
+  activeTab, 
+  setActiveTab, 
+  isActive, 
+  timeLeft, 
+  isBlocking, 
+  userRef, 
+  activeTaskId, 
+  setActiveTaskId, 
+  mode, 
+  sessionsCompleted, 
+  toggleTimer, 
+  resetTimer, 
+  workMinutes, 
+  setWorkMinutes, 
+  breakMinutes, 
+  setBreakMinutes, 
+  signOutAction 
+}: any) {
+  const tabTitles: Record<string, string> = {
+    dashboard: "Tablero de Enfoque",
+    foco: "Modo Zen",
+    tareas: "Gestión de Tareas",
+    proyectos: "Mis Proyectos",
+    stats: "Estadísticas",
+    config: "Configuración"
+  }
+
+  return (
+    <SidebarProvider defaultOpen={true} style={{ "--sidebar-width": "16rem", "--sidebar-width-icon": "5rem" } as React.CSSProperties}>
+      <div className="flex min-h-screen w-full bg-slate-50/50 pb-24">
+        <Sidebar collapsible="icon" className="border-r border-primary/5 bg-white/80 backdrop-blur-xl transition-all duration-300">
+          <SidebarHeader className="p-4 flex items-center justify-center">
+            <SidebarMenu>
+              <SidebarToggle />
+            </SidebarMenu>
+          </SidebarHeader>
+          <SidebarContent className="px-4">
+            <SidebarGroup>
+              <SidebarMenu>
+                {[
+                  { id: "dashboard", icon: LayoutDashboard, label: "Tablero" },
+                  { id: "foco", icon: Target, label: "Foco" },
+                  { id: "tareas", icon: CheckSquare, label: "Tareas" },
+                  { id: "proyectos", icon: FolderKanban, label: "Proyectos" },
+                  { id: "stats", icon: BarChart3, label: "Estadísticas" },
+                  { id: "config", icon: Settings, label: "Configuración" },
+                ].map((item) => (
+                  <SidebarMenuItem key={item.id}>
+                    <SidebarMenuButton 
+                      isActive={activeTab === item.id} 
+                      onClick={() => setActiveTab(item.id)} 
+                      className="rounded-xl h-12 flex items-center group-data-[collapsible=icon]:justify-center transition-all" 
+                      tooltip={item.label}
+                    >
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      <span className="font-bold group-data-[collapsible=icon]:hidden ml-3">{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroup>
+          </SidebarContent>
+          <SidebarFooter className="p-4 border-t border-primary/5">
+            <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-xl group-data-[collapsible=icon]:justify-center overflow-hidden transition-all">
+              <Avatar className="h-8 w-8 shrink-0">
+                <AvatarImage src={user.photoURL || ""} />
+                <AvatarFallback>{user.displayName?.charAt(0) || <UserCircle className="h-5 w-5" />}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 group-data-[collapsible=icon]:hidden overflow-hidden">
+                <p className="text-[10px] font-black truncate">{user.isAnonymous ? "Invitado" : user.displayName}</p>
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8 group-data-[collapsible=icon]:hidden shrink-0" onClick={signOutAction}>
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </SidebarFooter>
+        </Sidebar>
+
+        <main className="flex-1 min-w-0 overflow-auto flex flex-col">
+          <header className="h-16 border-b border-primary/5 bg-white/70 backdrop-blur-md sticky top-0 z-20 px-8 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="h-8 w-8 relative overflow-hidden rounded-lg bg-white shadow-sm border border-slate-100 flex items-center justify-center">
+                  <Image src="/logo.png" alt="Logo BluePomodoro" width={24} height={24} className="rounded-md object-contain" />
+                </div>
+                <h1 className="text-sm font-black tracking-tighter text-primary">BluePomodoro</h1>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <Switch checked={isBlocking} onCheckedChange={(c) => userRef && updateDocumentNonBlocking(userRef, { modoEstrictoActivo: c })} className="scale-75" />
+                <span className="text-[10px] font-black uppercase text-muted-foreground">Modo Focus</span>
+              </div>
+            </div>
+          </header>
+
+          <div className="flex-1 p-8 w-full max-w-[1600px] mx-auto space-y-8">
+            <div className="space-y-1">
+              <h1 className="text-4xl font-black text-slate-900 tracking-tight">{tabTitles[activeTab]}</h1>
+              <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">{activeTab}</p>
+            </div>
+
+            {activeTab === "dashboard" && (
+              <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-8 items-start">
+                <div className="min-w-0">
+                  <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
+                </div>
+                <div className="xl:sticky xl:top-24 w-full">
+                  <Card className="bg-white rounded-[2.5rem] p-6 xl:p-8 shadow-xl border border-slate-100 flex flex-col items-center justify-center overflow-hidden min-h-[140px] xl:min-h-0">
+                    <PomodoroTimer 
+                      timeLeft={timeLeft}
+                      isActive={isActive}
+                      mode={mode}
+                      sessionsCompleted={sessionsCompleted}
+                      toggleTimer={toggleTimer}
+                      resetTimer={resetTimer}
+                      workMinutes={workMinutes}
+                      setWorkMinutes={setWorkMinutes}
+                      breakMinutes={breakMinutes}
+                      setBreakMinutes={setBreakMinutes}
+                    />
+                  </Card>
+                   <SpotifyRealTime />
+                </div>
+              </div>
+            )}
+
+            {activeTab === "foco" && (
+              <div className="flex flex-col items-center justify-center gap-12 min-h-[70vh] animate-in zoom-in-95 duration-700">
+                <div className="bg-white rounded-[4rem] p-16 shadow-2xl border border-slate-100 flex flex-col items-center justify-center">
+                  <PomodoroTimer 
+                    timeLeft={timeLeft}
+                    isActive={isActive}
+                    mode={mode}
+                    sessionsCompleted={sessionsCompleted}
+                    toggleTimer={toggleTimer}
+                    resetTimer={resetTimer}
+                    workMinutes={workMinutes}
+                    setWorkMinutes={setWorkMinutes}
+                    breakMinutes={breakMinutes}
+                    setBreakMinutes={setBreakMinutes}
+                    large
+                  />
+                </div>
+                <div className="max-w-2xl w-full">
+                   <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} onlyActive />
+                </div>
+              </div>
+            )}
+
+            {activeTab === "tareas" && (
+              <div className="space-y-6">
+                <Tabs defaultValue="lista" className="w-full">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-black">Organiza tus Pendientes</h2>
+                    <TabsList className="bg-white p-1 rounded-xl shadow-sm border border-slate-100">
+                      <TabsTrigger value="lista" className="rounded-lg px-6 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">Lista</TabsTrigger>
+                      <TabsTrigger value="kanban" className="rounded-lg px-6 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">Kanban</TabsTrigger>
+                    </TabsList>
+                  </div>
+                  <TabsContent value="lista" className="animate-in fade-in duration-500">
+                    <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
+                  </TabsContent>
+                  <TabsContent value="kanban" className="animate-in slide-in-from-bottom-4 duration-500">
+                    <KanbanBoard />
+                  </TabsContent>
+                </Tabs>
+              </div>
+            )}
+
+            {activeTab === "proyectos" && <ProjectManager />}
+            {activeTab === "config" && <ConfigurationView />}
+            {activeTab === "stats" && <StatsView />}
+          </div>
+
+          <FocusMusic layout="dock" />
+        </main>
+      </div>
+    </SidebarProvider>
+  )
+}
+
+export default function AppEntry() {
+  const [mounted, setMounted] = React.useState(false)
+  const { user, isUserLoading } = useUser()
+  const [activeTab, setActiveTab] = React.useState("dashboard")
+  const auth = useAuth()
+  const db = useFirestore()
+  const { toast } = useToast()
+  const router = useRouter()
+
+  const [workMinutes, setWorkMinutes] = React.useState(40)
+  const [breakMinutes, setBreakMinutes] = React.useState(10)
+  const [timeLeft, setTimeLeft] = React.useState(40 * 60)
+  const [isActive, setIsActive] = React.useState(false)
+  const [mode, setMode] = React.useState<"work" | "break">("work")
+  const [sessionsCompleted, setSessionsCompleted] = React.useState(0)
+  const [activeTaskId, setActiveTaskId] = React.useState<string | null>(null)
+  
+  const [isAlarmModalOpen, setIsAlarmModalOpen] = React.useState(false)
+  const audioRef = React.useRef<HTMLAudioElement | null>(null)
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const userRef = useMemoFirebase(() => {
+    if (!db || !user) return null
+    return doc(db, "usuarios", user.uid)
+  }, [db, user])
+
+  const { data: userData } = useDoc(userRef)
+  const isBlocking = userData?.modoEstrictoActivo || false
+
+  React.useEffect(() => {
+    let interval: NodeJS.Timeout | null = null
+    if (isActive && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((prev) => prev - 1)
+      }, 1000)
+    } else if (timeLeft === 0 && isActive) {
+      handleSessionEnd()
+    }
+    return () => { if (interval) clearInterval(interval) }
+  }, [isActive, timeLeft])
+
+  const handleSessionEnd = () => {
+    setIsActive(false)
+    setIsAlarmModalOpen(true)
+    if (typeof window !== "undefined") {
+      const audio = new Audio("https://actions.google.com/sounds/v1/alarms/alarm_clock_beeping.ogg")
+      audio.loop = true
+      audio.play().catch(() => {})
+      audioRef.current = audio
+    }
+    if (mode === "work") {
+      setSessionsCompleted(prev => prev + 1)
+      if (userRef) {
+        updateDocumentNonBlocking(userRef, { puntosTotales: increment(100) })
+      }
+    }
+  }
+
+  const stopAlarm = () => {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    setIsAlarmModalOpen(false)
+    if (mode === "work") {
+      setMode("break")
+      setTimeLeft(breakMinutes * 60)
+    } else {
+      setMode("work")
+      setTimeLeft(workMinutes * 60)
+    }
+  }
+
+  const toggleTimer = () => setIsActive(!isActive)
+  const resetTimer = () => {
+    setIsActive(false)
+    setTimeLeft(mode === "work" ? workMinutes * 60 : breakMinutes * 60)
+  }
+
+  const handleSignOut = () => {
+    if (!auth) return
+    signOut(auth).then(() => router.push("/"))
+  }
+
+  const handleGoogleSignIn = async () => {
+    if (!auth) return
+    const provider = new GoogleAuthProvider()
+    await signInWithPopup(auth, provider)
+  }
+
+  if (!mounted) return null
+  if (isUserLoading) return <div className="min-h-screen flex items-center justify-center bg-white"><CloudLightning className="h-12 w-12 text-primary animate-pulse" /></div>
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <Card className="max-w-md w-full p-10 rounded-[2.5rem] shadow-2xl bg-white text-center space-y-8">
+          <div className="h-20 w-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto">
+            <TimerIcon className="h-10 w-10 text-primary" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-3xl font-black text-slate-900">Acceso Requerido</h2>
+            <p className="text-slate-500 font-medium">Inicia sesión para acceder a tu tablero de productividad.</p>
+          </div>
+          <div className="space-y-4">
+            <Button onClick={handleGoogleSignIn} className="w-full h-14 rounded-2xl font-black text-lg gap-3">
+              <LogIn className="h-5 w-5" /> Iniciar con Google
+            </Button>
+            <Button variant="ghost" onClick={() => router.push("/")} className="w-full font-bold">
+              Volver a la Landing Page
+            </Button>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <>
+      <DashboardContent 
+        user={user} 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        isActive={isActive} 
+        timeLeft={timeLeft} 
+        isBlocking={isBlocking} 
+        userRef={userRef} 
+        activeTaskId={activeTaskId} 
+        setActiveTaskId={setActiveTaskId} 
+        mode={mode} 
+        sessionsCompleted={sessionsCompleted} 
+        toggleTimer={toggleTimer} 
+        resetTimer={resetTimer} 
+        workMinutes={workMinutes} 
+        setWorkMinutes={setWorkMinutes} 
+        breakMinutes={breakMinutes} 
+        setBreakMinutes={setBreakMinutes} 
+        signOutAction={handleSignOut} 
+      />
+
+      <AlertDialog open={isAlarmModalOpen}>
+        <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl p-10 max-w-sm">
+          <AlertDialogHeader className="items-center text-center">
+            <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 animate-bounce">
+              <TimerIcon className="h-10 w-10 text-primary" />
+            </div>
+            <AlertDialogTitle className="text-2xl font-black text-primary">¡Tiempo Cumplido!</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-slate-500">
+              Has completado tu sesión de {mode === "work" ? "enfoque" : "descanso"}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-center mt-6">
+            <AlertDialogAction 
+              onClick={stopAlarm}
+              className="w-full h-14 rounded-2xl bg-primary text-white font-black text-lg hover:bg-primary/90"
+            >
+              {mode === "work" ? "TOMAR DESCANSO" : "VOLVER AL FOCUS"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Toaster />
+    </>
+  )
+}
