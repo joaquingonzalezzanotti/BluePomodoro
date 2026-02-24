@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -68,17 +69,17 @@ export function PomodoroTimer({
   return (
     <div className={cn("flex flex-col items-center w-full max-w-md mx-auto", large ? "scale-105" : "scale-90")}>
       <div className="relative w-72 h-72 flex items-center justify-center mb-8">
-        {/* Hyper-Modern Glow Ring */}
+        {/* Glow Effect */}
         <div className={cn(
           "absolute inset-0 rounded-full blur-[40px] opacity-20 transition-all duration-1000",
           isActive ? "scale-110 opacity-40 pulse-glow" : "scale-100",
           mode === "work" ? "bg-primary" : "bg-accent"
         )} />
 
-        {/* Outer Ring (Static) */}
+        {/* Outer Ring */}
         <div className="absolute inset-0 border-[2px] border-slate-100 rounded-full" />
 
-        {/* Progress Ring (Modern Slim) */}
+        {/* Progress Ring */}
         <svg className="absolute inset-0 w-full h-full -rotate-90">
           <circle
             cx="144"
@@ -99,7 +100,7 @@ export function PomodoroTimer({
 
         <div className="flex flex-col items-center z-10">
           <div className={cn(
-            "text-7xl font-black font-mono tracking-tight transition-all duration-500",
+            "text-7xl font-black font-mono tracking-tighter transition-all duration-500",
             colorClass,
             isActive && "drop-shadow-2xl"
           )}>

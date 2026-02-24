@@ -7,12 +7,13 @@ import { collection, doc, query, orderBy } from "firebase/firestore"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { ChevronRight, ChevronLeft, Zap, Calendar } from "lucide-react"
+import { ChevronRight, ChevronLeft, Zap, Calendar, Layout, CheckCircle2 } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
 
 const COLUMNS = [
-  { id: "Pendiente", title: "Por Hacer", color: "bg-muted" },
-  { id: "En Proceso", title: "En Proceso", color: "bg-primary/20" },
-  { id: "Completada", title: "Finalizado", color: "bg-green-100" },
+  { id: "Pendiente", title: "Por Hacer", color: "bg-slate-100/50" },
+  { id: "En Proceso", title: "En Proceso", color: "bg-primary/10" },
+  { id: "Completada", title: "Finalizado", color: "bg-green-50" },
 ]
 
 export function KanbanBoard() {
@@ -36,57 +37,72 @@ export function KanbanBoard() {
     const colTasks = tasks?.filter(t => t.estado === col.id || (!t.estado && col.id === "Pendiente")) || []
 
     return (
-      <div key={col.id} className="flex flex-col gap-4 min-w-[300px] flex-1">
-        <div className={`p-3 rounded-t-xl font-bold flex items-center justify-between ${col.color}`}>
+      <div key={col.id} className="flex flex-col gap-4 min-w-[320px] flex-1 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className={`p-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-between ${col.color}`}>
           <span>{col.title}</span>
-          <Badge variant="outline">{colTasks.length}</Badge>
+          <Badge variant="outline" className="bg-white/50 border-none font-black">{colTasks.length}</Badge>
         </div>
-        <div className="flex flex-col gap-3 p-2 bg-muted/20 rounded-b-xl min-h-[500px]">
-          {colTasks.map(task => (
-            <Card key={task.id} className="border-none shadow-sm group">
-              <CardContent className="p-4 space-y-3">
-                <div className="flex justify-between items-start gap-2">
-                  <h4 className="text-sm font-bold leading-tight">{task.titulo}</h4>
-                  <Badge variant={task.prioridad === "Alta" ? "destructive" : "outline"} className="text-[9px]">
-                    {task.prioridad}
-                  </Badge>
-                </div>
-                
-                <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                  <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {task.fechaVencimiento}</span>
-                  <span className="flex items-center gap-1"><Zap className="h-3 w-3" /> {task.esfuerzoEstimadoPomodoros}</span>
-                </div>
+        <div className="flex flex-col gap-4 p-2 min-h-[600px] rounded-2xl">
+          {colTasks.map(task => {
+            const subTasks = (task.subtareas || [])
+            const totalCount = subTasks.length
+            const completedCount = subTasks.filter((st: any) => st.completed).length
+            const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
 
-                <div className="flex justify-between pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6" 
-                    disabled={col.id === "Pendiente"}
-                    onClick={() => moveTask(task.id, col.id === "En Proceso" ? "Pendiente" : "En Proceso")}
-                  >
-                    <ChevronLeft className="h-3 w-3" />
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="h-6 w-6" 
-                    disabled={col.id === "Completada"}
-                    onClick={() => moveTask(task.id, col.id === "Pendiente" ? "En Proceso" : "Completada")}
-                  >
-                    <ChevronRight className="h-3 w-3" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+            return (
+              <Card key={task.id} className="border-none shadow-sm hover:shadow-md transition-all group rounded-2xl overflow-hidden bg-white">
+                <CardContent className="p-5 space-y-4">
+                  <div className="flex justify-between items-start gap-2">
+                    <h4 className="text-sm font-black leading-tight flex-1">{task.titulo}</h4>
+                    {task.estado === "Completada" && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                  </div>
+                  
+                  {totalCount > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-[9px] font-black uppercase text-muted-foreground/60">
+                        <span>Progreso</span>
+                        <span>{Math.round(progress)}%</span>
+                      </div>
+                      <Progress value={progress} className="h-1 bg-slate-50" />
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3 text-[10px] font-black uppercase text-muted-foreground/60">
+                    <span className="flex items-center gap-1"><Layout className="h-3.5 w-3.5" /> {totalCount} Pasos</span>
+                    <span className="flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-primary" /> {task.esfuerzoEstimadoPomodoros || 1}</span>
+                  </div>
+
+                  <div className="flex justify-between pt-2 border-t border-slate-50">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 rounded-xl hover:bg-slate-100" 
+                      disabled={col.id === "Pendiente"}
+                      onClick={() => moveTask(task.id, col.id === "En Proceso" ? "Pendiente" : "En Proceso")}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 rounded-xl hover:bg-slate-100" 
+                      disabled={col.id === "Completada"}
+                      onClick={() => moveTask(task.id, col.id === "Pendiente" ? "En Proceso" : "Completada")}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       </div>
     )
   }
 
   return (
-    <div className="flex gap-6 overflow-x-auto pb-6">
+    <div className="flex gap-8 overflow-x-auto pb-8 scrollbar-hide">
       {COLUMNS.map(renderColumn)}
     </div>
   )

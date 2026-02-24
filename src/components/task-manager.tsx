@@ -43,8 +43,12 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
   const [newTaskText, setNewTaskText] = React.useState("")
   const [selectedMateriaId, setSelectedMateriaId] = React.useState<string>("none")
   const [isAiLoading, setIsAiLoading] = React.useState<string | null>(null)
+  
+  // Estados para edición in-line
   const [editingTaskId, setEditingTaskId] = React.useState<string | null>(null)
   const [editingText, setEditingText] = React.useState("")
+  const [editingSubTaskId, setEditingSubTaskId] = React.useState<{taskId: string, subId: string} | null>(null)
+  const [editingSubText, setEditingSubText] = React.useState("")
   
   const { toast } = useToast()
   const db = useFirestore()
@@ -112,6 +116,14 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
     setEditingTaskId(null)
   }
 
+  const updateSubTaskText = (taskId: string, subTasks: SubTask[], subId: string) => {
+    if (!user || !db || !editingSubText.trim()) return
+    const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
+    const newSubTasks = subTasks.map(st => st.id === subId ? { ...st, text: editingSubText } : st)
+    updateDocumentNonBlocking(taskRef, { subtareas: newSubTasks })
+    setEditingSubTaskId(null)
+  }
+
   const toggleSubTask = (taskId: string, subTasks: SubTask[], subTaskId: string) => {
     if (!user || !db) return
     const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
@@ -173,7 +185,6 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
           const materia = materias?.find(m => m.id === task.materiaId)
           const subTasks = (task.subtareas || []) as (string | SubTask)[]
           
-          // Normalización para visualización segura
           const normalizedSubTasks: SubTask[] = subTasks.map((st, i) => 
             typeof st === 'string' ? { id: `st-${i}`, text: st, completed: false } : st
           )
@@ -205,9 +216,7 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
                     >
                       <CheckCircle2 className="h-6 w-6" />
                     </Button>
-                    <div 
-                      className="min-w-0 flex-1"
-                    >
+                    <div className="min-w-0 flex-1">
                       <div className="flex flex-col">
                         {editingTaskId === task.id ? (
                           <div className="flex items-center gap-2">
@@ -216,6 +225,7 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
                               onChange={(e) => setEditingText(e.target.value)}
                               className="h-8 rounded-lg text-sm font-black"
                               autoFocus
+                              onKeyDown={(e) => e.key === 'Enter' && updateTaskTitle(task.id)}
                             />
                             <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => updateTaskTitle(task.id)}>
                               <Check className="h-4 w-4" />
@@ -284,21 +294,46 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
                 {normalizedSubTasks.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-slate-50 space-y-2">
                      {normalizedSubTasks.map((sub, i) => (
-                       <div 
-                        key={sub.id || i} 
-                        className={cn(
-                          "flex items-center gap-2 text-[11px] font-medium p-2 rounded-lg cursor-pointer transition-colors",
-                          sub.completed ? "bg-green-50/50 text-green-700/60" : "bg-slate-50/50 text-slate-600 hover:bg-slate-100"
-                        )}
-                        onClick={() => toggleSubTask(task.id, normalizedSubTasks, sub.id)}
-                       >
-                          <div className={cn(
-                            "h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0",
-                            sub.completed ? "bg-green-500 border-green-500 text-white" : "border-slate-300 bg-white"
-                          )}>
+                       <div key={sub.id || i} className="flex items-center gap-2 group/sub">
+                          <div 
+                            className={cn(
+                              "h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0 cursor-pointer",
+                              sub.completed ? "bg-green-500 border-green-500 text-white" : "border-slate-300 bg-white"
+                            )}
+                            onClick={() => toggleSubTask(task.id, normalizedSubTasks, sub.id)}
+                          >
                             {sub.completed && <Check className="h-2.5 w-2.5" />}
                           </div>
-                          <span className={cn(sub.completed && "line-through")}>{sub.text}</span>
+                          
+                          {editingSubTaskId?.subId === sub.id ? (
+                            <div className="flex items-center gap-2 flex-1">
+                              <Input 
+                                value={editingSubText}
+                                onChange={(e) => setEditingSubText(e.target.value)}
+                                className="h-7 text-[11px] font-medium"
+                                autoFocus
+                                onKeyDown={(e) => e.key === 'Enter' && updateSubTaskText(task.id, normalizedSubTasks, sub.id)}
+                              />
+                            </div>
+                          ) : (
+                            <span 
+                              className={cn(
+                                "text-[11px] font-medium flex-1 cursor-pointer",
+                                sub.completed ? "line-through text-slate-400" : "text-slate-600"
+                              )}
+                              onClick={() => { setEditingSubTaskId({taskId: task.id, subId: sub.id}); setEditingSubText(sub.text); }}
+                            >
+                              {sub.text}
+                            </span>
+                          )}
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-4 w-4 opacity-0 group-hover/sub:opacity-100"
+                            onClick={() => { setEditingSubTaskId({taskId: task.id, subId: sub.id}); setEditingSubText(sub.text); }}
+                          >
+                            <Edit2 className="h-2.5 w-2.5" />
+                          </Button>
                        </div>
                      ))}
                   </div>

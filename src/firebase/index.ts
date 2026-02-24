@@ -1,3 +1,4 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -12,11 +13,10 @@ import { getFirestore, Firestore } from 'firebase/firestore';
  */
 export function initializeFirebase() {
   // Verificamos si tenemos los requisitos mínimos para inicializar de forma genuina
+  // Si no hay API KEY, devolvemos nulos inmediatamente para no romper el build
   const isEnvValid = 
-    firebaseConfig.apiKey && 
-    firebaseConfig.apiKey !== "" && 
-    firebaseConfig.projectId && 
-    firebaseConfig.projectId !== "";
+    typeof process.env.NEXT_PUBLIC_FIREBASE_API_KEY === 'string' && 
+    process.env.NEXT_PUBLIC_FIREBASE_API_KEY.length > 0;
 
   if (typeof window === 'undefined' || !isEnvValid) {
     return { firebaseApp: null, auth: null, firestore: null };
@@ -31,7 +31,6 @@ export function initializeFirebase() {
     }
     return getSdks(app);
   } catch (error) {
-    console.warn("Firebase initialization skipped or failed.");
     return { firebaseApp: null, auth: null, firestore: null };
   }
 }

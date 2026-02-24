@@ -13,7 +13,8 @@ import {
   Timer as TimerIcon,
   FolderKanban,
   UserCircle,
-  Sparkles
+  Sparkles,
+  Columns as KanbanIcon
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -23,6 +24,7 @@ import { FocusMusic } from "@/components/focus-music"
 import { ConfigurationView } from "@/components/configuration-view"
 import { StatsView } from "@/components/stats-view"
 import { ProjectManager } from "@/components/project-manager"
+import { KanbanBoard } from "@/components/kanban-board"
 import { Button } from "@/components/ui/button"
 import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useDoc, initiateAnonymousSignIn } from "@/firebase"
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth"
@@ -89,7 +91,6 @@ function DashboardContent({
   userRef, 
   activeTaskId, 
   setActiveTaskId, 
-  activeTask, 
   mode, 
   sessionsCompleted, 
   toggleTimer, 
@@ -117,6 +118,7 @@ function DashboardContent({
               <SidebarMenu>
                 {[
                   { id: "dashboard", icon: LayoutDashboard, label: "Tablero" },
+                  { id: "kanban", icon: KanbanIcon, label: "Kanban" },
                   { id: "proyectos", icon: FolderKanban, label: "Proyectos" },
                   { id: "stats", icon: BarChart3, label: "Estadísticas" },
                   { id: "config", icon: Settings, label: "Configuración" },
@@ -164,18 +166,12 @@ function DashboardContent({
           <div className="flex-1 p-8 max-w-7xl mx-auto w-full">
             {activeTab === "dashboard" && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                <div className="lg:col-span-4">
+                <div className="lg:col-span-5">
                    <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                 </div>
 
-                <div className="lg:col-span-8 flex flex-col gap-8">
+                <div className="lg:col-span-7 flex flex-col gap-8">
                   <div className="bg-white rounded-[3rem] p-12 shadow-xl border border-slate-100 flex flex-col items-center justify-center">
-                    {activeTask && (
-                      <div className="mb-8 text-center">
-                        <Badge className="bg-primary/10 text-primary border-none text-[10px] font-black uppercase tracking-widest mb-2 px-3 py-1">Enfoque Actual</Badge>
-                        <h2 className="text-3xl font-black tracking-tight">{activeTask.titulo}</h2>
-                      </div>
-                    )}
                     <PomodoroTimer 
                       timeLeft={timeLeft}
                       isActive={isActive}
@@ -194,6 +190,7 @@ function DashboardContent({
               </div>
             )}
 
+            {activeTab === "kanban" && <KanbanBoard />}
             {activeTab === "proyectos" && <ProjectManager />}
             {activeTab === "config" && <ConfigurationView />}
             {activeTab === "stats" && <StatsView />}
@@ -308,10 +305,6 @@ export default function AppEntry() {
     return <LandingPage onLoginGoogle={handleGoogleSignIn} onLoginGuest={handleGuestSignIn} />
   }
 
-  // Obtenemos la tarea activa desde el hook de la colección en TaskManager o similar.
-  // Por simplicidad en este MVP, asumimos que userData tiene una lista de tareas si fuera embebida,
-  // pero como es una subcolección, TaskManager maneja su propio estado.
-
   return (
     <>
       <DashboardContent 
@@ -324,7 +317,6 @@ export default function AppEntry() {
         userRef={userRef} 
         activeTaskId={activeTaskId} 
         setActiveTaskId={setActiveTaskId} 
-        activeTask={null} // Se maneja dentro de TaskManager
         mode={mode} 
         sessionsCompleted={sessionsCompleted} 
         toggleTimer={toggleTimer} 
