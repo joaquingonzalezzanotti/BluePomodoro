@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Calendar as CalendarIcon, CheckSquare, RefreshCw, ExternalLink, Cloud, AlertCircle, CheckCircle2, AlertTriangle } from "lucide-react"
+import { Calendar as CalendarIcon, CheckSquare, RefreshCw, ExternalLink, Cloud, AlertCircle, AlertTriangle } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
@@ -53,8 +53,6 @@ export function GoogleSyncSettings() {
     setIsSyncing(true)
 
     try {
-      // 1. Obtener tareas de Google Tasks REALES
-      // Usamos el endpoint oficial de Google Tasks API
       const response = await fetch('https://www.googleapis.com/tasks/v1/lists/@default/tasks', {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -72,7 +70,6 @@ export function GoogleSyncSettings() {
         return;
       }
 
-      // 2. Importar a Firestore
       const tareasRef = collection(db, "usuarios", user.uid, "tareas")
       let importedCount = 0;
 
