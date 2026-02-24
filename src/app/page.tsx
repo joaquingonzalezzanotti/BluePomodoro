@@ -334,40 +334,43 @@ export default function AppEntry() {
     setTimeLeft(mode === "work" ? workMinutes * 60 : breakMinutes * 60)
   }
 
-  const handleGoogleSignIn = () => {
+  const handleGoogleSignIn = async () => {
     if (!auth) {
       toast({ variant: "destructive", title: "Error", description: "Firebase Auth no está inicializado." })
       return
     }
 
-    const provider = new GoogleAuthProvider();
-    provider.addScope('https://www.googleapis.com/auth/tasks.readonly');
-    provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
-    
-    signInWithPopup(auth, provider)
-      .then((result) => {
-        const credential = GoogleAuthProvider.credentialFromResult(result);
-        if (credential?.accessToken) {
-          sessionStorage.setItem('google_access_token', credential.accessToken);
-        }
-        toast({ title: "¡Éxito!", description: "Sesión iniciada con Google." });
-      })
-      .catch((e: any) => {
-        console.error("Login Error Details:", e);
-        let errorMsg = "Ocurrió un error al iniciar sesión.";
-        
-        if (e.code === 'auth/popup-blocked') {
-          errorMsg = "El navegador bloqueó la ventana emergente. Por favor, habilita los popups para este sitio.";
-        } else if (e.code === 'auth/popup-closed-by-user') {
-          errorMsg = "Cerraste la ventana de inicio de sesión antes de completar el proceso.";
-        } else if (e.code === 'auth/unauthorized-domain') {
-          errorMsg = "Este dominio no está autorizado en la consola de Firebase.";
-        } else {
-          errorMsg = e.message;
-        }
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.addScope('https://www.googleapis.com/auth/tasks.readonly');
+      provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+      // Forzar la selección de cuenta para evitar cierres inesperados del popup
+      provider.setCustomParameters({ prompt: 'select_account' });
+      
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        sessionStorage.setItem('google_access_token', credential.accessToken);
+      }
+      toast({ title: "¡Éxito!", description: "Sesión iniciada con Google." });
+    } catch (e: any) {
+      console.error("Login Error Details:", e);
+      let errorMsg = "Ocurrió un error al iniciar sesión.";
+      
+      if (e.code === 'auth/popup-blocked') {
+        errorMsg = "El navegador bloqueó la ventana emergente. Por favor, habilita los popups para este sitio.";
+      } else if (e.code === 'auth/popup-closed-by-user') {
+        errorMsg = "La ventana de inicio de sesión se cerró. Si el error persiste, asegúrate de que el dominio de la app esté en 'Dominios Autorizados' en Firebase Console.";
+      } else if (e.code === 'auth/unauthorized-domain') {
+        errorMsg = "Este dominio no está autorizado en la consola de Firebase.";
+      } else if (e.code === 'auth/internal-error') {
+        errorMsg = "Error interno de Firebase. Por favor, intenta de nuevo o revisa la configuración de API.";
+      } else {
+        errorMsg = e.message;
+      }
 
-        toast({ variant: "destructive", title: "Error de Login", description: errorMsg });
-      });
+      toast({ variant: "destructive", title: "Error de Login", description: errorMsg });
+    }
   }
 
   const handleGuestSignIn = async () => {
