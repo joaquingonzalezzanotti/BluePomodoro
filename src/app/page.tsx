@@ -294,7 +294,11 @@ export default function AppEntry() {
   const handleGoogleSignIn = async () => {
     if (!auth) return
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider())
+      const provider = new GoogleAuthProvider();
+      // Solicitamos scopes para sincronización real
+      provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+      provider.addScope('https://www.googleapis.com/auth/tasks.readonly');
+      await signInWithPopup(auth, provider)
     } catch (e: any) {
       if (e.code !== 'auth/popup-closed-by-user') {
         console.error("Login Error:", e)
