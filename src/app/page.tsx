@@ -295,10 +295,16 @@ export default function AppEntry() {
     if (!auth) return
     try {
       const provider = new GoogleAuthProvider();
-      // Solicitamos scopes para sincronización real
-      provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+      // Solicitamos acceso a Calendar y Tasks para sincronización real
       provider.addScope('https://www.googleapis.com/auth/tasks.readonly');
-      await signInWithPopup(auth, provider)
+      provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
+      
+      const result = await signInWithPopup(auth, provider);
+      const credential = GoogleAuthProvider.credentialFromResult(result);
+      if (credential?.accessToken) {
+        // Guardamos el token en sessionStorage para que el Centro de Sincronización lo use
+        sessionStorage.setItem('google_access_token', credential.accessToken);
+      }
     } catch (e: any) {
       if (e.code !== 'auth/popup-closed-by-user') {
         console.error("Login Error:", e)
@@ -311,6 +317,7 @@ export default function AppEntry() {
   }
   const handleSignOut = () => {
     if (!auth) return
+    sessionStorage.removeItem('google_access_token');
     signOut(auth)
   }
 
