@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -141,5 +142,6 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
 
 export const useUser = (): UserHookResult => {
   const { user, isUserLoading, userError } = useFirebase();
-  return { user, isUserLoading, userError };
+  // Estabilizamos el retorno para evitar bucles de renderizado
+  return useMemo(() => ({ user, isUserLoading, userError }), [user, isUserLoading, userError]);
 };

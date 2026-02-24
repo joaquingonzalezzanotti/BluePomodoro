@@ -75,17 +75,23 @@ function DashboardContent({
   setBreakMinutes, 
   signOutAction 
 }: any) {
+  const tabTitles: Record<string, string> = {
+    dashboard: "Tablero de Enfoque",
+    foco: "Modo Zen",
+    tareas: "Gestión de Tareas",
+    proyectos: "Mis Proyectos",
+    stats: "Estadísticas",
+    config: "Configuración"
+  }
+
   return (
     <SidebarProvider defaultOpen={true} style={{ "--sidebar-width": "16rem", "--sidebar-width-icon": "5rem" } as React.CSSProperties}>
       <div className="flex min-h-screen w-full bg-slate-50/50 pb-24">
         <Sidebar collapsible="icon" className="border-r border-primary/5 bg-white/80 backdrop-blur-xl transition-all duration-300">
-          <SidebarHeader className="p-6 flex-shrink-0">
-            <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
-              <div className="h-10 w-10 shrink-0 relative overflow-hidden rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center">
-                <Image src="/logo.png" alt="Logo BluePomodoro" width={32} height={32} className="rounded-lg object-contain" />
-              </div>
-              <h1 className="text-lg font-bold group-data-[collapsible=icon]:hidden tracking-tight text-primary">BluePomodoro</h1>
-            </div>
+          <SidebarHeader className="p-4 flex items-center justify-center">
+            <SidebarMenu>
+              <SidebarToggle />
+            </SidebarMenu>
           </SidebarHeader>
           <SidebarContent className="px-4">
             <SidebarGroup>
@@ -114,10 +120,7 @@ function DashboardContent({
             </SidebarGroup>
           </SidebarContent>
           <SidebarFooter className="p-4 border-t border-primary/5">
-            <SidebarMenu>
-              <SidebarToggle />
-            </SidebarMenu>
-            <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-xl group-data-[collapsible=icon]:justify-center mt-2 overflow-hidden transition-all">
+            <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-xl group-data-[collapsible=icon]:justify-center overflow-hidden transition-all">
               <Avatar className="h-8 w-8 shrink-0">
                 <AvatarImage src={user.photoURL || ""} />
                 <AvatarFallback>{user.displayName?.charAt(0) || <UserCircle className="h-5 w-5" />}</AvatarFallback>
@@ -135,7 +138,12 @@ function DashboardContent({
         <main className="flex-1 min-w-0 overflow-auto flex flex-col">
           <header className="h-16 border-b border-primary/5 bg-white/70 backdrop-blur-md sticky top-0 z-20 px-8 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">{activeTab}</h2>
+              <div className="flex items-center gap-3 shrink-0">
+                <div className="h-8 w-8 relative overflow-hidden rounded-lg bg-white shadow-sm border border-slate-100 flex items-center justify-center">
+                  <Image src="/logo.png" alt="Logo BluePomodoro" width={24} height={24} className="rounded-md object-contain" />
+                </div>
+                <h1 className="text-sm font-black tracking-tighter text-primary">BluePomodoro</h1>
+              </div>
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
@@ -145,7 +153,12 @@ function DashboardContent({
             </div>
           </header>
 
-          <div className="flex-1 p-8 w-full max-w-[1600px] mx-auto">
+          <div className="flex-1 p-8 w-full max-w-[1600px] mx-auto space-y-8">
+            <div className="space-y-1">
+              <h1 className="text-4xl font-black text-slate-900 tracking-tight">{tabTitles[activeTab]}</h1>
+              <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">{activeTab}</p>
+            </div>
+
             {activeTab === "dashboard" && (
               <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-8 items-start">
                 <div className="min-w-0">
@@ -198,7 +211,7 @@ function DashboardContent({
               <div className="space-y-6">
                 <Tabs defaultValue="lista" className="w-full">
                   <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-3xl font-black">Gestión de Tareas</h2>
+                    <h2 className="text-2xl font-black">Organiza tus Pendientes</h2>
                     <TabsList className="bg-white p-1 rounded-xl shadow-sm border border-slate-100">
                       <TabsTrigger value="lista" className="rounded-lg px-6 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">Lista</TabsTrigger>
                       <TabsTrigger value="kanban" className="rounded-lg px-6 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">Kanban</TabsTrigger>
@@ -373,7 +386,7 @@ export default function AppEntry() {
               <TimerIcon className="h-10 w-10 text-primary" />
             </div>
             <AlertDialogTitle className="text-2xl font-black text-primary">¡Tiempo Cumplido!</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm font-medium">
+            <AlertDialogDescription className="text-sm font-medium text-slate-500">
               Has completado tu sesión de {mode === "work" ? "enfoque" : "descanso"}.
             </AlertDialogDescription>
           </AlertDialogHeader>
