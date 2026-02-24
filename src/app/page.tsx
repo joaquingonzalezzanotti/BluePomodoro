@@ -14,7 +14,9 @@ import {
   FolderKanban,
   UserCircle,
   Sparkles,
-  CheckSquare
+  CheckSquare,
+  Zap,
+  Target
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -24,6 +26,7 @@ import { ConfigurationView } from "@/components/configuration-view"
 import { StatsView } from "@/components/stats-view"
 import { ProjectManager } from "@/components/project-manager"
 import { KanbanBoard } from "@/components/kanban-board"
+import { FocusMusic } from "@/components/focus-music"
 import { Button } from "@/components/ui/button"
 import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useDoc, initiateAnonymousSignIn } from "@/firebase"
 import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth"
@@ -108,7 +111,7 @@ function DashboardContent({
               <div className="h-10 w-10 shrink-0 relative overflow-hidden rounded-xl bg-white shadow-sm border border-slate-100">
                 <Image src="/logo.png" alt="Logo BluePomodoro" width={40} height={40} className="rounded-lg p-1 object-contain" />
               </div>
-              <h1 className="text-lg font-black group-data-[collapsible=icon]:hidden tracking-tight">BluePomodoro</h1>
+              <h1 className="text-lg font-bold group-data-[collapsible=icon]:hidden tracking-tight">BluePomodoro</h1>
             </div>
           </SidebarHeader>
           <SidebarContent className="px-4">
@@ -116,6 +119,7 @@ function DashboardContent({
               <SidebarMenu>
                 {[
                   { id: "dashboard", icon: LayoutDashboard, label: "Tablero" },
+                  { id: "foco", icon: Target, label: "Foco" },
                   { id: "tareas", icon: CheckSquare, label: "Tareas" },
                   { id: "proyectos", icon: FolderKanban, label: "Proyectos" },
                   { id: "stats", icon: BarChart3, label: "Estadísticas" },
@@ -164,8 +168,11 @@ function DashboardContent({
           <div className="flex-1 p-8 max-w-7xl mx-auto w-full">
             {activeTab === "dashboard" && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                <div className="lg:col-span-12 flex flex-col gap-8">
-                  <div className="bg-white rounded-[3rem] p-12 shadow-xl border border-slate-100 flex flex-col items-center justify-center animate-in zoom-in-95 duration-700">
+                <div className="lg:col-span-8">
+                  <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
+                </div>
+                <div className="lg:col-span-4 sticky top-24">
+                  <Card className="bg-white rounded-[2.5rem] p-8 shadow-xl border border-slate-100 flex flex-col items-center justify-center">
                     <PomodoroTimer 
                       timeLeft={timeLeft}
                       isActive={isActive}
@@ -177,10 +184,31 @@ function DashboardContent({
                       setWorkMinutes={setWorkMinutes}
                       breakMinutes={breakMinutes}
                       setBreakMinutes={setBreakMinutes}
-                      large
                     />
-                  </div>
-                  <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
+                  </Card>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "foco" && (
+              <div className="flex flex-col items-center justify-center gap-12 min-h-[70vh] animate-in zoom-in-95 duration-700">
+                <div className="bg-white rounded-[4rem] p-16 shadow-2xl border border-slate-100 flex flex-col items-center justify-center">
+                  <PomodoroTimer 
+                    timeLeft={timeLeft}
+                    isActive={isActive}
+                    mode={mode}
+                    sessionsCompleted={sessionsCompleted}
+                    toggleTimer={toggleTimer}
+                    resetTimer={resetTimer}
+                    workMinutes={workMinutes}
+                    setWorkMinutes={setWorkMinutes}
+                    breakMinutes={breakMinutes}
+                    setBreakMinutes={setBreakMinutes}
+                    large
+                  />
+                </div>
+                <div className="max-w-xl w-full">
+                   <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} onlyActive />
                 </div>
               </div>
             )}
@@ -209,6 +237,10 @@ function DashboardContent({
             {activeTab === "config" && <ConfigurationView />}
             {activeTab === "stats" && <StatsView />}
           </div>
+
+          <footer className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-2xl px-6 pointer-events-none z-50">
+             <FocusMusic layout="dock" />
+          </footer>
         </main>
       </div>
     </SidebarProvider>
@@ -223,7 +255,6 @@ export default function AppEntry() {
   const db = useFirestore()
   const { toast } = useToast()
 
-  // Tiempos predeterminados 40/10 como solicitó el usuario
   const [workMinutes, setWorkMinutes] = React.useState(40)
   const [breakMinutes, setBreakMinutes] = React.useState(10)
   const [timeLeft, setTimeLeft] = React.useState(40 * 60)
@@ -296,36 +327,27 @@ export default function AppEntry() {
 
   const handleGoogleSignIn = async () => {
     if (!auth) {
-      toast({
-        variant: "destructive",
-        title: "Error de Configuración",
-        description: "Firebase no está inicializado. Verifica las variables de entorno."
-      })
+      toast({ variant: "destructive", title: "Error", description: "Firebase no listo." })
       return
     }
     try {
       const provider = new GoogleAuthProvider();
       provider.addScope('https://www.googleapis.com/auth/tasks.readonly');
       provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
-      
       const result = await signInWithPopup(auth, provider);
       const credential = GoogleAuthProvider.credentialFromResult(result);
       if (credential?.accessToken) {
         sessionStorage.setItem('google_access_token', credential.accessToken);
       }
     } catch (e: any) {
-      if (e.code !== 'auth/popup-closed-by-user') {
-        console.error("Login Error:", e)
-        toast({ variant: "destructive", title: "Error al iniciar sesión", description: e.message })
+      if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/popup-blocked') {
+        toast({ variant: "destructive", title: "Error", description: e.message })
       }
     }
   }
 
   const handleGuestSignIn = async () => {
-    if (!auth) {
-      toast({ variant: "destructive", title: "Error", description: "Firebase no está inicializado." })
-      return
-    }
+    if (!auth) return
     initiateAnonymousSignIn(auth)
   }
 
@@ -336,7 +358,6 @@ export default function AppEntry() {
   }
 
   if (!mounted) return null
-
   if (isUserLoading) return <div className="min-h-screen flex items-center justify-center bg-white"><CloudLightning className="h-12 w-12 text-primary animate-pulse" /></div>
 
   if (!user) {

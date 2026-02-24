@@ -37,9 +37,10 @@ interface SubTask {
 interface TaskManagerProps {
   onTaskSelect?: (id: string) => void
   activeTaskId?: string | null
+  onlyActive?: boolean
 }
 
-export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
+export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskManagerProps) {
   const [newTaskText, setNewTaskText] = React.useState("")
   const [selectedMateriaId, setSelectedMateriaId] = React.useState<string>("none")
   const [isAiLoading, setIsAiLoading] = React.useState<string | null>(null)
@@ -49,7 +50,6 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
   const [editingSubTaskId, setEditingSubTaskId] = React.useState<{taskId: string, subId: string} | null>(null)
   const [editingSubText, setEditingSubText] = React.useState("")
 
-  // Estado para controlar qué tareas están expandidas (empiezan cerradas)
   const [expandedTasks, setExpandedTasks] = React.useState<Record<string, boolean>>({})
   
   const { toast } = useToast()
@@ -151,38 +151,44 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
     updateDocumentNonBlocking(taskRef, { estado: currentStatus === "Completada" ? "Pendiente" : "Completada" })
   }
 
+  const filteredTasks = onlyActive && activeTaskId 
+    ? tasks?.filter(t => t.id === activeTaskId) 
+    : tasks
+
   if (isLoading) return <div className="py-20 text-center animate-pulse text-xs font-black uppercase text-muted-foreground">Cargando tareas...</div>
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 p-6 bg-white rounded-[2.5rem] shadow-sm border border-slate-100">
-        <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground/60 px-2">Nueva Tarea</h3>
-        <div className="flex flex-col gap-3">
-          <Input 
-            placeholder="¿Qué tienes que hacer?" 
-            value={newTaskText} 
-            onChange={(e) => setNewTaskText(e.target.value)} 
-            className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-lg"
-          />
-          <div className="flex gap-3">
-            <Select value={selectedMateriaId} onValueChange={setSelectedMateriaId}>
-              <SelectTrigger className="flex-1 h-12 rounded-2xl bg-slate-50 border-none text-[11px] font-bold">
-                <SelectValue placeholder="Vincular Materia" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Sin Materia</SelectItem>
-                {materias?.map(m => (
-                  <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={addTask} className="h-12 px-8 rounded-2xl font-bold shadow-lg shadow-primary/20">Añadir Tarea</Button>
+      {!onlyActive && (
+        <div className="flex flex-col gap-3 p-6 bg-white rounded-[2.5rem] shadow-sm border border-slate-100">
+          <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground/60 px-2">Nueva Tarea</h3>
+          <div className="flex flex-col gap-3">
+            <Input 
+              placeholder="¿Qué tienes que hacer?" 
+              value={newTaskText} 
+              onChange={(e) => setNewTaskText(e.target.value)} 
+              className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-lg"
+            />
+            <div className="flex gap-3">
+              <Select value={selectedMateriaId} onValueChange={setSelectedMateriaId}>
+                <SelectTrigger className="flex-1 h-12 rounded-2xl bg-slate-50 border-none text-[11px] font-bold">
+                  <SelectValue placeholder="Vincular Materia" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin Materia</SelectItem>
+                  {materias?.map(m => (
+                    <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button onClick={addTask} className="h-12 px-8 rounded-2xl font-bold shadow-lg shadow-primary/20">Añadir Tarea</Button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className="space-y-4">
-        {tasks?.map(task => {
+        {filteredTasks?.map(task => {
           const materia = materias?.find(m => m.id === task.materiaId)
           const rawSubTasks = task.subtareas || []
           const normalizedSubTasks: SubTask[] = rawSubTasks.map((st: any, i: number) => 
@@ -196,35 +202,33 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
 
           return (
             <Collapsible key={task.id} open={isExpanded} onOpenChange={() => toggleExpand(task.id)}>
-              <Card className={cn("border-none shadow-sm transition-all rounded-[2rem] overflow-hidden", activeTaskId === task.id && "ring-2 ring-primary/40", task.estado === "Completada" && "opacity-60")}>
+              <Card className={cn("border-none shadow-sm transition-all rounded-[2rem] overflow-hidden bg-white", activeTaskId === task.id && "ring-2 ring-primary/40", task.estado === "Completada" && "opacity-60")}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between gap-6">
-                    {/* Título y estado (Izquierda) */}
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="flex items-center gap-4 flex-1 min-w-0" onClick={() => onTaskSelect?.(task.id)}>
                       <Button 
                         variant="ghost" size="icon" 
                         className={cn("h-10 w-10 rounded-full shrink-0 border-2", task.estado === "Completada" ? "text-green-500 border-green-500" : "text-slate-200 border-slate-100")}
-                        onClick={() => toggleComplete(task.id, task.estado)}
+                        onClick={(e) => { e.stopPropagation(); toggleComplete(task.id, task.estado); }}
                       >
                         <CheckCircle2 className="h-6 w-6" />
                       </Button>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 cursor-pointer">
                         {editingTaskId === task.id ? (
-                          <div className="flex gap-2">
+                          <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                             <Input value={editingText} onChange={(e) => setEditingText(e.target.value)} className="h-8 text-sm font-black" autoFocus />
                             <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => updateTaskTitle(task.id)}><Check className="h-4 w-4" /></Button>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 group">
                             <h4 className={cn("text-lg font-black truncate leading-tight", task.estado === "Completada" && "line-through text-slate-400")}>{task.titulo}</h4>
-                            <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100" onClick={() => { setEditingTaskId(task.id); setEditingText(task.titulo); }}><Edit2 className="h-3 w-3" /></Button>
+                            <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); setEditingTaskId(task.id); setEditingText(task.titulo); }}><Edit2 className="h-3 w-3" /></Button>
                           </div>
                         )}
                         {materia && <span className="text-[10px] font-black uppercase text-primary/60 flex items-center gap-1 mt-1"><BookOpen className="h-3 w-3" /> {materia.nombre}</span>}
                       </div>
                     </div>
 
-                    {/* Info de progreso y acciones (Derecha) */}
                     <div className="flex items-center gap-6 shrink-0">
                       {totalCount > 0 && (
                         <div className="w-24 space-y-1 hidden sm:block">
@@ -252,7 +256,6 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
                     </div>
                   </div>
 
-                  {/* Contenido colapsable (Subtareas) */}
                   <CollapsibleContent className="mt-6 pt-6 border-t border-slate-50 space-y-3">
                      {normalizedSubTasks.length > 0 ? normalizedSubTasks.map(sub => (
                        <div key={sub.id} className="flex items-center gap-3 group/sub animate-in slide-in-from-top-2 duration-300">
