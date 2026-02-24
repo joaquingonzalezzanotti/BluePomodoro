@@ -16,9 +16,10 @@ import {
   Sparkles,
   CheckSquare,
   Zap,
-  Target
+  Target,
+  PanelLeft
 } from "lucide-react"
-import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, useSidebar } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
 import { PomodoroTimer } from "@/components/pomodoro-timer"
 import { TaskManager } from "@/components/task-manager"
@@ -91,6 +92,18 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
   )
 }
 
+function SidebarToggle() {
+  const { toggleSidebar } = useSidebar()
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton onClick={toggleSidebar} className="rounded-xl h-12 justify-center lg:justify-start" tooltip="Expandir/Contraer">
+        <PanelLeft className="h-5 w-5" />
+        <span className="font-bold group-data-[collapsible=icon]:hidden">Contraer Menú</span>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  )
+}
+
 function DashboardContent({ 
   user, 
   activeTab, 
@@ -135,7 +148,7 @@ function DashboardContent({
                   { id: "config", icon: Settings, label: "Configuración" },
                 ].map((item) => (
                   <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton isActive={activeTab === item.id} onClick={() => setActiveTab(item.id)} className="rounded-xl h-12" tooltip={item.label}>
+                    <SidebarMenuButton isActive={activeTab === item.id} onClick={() => setActiveTab(item.id)} className="rounded-xl h-12 justify-center lg:justify-start" tooltip={item.label}>
                       <item.icon className="h-5 w-5" />
                       <span className="font-bold group-data-[collapsible=icon]:hidden">{item.label}</span>
                     </SidebarMenuButton>
@@ -145,7 +158,10 @@ function DashboardContent({
             </SidebarGroup>
           </SidebarContent>
           <SidebarFooter className="p-4 border-t border-primary/5">
-            <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-xl group-data-[collapsible=icon]:justify-center">
+            <SidebarMenu>
+              <SidebarToggle />
+            </SidebarMenu>
+            <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-xl group-data-[collapsible=icon]:justify-center mt-2">
               <Avatar className="h-8 w-8">
                 <AvatarImage src={user.photoURL || ""} />
                 <AvatarFallback>{user.displayName?.charAt(0) || <UserCircle className="h-5 w-5" />}</AvatarFallback>
@@ -163,7 +179,6 @@ function DashboardContent({
         <main className="flex-1 overflow-auto flex flex-col">
           <header className="h-16 border-b border-primary/5 bg-white/70 backdrop-blur-md sticky top-0 z-20 px-8 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <SidebarTrigger />
               <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground/60">{activeTab}</h2>
             </div>
             <div className="flex items-center gap-4">
