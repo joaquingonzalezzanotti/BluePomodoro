@@ -214,7 +214,7 @@ export function GoogleSyncSettings() {
               <Separator />
               
               <div className="space-y-3">
-                <h4 className="text-[10px] font-black uppercase text-muted-foreground/60">Preferencias de IA</h4>
+                <h4 className="text-[10px] font-black uppercase text-muted-foreground">Preferencias de IA</h4>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium">Auto-priorización</span>
                   <Switch checked className="scale-75" />

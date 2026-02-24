@@ -32,6 +32,7 @@ import { doc, increment } from "firebase/firestore"
 import { Switch } from "@/components/ui/switch"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { useToast } from "@/hooks/use-toast"
 
 function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => void, onLoginGuest: () => void }) {
   return (
@@ -99,7 +100,7 @@ function DashboardContent({
   signOutAction 
 }: any) {
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <div className="flex min-h-screen w-full bg-slate-50/50 pb-24 overflow-hidden">
         <Sidebar collapsible="icon" className="border-r border-primary/5 bg-white/80 backdrop-blur-xl transition-all duration-300">
           <SidebarHeader className="p-6">
@@ -121,7 +122,7 @@ function DashboardContent({
                   { id: "config", icon: Settings, label: "Configuración" },
                 ].map((item) => (
                   <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton isActive={activeTab === item.id} onClick={() => setActiveTab(item.id)} className="rounded-xl h-12">
+                    <SidebarMenuButton isActive={activeTab === item.id} onClick={() => setActiveTab(item.id)} className="rounded-xl h-12" tooltip={item.label}>
                       <item.icon className="h-5 w-5" />
                       <span className="font-bold group-data-[collapsible=icon]:hidden">{item.label}</span>
                     </SidebarMenuButton>
@@ -220,6 +221,7 @@ export default function AppEntry() {
   const [activeTab, setActiveTab] = React.useState("dashboard")
   const auth = useAuth()
   const db = useFirestore()
+  const { toast } = useToast()
 
   const [workMinutes, setWorkMinutes] = React.useState(40)
   const [breakMinutes, setBreakMinutes] = React.useState(10)
@@ -292,7 +294,14 @@ export default function AppEntry() {
   }
 
   const handleGoogleSignIn = async () => {
-    if (!auth) return
+    if (!auth) {
+      toast({
+        variant: "destructive",
+        title: "Error de Configuración",
+        description: "Firebase no está inicializado. Verifica las variables de entorno."
+      })
+      return
+    }
     try {
       const provider = new GoogleAuthProvider();
       provider.addScope('https://www.googleapis.com/auth/tasks.readonly');
@@ -306,11 +315,15 @@ export default function AppEntry() {
     } catch (e: any) {
       if (e.code !== 'auth/popup-closed-by-user') {
         console.error("Login Error:", e)
+        toast({ variant: "destructive", title: "Error al iniciar sesión", description: e.message })
       }
     }
   }
   const handleGuestSignIn = async () => {
-    if (!auth) return
+    if (!auth) {
+      toast({ variant: "destructive", title: "Error", description: "Firebase no está inicializado." })
+      return
+    }
     initiateAnonymousSignIn(auth)
   }
   const handleSignOut = () => {
