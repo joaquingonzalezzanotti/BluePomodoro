@@ -1,3 +1,4 @@
+
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
@@ -30,6 +31,18 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  // Genkit y sus dependencias de servidor deben marcarse como externas
+  serverExternalPackages: [
+    'genkit', 
+    '@genkit-ai/core', 
+    '@genkit-ai/google-genai', 
+    '@genkit-ai/ai',
+    'express',
+    'body-parser',
+    'ajv',
+    'ajv-formats',
+    'zod-to-json-schema'
+  ],
 };
 
 export default nextConfig;
