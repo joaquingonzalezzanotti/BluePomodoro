@@ -217,9 +217,9 @@ export default function AppEntry() {
   const auth = useAuth()
   const db = useFirestore()
 
-  const [workMinutes, setWorkMinutes] = React.useState(25)
-  const [breakMinutes, setBreakMinutes] = React.useState(5)
-  const [timeLeft, setTimeLeft] = React.useState(25 * 60)
+  const [workMinutes, setWorkMinutes] = React.useState(40)
+  const [breakMinutes, setBreakMinutes] = React.useState(10)
+  const [timeLeft, setTimeLeft] = React.useState(40 * 60)
   const [isActive, setIsActive] = React.useState(false)
   const [mode, setMode] = React.useState<"work" | "break">("work")
   const [sessionsCompleted, setSessionsCompleted] = React.useState(0)
@@ -308,7 +308,9 @@ export default function AppEntry() {
     return <LandingPage onLoginGoogle={handleGoogleSignIn} onLoginGuest={handleGuestSignIn} />
   }
 
-  const activeTask = userData?.tareas?.find((t: any) => t.id === activeTaskId)
+  // Obtenemos la tarea activa desde el hook de la colección en TaskManager o similar.
+  // Por simplicidad en este MVP, asumimos que userData tiene una lista de tareas si fuera embebida,
+  // pero como es una subcolección, TaskManager maneja su propio estado.
 
   return (
     <>
@@ -322,7 +324,7 @@ export default function AppEntry() {
         userRef={userRef} 
         activeTaskId={activeTaskId} 
         setActiveTaskId={setActiveTaskId} 
-        activeTask={activeTask} 
+        activeTask={null} // Se maneja dentro de TaskManager
         mode={mode} 
         sessionsCompleted={sessionsCompleted} 
         toggleTimer={toggleTimer} 

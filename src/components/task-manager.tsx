@@ -9,18 +9,30 @@ import {
   CheckCircle2,
   Sparkles,
   Layout,
-  BookOpen
+  BookOpen,
+  Edit2,
+  Check,
+  X,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 import { useFirestore, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase"
 import { collection, doc, serverTimestamp, query, orderBy, where } from "firebase/firestore"
 import { cn } from "@/lib/utils"
 import { aiAssistedTaskBreakdown } from "@/ai/flows/ai-assisted-task-breakdown-flow"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+interface SubTask {
+  id: string
+  text: string
+  completed: boolean
+}
 
 interface TaskManagerProps {
   onTaskSelect?: (id: string) => void
@@ -31,6 +43,9 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
   const [newTaskText, setNewTaskText] = React.useState("")
   const [selectedMateriaId, setSelectedMateriaId] = React.useState<string>("none")
   const [isAiLoading, setIsAiLoading] = React.useState<string | null>(null)
+  const [editingTaskId, setEditingTaskId] = React.useState<string | null>(null)
+  const [editingText, setEditingText] = React.useState("")
+  
   const { toast } = useToast()
   const db = useFirestore()
   const { user } = useUser()
@@ -71,11 +86,16 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
     try {
       const result = await aiAssistedTaskBreakdown({ largeTaskDescription: description })
       const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
-      // Asegurar que las subtareas sean strings para evitar errores de React
-      const formattedSubTasks = result.subTasks.map(st => typeof st === 'string' ? st : (st as any).text || String(st))
+      
+      const formattedSubTasks: SubTask[] = result.subTasks.map((st, idx) => ({
+        id: `${Date.now()}-${idx}`,
+        text: typeof st === 'string' ? st : (st as any).text || String(st),
+        completed: false
+      }))
+
       updateDocumentNonBlocking(taskRef, { 
         subtareas: formattedSubTasks,
-        esfuerzoEstimadoPomodoros: Math.max(1, formattedSubTasks.length) 
+        esfuerzoEstimadoPomodoros: Math.max(1, Math.ceil(formattedSubTasks.length / 2)) 
       })
       toast({ title: "IA: Tarea desglosada", description: `Se han creado ${formattedSubTasks.length} pasos.` })
     } catch (error) {
@@ -83,6 +103,22 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
     } finally {
       setIsAiLoading(null)
     }
+  }
+
+  const updateTaskTitle = (taskId: string) => {
+    if (!user || !db || !editingText.trim()) return
+    const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
+    updateDocumentNonBlocking(taskRef, { titulo: editingText })
+    setEditingTaskId(null)
+  }
+
+  const toggleSubTask = (taskId: string, subTasks: SubTask[], subTaskId: string) => {
+    if (!user || !db) return
+    const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
+    const newSubTasks = subTasks.map(st => 
+      st.id === subTaskId ? { ...st, completed: !st.completed } : st
+    )
+    updateDocumentNonBlocking(taskRef, { subtareas: newSubTasks })
   }
 
   const deleteTask = (id: string) => {
@@ -135,6 +171,17 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
       <div className="space-y-3">
         {tasks?.map(task => {
           const materia = materias?.find(m => m.id === task.materiaId)
+          const subTasks = (task.subtareas || []) as (string | SubTask)[]
+          
+          // Normalización para visualización segura
+          const normalizedSubTasks: SubTask[] = subTasks.map((st, i) => 
+            typeof st === 'string' ? { id: `st-${i}`, text: st, completed: false } : st
+          )
+
+          const completedCount = normalizedSubTasks.filter(st => st.completed).length
+          const totalCount = normalizedSubTasks.length
+          const progressValue = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
+
           return (
             <Card 
               key={task.id} 
@@ -159,13 +206,42 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
                       <CheckCircle2 className="h-6 w-6" />
                     </Button>
                     <div 
-                      className="min-w-0 cursor-pointer flex-1"
-                      onClick={() => onTaskSelect?.(task.id)}
+                      className="min-w-0 flex-1"
                     >
                       <div className="flex flex-col">
-                        <h4 className={cn("text-sm font-black truncate leading-tight", task.estado === "Completada" && "line-through text-slate-400")}>
-                          {task.titulo}
-                        </h4>
+                        {editingTaskId === task.id ? (
+                          <div className="flex items-center gap-2">
+                            <Input 
+                              value={editingText}
+                              onChange={(e) => setEditingText(e.target.value)}
+                              className="h-8 rounded-lg text-sm font-black"
+                              autoFocus
+                            />
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => updateTaskTitle(task.id)}>
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400" onClick={() => setEditingTaskId(null)}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <h4 
+                              onClick={() => onTaskSelect?.(task.id)}
+                              className={cn("text-sm font-black truncate leading-tight cursor-pointer", task.estado === "Completada" && "line-through text-slate-400")}
+                            >
+                              {task.titulo}
+                            </h4>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-5 w-5 opacity-0 group-hover:opacity-100"
+                              onClick={() => { setEditingTaskId(task.id); setEditingText(task.titulo); }}
+                            >
+                              <Edit2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
                         {materia && (
                           <span className="text-[9px] font-black uppercase text-primary/60 flex items-center gap-1 mt-1">
                             <BookOpen className="h-2.5 w-2.5" /> {materia.nombre}
@@ -190,17 +266,39 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
                   </div>
                 </div>
 
+                {totalCount > 0 && (
+                  <div className="mb-3 space-y-1">
+                    <div className="flex justify-between text-[9px] font-black uppercase text-muted-foreground/60">
+                      <span>Progreso</span>
+                      <span>{Math.round(progressValue)}%</span>
+                    </div>
+                    <Progress value={progressValue} className="h-1 bg-slate-100" />
+                  </div>
+                )}
+
                 <div className="flex items-center gap-4 text-[10px] font-black uppercase tracking-wider text-muted-foreground/60 px-1">
                   <span className="flex items-center gap-1.5"><Zap className="h-3 w-3 text-primary" /> {task.esfuerzoEstimadoPomodoros || 1} Pomos</span>
-                  <span className="flex items-center gap-1.5"><Layout className="h-3 w-3 text-blue-500" /> {task.subtareas?.length || 0} Pasos</span>
+                  <span className="flex items-center gap-1.5"><Layout className="h-3 w-3 text-blue-500" /> {totalCount} Pasos</span>
                 </div>
 
-                {task.subtareas && task.subtareas.length > 0 && (
+                {normalizedSubTasks.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-slate-50 space-y-2">
-                     {task.subtareas.map((sub: any, i: number) => (
-                       <div key={i} className="flex items-center gap-2 text-[11px] font-medium text-slate-500 bg-slate-50/50 p-2 rounded-lg">
-                          <div className="h-1.5 w-1.5 rounded-full bg-primary/40 shrink-0" />
-                          {typeof sub === 'string' ? sub : (sub.text || 'Tarea sin texto')}
+                     {normalizedSubTasks.map((sub, i) => (
+                       <div 
+                        key={sub.id || i} 
+                        className={cn(
+                          "flex items-center gap-2 text-[11px] font-medium p-2 rounded-lg cursor-pointer transition-colors",
+                          sub.completed ? "bg-green-50/50 text-green-700/60" : "bg-slate-50/50 text-slate-600 hover:bg-slate-100"
+                        )}
+                        onClick={() => toggleSubTask(task.id, normalizedSubTasks, sub.id)}
+                       >
+                          <div className={cn(
+                            "h-3.5 w-3.5 rounded border flex items-center justify-center shrink-0",
+                            sub.completed ? "bg-green-500 border-green-500 text-white" : "border-slate-300 bg-white"
+                          )}>
+                            {sub.completed && <Check className="h-2.5 w-2.5" />}
+                          </div>
+                          <span className={cn(sub.completed && "line-through")}>{sub.text}</span>
                        </div>
                      ))}
                   </div>
