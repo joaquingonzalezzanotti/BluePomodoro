@@ -213,7 +213,7 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
             <Collapsible key={task.id} open={isExpanded} onOpenChange={() => toggleExpand(task.id)}>
               <Card className={cn("border-none shadow-sm transition-all rounded-[2rem] overflow-hidden bg-white", activeTaskId === task.id && "ring-2 ring-primary/40", task.estado === "Completada" && "opacity-60")}>
                 <CardContent className="p-6">
-                  {/* Layout de 2 Filas */}
+                  {/* Layout de 2 Filas obligatorio */}
                   <div className="flex flex-col gap-4">
                     
                     {/* Fila 1 (Nombre de la Tarea) - Ocupa todo el ancho */}
@@ -253,7 +253,7 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                       )}
                       
                       <div className="flex items-center gap-4 text-[10px] font-black uppercase text-muted-foreground/60">
-                        {/* Selector de Pomodoros */}
+                        {/* Selector de Pomodoros con edición */}
                         <div className="flex items-center gap-2 bg-primary/5 px-2 py-1 rounded-lg group/pomodoro">
                           <Zap className="h-3.5 w-3.5 text-primary" />
                           <div className="flex items-center gap-1">

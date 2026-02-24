@@ -43,6 +43,7 @@ export function useDoc<T = any>(
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   // Use a ref to track the last data to avoid unnecessary state updates
+  // This prevents infinite render loops when snapshot.data() returns a new object reference
   const lastDataRef = useRef<string | null>(null);
 
   useEffect(() => {

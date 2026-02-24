@@ -32,16 +32,12 @@ const nextConfig: NextConfig = {
     ],
   },
   // Genkit y sus dependencias de servidor deben marcarse como externas
+  // Eliminamos express y body-parser para evitar errores de compilación y vulnerabilidades en Vercel
   serverExternalPackages: [
     'genkit', 
     '@genkit-ai/core', 
     '@genkit-ai/google-genai', 
-    '@genkit-ai/ai',
-    'express',
-    'body-parser',
-    'ajv',
-    'ajv-formats',
-    'zod-to-json-schema'
+    '@genkit-ai/ai'
   ],
 };
 
