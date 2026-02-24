@@ -204,8 +204,11 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
             <Collapsible key={task.id} open={isExpanded} onOpenChange={() => toggleExpand(task.id)}>
               <Card className={cn("border-none shadow-sm transition-all rounded-[2rem] overflow-hidden bg-white", activeTaskId === task.id && "ring-2 ring-primary/40", task.estado === "Completada" && "opacity-60")}>
                 <CardContent className="p-6">
-                  <div className="flex items-center justify-between gap-6">
-                    <div className="flex items-center gap-4 flex-1 min-w-0" onClick={() => onTaskSelect?.(task.id)}>
+                  {/* Layout de 2 Filas */}
+                  <div className="flex flex-col gap-4">
+                    
+                    {/* Fila 1 (Nombre de la Tarea) - Ocupa todo el ancho */}
+                    <div className="flex items-center gap-4 w-full" onClick={() => onTaskSelect?.(task.id)}>
                       <Button 
                         variant="ghost" size="icon" 
                         className={cn("h-10 w-10 rounded-full shrink-0 border-2", task.estado === "Completada" ? "text-green-500 border-green-500" : "text-slate-200 border-slate-100")}
@@ -229,7 +232,8 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-6 shrink-0">
+                    {/* Fila 2 (Acciones y Metadatos) - Alineado a la derecha */}
+                    <div className="flex items-center justify-end gap-6 w-full">
                       {totalCount > 0 && (
                         <div className="w-24 space-y-1 hidden sm:block">
                           <div className="flex justify-between text-[9px] font-black uppercase text-muted-foreground/60">

@@ -1,6 +1,7 @@
+
 'use client';
     
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   DocumentReference,
   onSnapshot,
@@ -47,28 +48,39 @@ export function useDoc<T = any>(
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
+  // Use a ref to track the last data to avoid unnecessary state updates
+  const lastDataRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!memoizedDocRef) {
       setData(null);
       setIsLoading(false);
       setError(null);
+      lastDataRef.current = null;
       return;
     }
 
     setIsLoading(true);
     setError(null);
-    // Optional: setData(null); // Clear previous data instantly
 
     const unsubscribe = onSnapshot(
       memoizedDocRef,
       (snapshot: DocumentSnapshot<DocumentData>) => {
         if (snapshot.exists()) {
-          setData({ ...(snapshot.data() as T), id: snapshot.id });
+          const newData = { ...(snapshot.data() as T), id: snapshot.id };
+          const dataString = JSON.stringify(newData);
+          
+          if (lastDataRef.current !== dataString) {
+            setData(newData);
+            lastDataRef.current = dataString;
+          }
         } else {
-          // Document does not exist
-          setData(null);
+          if (lastDataRef.current !== null) {
+            setData(null);
+            lastDataRef.current = null;
+          }
         }
-        setError(null); // Clear any previous error on successful snapshot (even if doc doesn't exist)
+        setError(null);
         setIsLoading(false);
       },
       (error: FirestoreError) => {
@@ -80,6 +92,7 @@ export function useDoc<T = any>(
         setError(contextualError)
         setData(null)
         setIsLoading(false)
+        lastDataRef.current = null;
 
         // trigger global error propagation
         errorEmitter.emit('permission-error', contextualError);
@@ -88,6 +101,10 @@ export function useDoc<T = any>(
 
     return () => unsubscribe();
   }, [memoizedDocRef]); // Re-run if the memoizedDocRef changes.
+
+  if(memoizedDocRef && !(memoizedDocRef as any).__memo) {
+    console.warn('Reference passed to useDoc was not memoized with useMemoFirebase. This can cause infinite loops.');
+  }
 
   return { data, isLoading, error };
 }
