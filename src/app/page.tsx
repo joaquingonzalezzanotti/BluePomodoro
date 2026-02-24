@@ -20,7 +20,6 @@ import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter,
 import { Toaster } from "@/components/ui/toaster"
 import { PomodoroTimer } from "@/components/pomodoro-timer"
 import { TaskManager } from "@/components/task-manager"
-import { FocusMusic } from "@/components/focus-music"
 import { ConfigurationView } from "@/components/configuration-view"
 import { StatsView } from "@/components/stats-view"
 import { ProjectManager } from "@/components/project-manager"
@@ -164,10 +163,7 @@ function DashboardContent({
           <div className="flex-1 p-8 max-w-7xl mx-auto w-full">
             {activeTab === "dashboard" && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                <div className="lg:col-span-5">
-                   <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} compact />
-                </div>
-                <div className="lg:col-span-7 flex flex-col gap-8">
+                <div className="lg:col-span-12 flex flex-col gap-8">
                   <div className="bg-white rounded-[3rem] p-12 shadow-xl border border-slate-100 flex flex-col items-center justify-center">
                     <PomodoroTimer 
                       timeLeft={timeLeft}
@@ -183,6 +179,7 @@ function DashboardContent({
                       large
                     />
                   </div>
+                  <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                 </div>
               </div>
             )}
@@ -212,12 +209,6 @@ function DashboardContent({
             {activeTab === "stats" && <StatsView />}
           </div>
         </main>
-        
-        <div className="fixed bottom-0 left-0 right-0 z-50 px-6 pb-6 pointer-events-none">
-          <div className="max-w-4xl mx-auto w-full pointer-events-auto">
-             <FocusMusic layout="dock" />
-          </div>
-        </div>
       </div>
     </SidebarProvider>
   )

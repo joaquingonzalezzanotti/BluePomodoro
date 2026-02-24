@@ -12,7 +12,8 @@ import {
   BookOpen,
   Edit2,
   Check,
-  X
+  ChevronDown,
+  ChevronUp
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,6 +26,7 @@ import { collection, doc, serverTimestamp, query, orderBy } from "firebase/fires
 import { cn } from "@/lib/utils"
 import { aiAssistedTaskBreakdown } from "@/ai/flows/ai-assisted-task-breakdown-flow"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 interface SubTask {
   id: string
@@ -35,19 +37,19 @@ interface SubTask {
 interface TaskManagerProps {
   onTaskSelect?: (id: string) => void
   activeTaskId?: string | null
-  compact?: boolean
 }
 
-export function TaskManager({ onTaskSelect, activeTaskId, compact = false }: TaskManagerProps) {
+export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
   const [newTaskText, setNewTaskText] = React.useState("")
   const [selectedMateriaId, setSelectedMateriaId] = React.useState<string>("none")
   const [isAiLoading, setIsAiLoading] = React.useState<string | null>(null)
   
-  // Estados para edición in-line
   const [editingTaskId, setEditingTaskId] = React.useState<string | null>(null)
   const [editingText, setEditingText] = React.useState("")
   const [editingSubTaskId, setEditingSubTaskId] = React.useState<{taskId: string, subId: string} | null>(null)
   const [editingSubText, setEditingSubText] = React.useState("")
+
+  const [expandedTasks, setExpandedTasks] = React.useState<Record<string, boolean>>({})
   
   const { toast } = useToast()
   const db = useFirestore()
@@ -65,6 +67,10 @@ export function TaskManager({ onTaskSelect, activeTaskId, compact = false }: Tas
 
   const { data: tasks, isLoading } = useCollection(tasksQuery)
   const { data: materias } = useCollection(materiasQuery)
+
+  const toggleExpand = (taskId: string) => {
+    setExpandedTasks(prev => ({ ...prev, [taskId]: !prev[taskId] }))
+  }
 
   const addTask = () => {
     if (!newTaskText.trim() || !user || !db) return
@@ -101,6 +107,7 @@ export function TaskManager({ onTaskSelect, activeTaskId, compact = false }: Tas
         esfuerzoEstimadoPomodoros: Math.max(1, Math.ceil(formattedSubTasks.length / 2)) 
       })
       toast({ title: "IA: Tarea desglosada", description: `Se han creado ${formattedSubTasks.length} subtareas.` })
+      setExpandedTasks(prev => ({ ...prev, [taskId]: true }))
     } catch (error) {
       toast({ variant: "destructive", title: "Error IA", description: "No se pudo desglosar la tarea." })
     } finally {
@@ -147,35 +154,33 @@ export function TaskManager({ onTaskSelect, activeTaskId, compact = false }: Tas
 
   return (
     <div className="space-y-6">
-      {!compact && (
-        <div className="flex flex-col gap-3 p-4 bg-white rounded-[2rem] shadow-sm border border-slate-100">
-          <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground/60 px-2">Nueva Tarea</h3>
-          <div className="flex flex-col gap-2">
-            <Input 
-              placeholder="¿Qué tienes que hacer?" 
-              value={newTaskText} 
-              onChange={(e) => setNewTaskText(e.target.value)} 
-              className="h-12 rounded-xl bg-slate-50 border-none font-bold"
-            />
-            <div className="flex gap-2">
-              <Select value={selectedMateriaId} onValueChange={setSelectedMateriaId}>
-                <SelectTrigger className="flex-1 h-10 rounded-xl bg-slate-50 border-none text-[11px] font-bold">
-                  <SelectValue placeholder="Vincular Materia" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sin Materia</SelectItem>
-                  {materias?.map(m => (
-                    <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button onClick={addTask} className="h-10 px-6 rounded-xl font-bold">Añadir</Button>
-            </div>
+      <div className="flex flex-col gap-3 p-6 bg-white rounded-[2.5rem] shadow-sm border border-slate-100">
+        <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground/60 px-2">Nueva Tarea</h3>
+        <div className="flex flex-col gap-3">
+          <Input 
+            placeholder="¿Qué tienes que hacer?" 
+            value={newTaskText} 
+            onChange={(e) => setNewTaskText(e.target.value)} 
+            className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-lg"
+          />
+          <div className="flex gap-3">
+            <Select value={selectedMateriaId} onValueChange={setSelectedMateriaId}>
+              <SelectTrigger className="flex-1 h-12 rounded-2xl bg-slate-50 border-none text-[11px] font-bold">
+                <SelectValue placeholder="Vincular Materia" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin Materia</SelectItem>
+                {materias?.map(m => (
+                  <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button onClick={addTask} className="h-12 px-8 rounded-2xl font-bold shadow-lg shadow-primary/20">Añadir Tarea</Button>
           </div>
         </div>
-      )}
+      </div>
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {tasks?.map(task => {
           const materia = materias?.find(m => m.id === task.materiaId)
           const rawSubTasks = task.subtareas || []
@@ -186,77 +191,87 @@ export function TaskManager({ onTaskSelect, activeTaskId, compact = false }: Tas
           const completedCount = normalizedSubTasks.filter(st => st.completed).length
           const totalCount = normalizedSubTasks.length
           const progressValue = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
+          const isExpanded = !!expandedTasks[task.id]
 
           return (
-            <Card key={task.id} className={cn("border-none shadow-sm transition-all rounded-2xl", activeTaskId === task.id && "ring-2 ring-primary/40", task.estado === "Completada" && "opacity-60")}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3 flex-1 overflow-hidden">
-                    <Button 
-                      variant="ghost" size="icon" 
-                      className={cn("h-9 w-9 rounded-full shrink-0 border-2", task.estado === "Completada" ? "text-green-500 border-green-500" : "text-slate-200 border-slate-100")}
-                      onClick={() => toggleComplete(task.id, task.estado)}
-                    >
-                      <CheckCircle2 className="h-6 w-6" />
-                    </Button>
-                    <div className="flex-1 overflow-hidden">
-                      {editingTaskId === task.id ? (
-                        <div className="flex gap-2">
-                          <Input value={editingText} onChange={(e) => setEditingText(e.target.value)} className="h-8 text-sm font-black" />
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => updateTaskTitle(task.id)}><Check className="h-4 w-4" /></Button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2 group">
-                          <h4 className={cn("text-sm font-black truncate leading-tight", task.estado === "Completada" && "line-through text-slate-400")}>{task.titulo}</h4>
-                          <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100" onClick={() => { setEditingTaskId(task.id); setEditingText(task.titulo); }}><Edit2 className="h-3 w-3" /></Button>
+            <Collapsible key={task.id} open={isExpanded} onOpenChange={() => toggleExpand(task.id)}>
+              <Card className={cn("border-none shadow-sm transition-all rounded-[2rem] overflow-hidden", activeTaskId === task.id && "ring-2 ring-primary/40", task.estado === "Completada" && "opacity-60")}>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between gap-6">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <Button 
+                        variant="ghost" size="icon" 
+                        className={cn("h-10 w-10 rounded-full shrink-0 border-2", task.estado === "Completada" ? "text-green-500 border-green-500" : "text-slate-200 border-slate-100")}
+                        onClick={() => toggleComplete(task.id, task.estado)}
+                      >
+                        <CheckCircle2 className="h-6 w-6" />
+                      </Button>
+                      <div className="flex-1 min-w-0">
+                        {editingTaskId === task.id ? (
+                          <div className="flex gap-2">
+                            <Input value={editingText} onChange={(e) => setEditingText(e.target.value)} className="h-8 text-sm font-black" autoFocus />
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => updateTaskTitle(task.id)}><Check className="h-4 w-4" /></Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2 group">
+                            <h4 className={cn("text-lg font-black truncate leading-tight", task.estado === "Completada" && "line-through text-slate-400")}>{task.titulo}</h4>
+                            <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100" onClick={() => { setEditingTaskId(task.id); setEditingText(task.titulo); }}><Edit2 className="h-3 w-3" /></Button>
+                          </div>
+                        )}
+                        {materia && <span className="text-[10px] font-black uppercase text-primary/60 flex items-center gap-1 mt-1"><BookOpen className="h-3 w-3" /> {materia.nombre}</span>}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-6 shrink-0">
+                      {totalCount > 0 && (
+                        <div className="w-24 space-y-1 hidden sm:block">
+                          <div className="flex justify-between text-[9px] font-black uppercase text-muted-foreground/60">
+                            <span>{Math.round(progressValue)}%</span>
+                          </div>
+                          <Progress value={progressValue} className="h-1 bg-slate-100" />
                         </div>
                       )}
-                      {materia && <span className="text-[9px] font-black uppercase text-primary/60 flex items-center gap-1 mt-1"><BookOpen className="h-2.5 w-2.5" /> {materia.nombre}</span>}
+                      
+                      <div className="flex items-center gap-4 text-[10px] font-black uppercase text-muted-foreground/60">
+                        <span className="flex items-center gap-1.5 bg-primary/5 px-2 py-1 rounded-lg"><Zap className="h-3.5 w-3.5 text-primary" /> {task.esfuerzoEstimadoPomodoros || 1} Pomos</span>
+                        <span className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-lg"><Layout className="h-3.5 w-3.5 text-blue-500" /> {totalCount} Subtareas</span>
+                      </div>
+
+                      <div className="flex items-center gap-1 border-l pl-4 border-slate-100">
+                        <Button variant="ghost" size="icon" disabled={isAiLoading === task.id} onClick={() => handleAiBreakdown(task.id, task.titulo)} className="h-9 w-9 text-primary hover:bg-primary/5"><Sparkles className={cn("h-4 w-4", isAiLoading === task.id && "animate-spin")} /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)} className="h-9 w-9 text-slate-300 hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-9 w-9">
+                            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                          </Button>
+                        </CollapsibleTrigger>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" disabled={isAiLoading === task.id} onClick={() => handleAiBreakdown(task.id, task.titulo)} className="h-8 w-8 text-primary"><Sparkles className={cn("h-4 w-4", isAiLoading === task.id && "animate-spin")} /></Button>
-                    <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)} className="h-8 w-8 text-slate-300 hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                  </div>
-                </div>
 
-                {totalCount > 0 && (
-                  <div className="mb-3 space-y-1">
-                    <div className="flex justify-between text-[9px] font-black uppercase text-muted-foreground/60">
-                      <span>Progreso</span>
-                      <span>{Math.round(progressValue)}%</span>
-                    </div>
-                    <Progress value={progressValue} className="h-1 bg-slate-100" />
-                  </div>
-                )}
-
-                <div className="flex items-center gap-4 text-[10px] font-black uppercase text-muted-foreground/60">
-                  <span className="flex items-center gap-1.5"><Zap className="h-3 w-3 text-primary" /> {task.esfuerzoEstimadoPomodoros || 1} Pomos</span>
-                  <span className="flex items-center gap-1.5"><Layout className="h-3 w-3 text-blue-500" /> {totalCount} Subtareas</span>
-                </div>
-
-                {!compact && normalizedSubTasks.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-slate-50 space-y-2">
-                     {normalizedSubTasks.map(sub => (
-                       <div key={sub.id} className="flex items-center gap-2 group/sub">
+                  <CollapsibleContent className="mt-6 pt-6 border-t border-slate-50 space-y-3">
+                     {normalizedSubTasks.length > 0 ? normalizedSubTasks.map(sub => (
+                       <div key={sub.id} className="flex items-center gap-3 group/sub animate-in slide-in-from-top-2 duration-300">
                           <div 
-                            className={cn("h-4 w-4 rounded border flex items-center justify-center cursor-pointer", sub.completed ? "bg-green-500 border-green-500 text-white" : "border-slate-300")}
+                            className={cn("h-5 w-5 rounded-lg border-2 flex items-center justify-center cursor-pointer transition-all", sub.completed ? "bg-green-500 border-green-500 text-white" : "border-slate-200 hover:border-primary/40")}
                             onClick={() => toggleSubTask(task.id, normalizedSubTasks, sub.id)}
                           >
-                            {sub.completed && <Check className="h-3 w-3" />}
+                            {sub.completed && <Check className="h-3.5 w-3.5" />}
                           </div>
                           {editingSubTaskId?.subId === sub.id ? (
-                            <Input value={editingSubText} onChange={(e) => setEditingSubText(e.target.value)} onBlur={() => updateSubTaskText(task.id, normalizedSubTasks, sub.id)} className="h-6 text-[11px] font-medium" />
+                            <Input value={editingSubText} onChange={(e) => setEditingSubText(e.target.value)} onBlur={() => updateSubTaskText(task.id, normalizedSubTasks, sub.id)} className="h-8 text-sm font-medium" autoFocus />
                           ) : (
-                            <span className={cn("text-[11px] font-medium flex-1", sub.completed ? "line-through text-slate-400" : "text-slate-600")}>{sub.text}</span>
+                            <span className={cn("text-sm font-medium flex-1", sub.completed ? "line-through text-slate-400" : "text-slate-600")}>{sub.text}</span>
                           )}
-                          <Button variant="ghost" size="icon" className="h-4 w-4 opacity-0 group-hover/sub:opacity-100" onClick={() => { setEditingSubTaskId({taskId: task.id, subId: sub.id}); setEditingSubText(sub.text); }}><Edit2 className="h-2.5 w-2.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/sub:opacity-100" onClick={() => { setEditingSubTaskId({taskId: task.id, subId: sub.id}); setEditingSubText(sub.text); }}><Edit2 className="h-3 w-3" /></Button>
                        </div>
-                     ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                     )) : (
+                       <p className="text-xs text-center text-muted-foreground font-medium italic">Sin subtareas. ¡Usa la IA para desglosar este pendiente!</p>
+                     )}
+                  </CollapsibleContent>
+                </CardContent>
+              </Card>
+            </Collapsible>
           )
         })}
       </div>
