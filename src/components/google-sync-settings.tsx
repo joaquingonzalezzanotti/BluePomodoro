@@ -109,8 +109,8 @@ export function GoogleSyncSettings() {
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-700">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-black tracking-tight text-slate-900">Centro de Sincronización Real</h2>
-          <p className="text-muted-foreground">Importa tus tareas y eventos genuinos desde tu cuenta de Google.</p>
+          <h2 className="text-3xl font-black tracking-tight text-slate-900">Centro de Sincronización</h2>
+          <p className="text-muted-foreground">Importa tus tareas reales desde tu cuenta de Google.</p>
         </div>
         <Button 
           variant="default" 
@@ -119,7 +119,7 @@ export function GoogleSyncSettings() {
           className="gap-2 rounded-xl shadow-lg shadow-primary/20 h-12 px-6"
         >
           <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
-          {isSyncing ? "Importando..." : "Sincronizar ahora"}
+          {isSyncing ? "Sincronizando..." : "Sincronizar ahora"}
         </Button>
       </div>
 
@@ -128,7 +128,7 @@ export function GoogleSyncSettings() {
           <AlertTriangle className="h-5 w-5" />
           <AlertTitle className="font-bold">Permisos Requeridos</AlertTitle>
           <AlertDescription>
-            Para usar la sincronización real, debes cerrar sesión e iniciar de nuevo eligiendo tu cuenta de Google y aceptando los permisos de lectura.
+            Para usar la sincronización real, inicia sesión con Google y acepta los permisos de lectura.
           </AlertDescription>
         </Alert>
       )}
@@ -137,10 +137,10 @@ export function GoogleSyncSettings() {
         <div className="lg:col-span-2 space-y-6">
           <Alert className="bg-primary/5 border-primary/20 rounded-2xl p-6">
             <AlertCircle className="h-5 w-5 text-primary" />
-            <AlertTitle className="font-bold text-primary">Estado de la Sincronización</AlertTitle>
+            <AlertTitle className="font-bold text-primary">Estado de la Integración</AlertTitle>
             <AlertDescription className="text-primary/80 text-xs mt-1">
               {hasToken 
-                ? "Conexión autorizada. Al sincronizar, extraemos tus tareas de Google Tasks y eventos de Calendar para convertirlos en sesiones de enfoque locales."
+                ? "Conexión autorizada. Al sincronizar, extraemos tus tareas de Google Tasks para convertirlas en sesiones de enfoque locales."
                 : "Habilita los servicios a la derecha para empezar a importar tus pendientes reales."}
             </AlertDescription>
           </Alert>
@@ -157,8 +157,8 @@ export function GoogleSyncSettings() {
                   <p className="text-xs text-muted-foreground italic">Desactivado.</p>
                 ) : (
                   <div className="space-y-4">
-                    <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-none font-black text-[9px]">LECTURA ACTIVA</Badge>
-                    <p className="text-xs font-medium text-slate-500">Tus eventos se verán como bloques de tiempo.</p>
+                    <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-none font-black text-[9px]">SISTEMA LISTO</Badge>
+                    <p className="text-xs font-medium text-slate-500">Tus eventos se convertirán en bloques de enfoque.</p>
                   </div>
                 )}
               </CardContent>
@@ -175,8 +175,8 @@ export function GoogleSyncSettings() {
                   <p className="text-xs text-muted-foreground italic">Desactivado.</p>
                 ) : (
                   <div className="space-y-4">
-                    <Badge variant="secondary" className="bg-green-50 text-green-600 border-none font-black text-[9px]">SISTEMA DE IMPORTACIÓN LISTO</Badge>
-                    <p className="text-xs font-medium text-slate-500">Importaremos tus tareas de la lista principal (@default).</p>
+                    <Badge variant="secondary" className="bg-green-50 text-green-600 border-none font-black text-[9px]">IMPORTACIÓN ACTIVA</Badge>
+                    <p className="text-xs font-medium text-slate-500">Importaremos tus tareas de la lista principal.</p>
                   </div>
                 )}
               </CardContent>
@@ -203,7 +203,7 @@ export function GoogleSyncSettings() {
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-sm font-bold">Importar Tareas</Label>
-                  <p className="text-[10px] text-muted-foreground">Sincronizar con Tareas Blue.</p>
+                  <p className="text-[10px] text-muted-foreground">Sincronizar con Blue Tasks.</p>
                 </div>
                 <Switch 
                   checked={!!syncData?.tasksSync}
@@ -220,21 +220,6 @@ export function GoogleSyncSettings() {
                   <Switch checked className="scale-75" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-xl bg-slate-900 text-white rounded-[2rem] overflow-hidden">
-            <CardContent className="p-6 space-y-4">
-              <div className="h-10 w-10 bg-primary/20 rounded-xl flex items-center justify-center">
-                <Cloud className="h-5 w-5 text-primary" />
-              </div>
-              <h3 className="text-sm font-black uppercase tracking-widest">Integración Directa</h3>
-              <p className="text-[11px] text-slate-400 leading-relaxed">
-                Usamos el Token de Acceso de Google para leer tus datos de forma privada. Tus tareas nunca salen de tu dispositivo y tu base de datos de Firestore.
-              </p>
-              <Button variant="secondary" size="sm" className="w-full gap-2 rounded-xl text-xs font-bold h-10">
-                <ExternalLink className="h-3 w-3" /> Ver Documentación
-              </Button>
             </CardContent>
           </Card>
         </div>
