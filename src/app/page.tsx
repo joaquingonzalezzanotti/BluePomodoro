@@ -38,6 +38,7 @@ import { Switch } from "@/components/ui/switch"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 
 function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => void, onLoginGuest: () => void }) {
   const [mounted, setMounted] = React.useState(false)
@@ -93,12 +94,15 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
 }
 
 function SidebarToggle() {
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar, state } = useSidebar()
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton onClick={toggleSidebar} className="rounded-xl h-12 justify-center lg:justify-start" tooltip="Expandir/Contraer">
-        <PanelLeft className="h-5 w-5" />
-        <span className="font-bold group-data-[collapsible=icon]:hidden">Contraer Menú</span>
+      <SidebarMenuButton 
+        onClick={toggleSidebar} 
+        className="rounded-xl h-10 w-full flex items-center justify-center hover:bg-primary/5 transition-colors"
+        tooltip={state === "expanded" ? "Colapsar menú" : "Expandir menú"}
+      >
+        <PanelLeft className={cn("h-5 w-5 text-primary transition-transform duration-300", state === "collapsed" && "rotate-180")} />
       </SidebarMenuButton>
     </SidebarMenuItem>
   )
@@ -125,13 +129,13 @@ function DashboardContent({
   signOutAction 
 }: any) {
   return (
-    <SidebarProvider defaultOpen={false}>
+    <SidebarProvider defaultOpen={true} style={{ "--sidebar-width": "16rem", "--sidebar-width-icon": "5rem" } as React.CSSProperties}>
       <div className="flex min-h-screen w-full bg-slate-50/50 pb-24 overflow-hidden">
         <Sidebar collapsible="icon" className="border-r border-primary/5 bg-white/80 backdrop-blur-xl transition-all duration-300">
-          <SidebarHeader className="p-6">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 shrink-0 relative overflow-hidden rounded-xl bg-white shadow-sm border border-slate-100">
-                <Image src="/logo.png" alt="Logo BluePomodoro" width={40} height={40} className="rounded-lg p-1 object-contain" />
+          <SidebarHeader className="p-6 flex-shrink-0">
+            <div className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center">
+              <div className="h-10 w-10 shrink-0 relative overflow-hidden rounded-xl bg-white shadow-sm border border-slate-100 flex items-center justify-center">
+                <Image src="/logo.png" alt="Logo BluePomodoro" width={32} height={32} className="rounded-lg object-contain" />
               </div>
               <h1 className="text-lg font-bold group-data-[collapsible=icon]:hidden tracking-tight text-primary">BluePomodoro</h1>
             </div>
@@ -148,9 +152,14 @@ function DashboardContent({
                   { id: "config", icon: Settings, label: "Configuración" },
                 ].map((item) => (
                   <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton isActive={activeTab === item.id} onClick={() => setActiveTab(item.id)} className="rounded-xl h-12 justify-center lg:justify-start" tooltip={item.label}>
-                      <item.icon className="h-5 w-5" />
-                      <span className="font-bold group-data-[collapsible=icon]:hidden">{item.label}</span>
+                    <SidebarMenuButton 
+                      isActive={activeTab === item.id} 
+                      onClick={() => setActiveTab(item.id)} 
+                      className="rounded-xl h-12 flex items-center group-data-[collapsible=icon]:justify-center transition-all" 
+                      tooltip={item.label}
+                    >
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      <span className="font-bold group-data-[collapsible=icon]:hidden ml-3">{item.label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
@@ -161,15 +170,15 @@ function DashboardContent({
             <SidebarMenu>
               <SidebarToggle />
             </SidebarMenu>
-            <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-xl group-data-[collapsible=icon]:justify-center mt-2">
-              <Avatar className="h-8 w-8">
+            <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-xl group-data-[collapsible=icon]:justify-center mt-2 overflow-hidden transition-all">
+              <Avatar className="h-8 w-8 shrink-0">
                 <AvatarImage src={user.photoURL || ""} />
                 <AvatarFallback>{user.displayName?.charAt(0) || <UserCircle className="h-5 w-5" />}</AvatarFallback>
               </Avatar>
               <div className="flex-1 group-data-[collapsible=icon]:hidden overflow-hidden">
                 <p className="text-[10px] font-black truncate">{user.isAnonymous ? "Invitado" : user.displayName}</p>
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 group-data-[collapsible=icon]:hidden" onClick={signOutAction}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 group-data-[collapsible=icon]:hidden shrink-0" onClick={signOutAction}>
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
