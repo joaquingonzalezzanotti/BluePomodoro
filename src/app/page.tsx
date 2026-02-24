@@ -336,7 +336,7 @@ export default function AppEntry() {
 
   const handleGoogleSignIn = async () => {
     if (!auth) {
-      toast({ variant: "destructive", title: "Error", description: "Firebase Auth no está inicializado." })
+      toast({ variant: "destructive", title: "Configuración Requerida", description: "Firebase Auth no está inicializado. Verifica tus variables de entorno en Vercel." })
       return
     }
 
@@ -344,7 +344,6 @@ export default function AppEntry() {
       const provider = new GoogleAuthProvider();
       provider.addScope('https://www.googleapis.com/auth/tasks.readonly');
       provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
-      // Forzar la selección de cuenta para evitar cierres inesperados del popup
       provider.setCustomParameters({ prompt: 'select_account' });
       
       const result = await signInWithPopup(auth, provider);
@@ -358,13 +357,9 @@ export default function AppEntry() {
       let errorMsg = "Ocurrió un error al iniciar sesión.";
       
       if (e.code === 'auth/popup-blocked') {
-        errorMsg = "El navegador bloqueó la ventana emergente. Por favor, habilita los popups para este sitio.";
+        errorMsg = "El navegador bloqueó el popup. Habilítalos para este sitio.";
       } else if (e.code === 'auth/popup-closed-by-user') {
-        errorMsg = "La ventana de inicio de sesión se cerró. Si el error persiste, asegúrate de que el dominio de la app esté en 'Dominios Autorizados' en Firebase Console.";
-      } else if (e.code === 'auth/unauthorized-domain') {
-        errorMsg = "Este dominio no está autorizado en la consola de Firebase.";
-      } else if (e.code === 'auth/internal-error') {
-        errorMsg = "Error interno de Firebase. Por favor, intenta de nuevo o revisa la configuración de API.";
+        errorMsg = "La ventana se cerró inesperadamente. Si el error persiste, verifica los dominios autorizados en Firebase Console.";
       } else {
         errorMsg = e.message;
       }
@@ -374,7 +369,10 @@ export default function AppEntry() {
   }
 
   const handleGuestSignIn = async () => {
-    if (!auth) return
+    if (!auth) {
+      toast({ variant: "destructive", title: "Configuración Requerida", description: "Firebase Auth no está inicializado. Verifica tus variables de entorno en Vercel." })
+      return
+    }
     initiateAnonymousSignIn(auth)
   }
 
