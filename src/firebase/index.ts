@@ -11,8 +11,14 @@ import { getFirestore, Firestore } from 'firebase/firestore';
  * Esta función maneja ese caso devolviendo nulos para evitar errores de pre-renderizado.
  */
 export function initializeFirebase() {
-  // Verificamos si tenemos los requisitos mínimos para inicializar
-  if (typeof window === 'undefined' || !firebaseConfig.apiKey || !firebaseConfig.projectId || firebaseConfig.apiKey === "") {
+  // Verificamos si tenemos los requisitos mínimos para inicializar de forma genuina
+  const isEnvValid = 
+    firebaseConfig.apiKey && 
+    firebaseConfig.apiKey !== "" && 
+    firebaseConfig.projectId && 
+    firebaseConfig.projectId !== "";
+
+  if (typeof window === 'undefined' || !isEnvValid) {
     return { firebaseApp: null, auth: null, firestore: null };
   }
 

@@ -1,8 +1,7 @@
-
 "use client"
 
 import * as React from "react"
-import { Timer as TimerIcon, Play, Pause, RotateCcw, Settings2, Flame } from "lucide-react"
+import { Play, Pause, RotateCcw, Settings2, Flame } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -63,56 +62,52 @@ export function PomodoroTimer({
   }
 
   const colorClass = mode === "work" 
-    ? "text-primary" 
-    : (isLongBreakMode ? "text-purple-500" : "text-accent")
-
-  const strokeColor = mode === "work" 
-    ? "hsl(var(--primary))" 
-    : (isLongBreakMode ? "hsl(262, 83%, 58%)" : "hsl(var(--accent))")
+    ? "text-slate-900" 
+    : (isLongBreakMode ? "text-purple-600" : "text-primary")
 
   return (
-    <div className={cn("flex flex-col items-center w-full max-w-md mx-auto", large ? "scale-100" : "scale-90")}>
+    <div className={cn("flex flex-col items-center w-full max-w-md mx-auto", large ? "scale-105" : "scale-90")}>
       <div className="relative w-72 h-72 flex items-center justify-center mb-8">
-        {/* Glow Effect Background */}
+        {/* Hyper-Modern Glow Ring */}
         <div className={cn(
-          "absolute inset-0 rounded-full blur-3xl opacity-20 transition-all duration-1000",
-          isActive ? "scale-110 opacity-30" : "scale-100",
+          "absolute inset-0 rounded-full blur-[40px] opacity-20 transition-all duration-1000",
+          isActive ? "scale-110 opacity-40 pulse-glow" : "scale-100",
           mode === "work" ? "bg-primary" : "bg-accent"
         )} />
 
         {/* Outer Ring (Static) */}
-        <div className="absolute inset-0 border-[10px] border-slate-100 rounded-full" />
+        <div className="absolute inset-0 border-[2px] border-slate-100 rounded-full" />
 
-        {/* Progress Ring */}
+        {/* Progress Ring (Modern Slim) */}
         <svg className="absolute inset-0 w-full h-full -rotate-90">
           <circle
             cx="144"
             cy="144"
-            r="134"
+            r="138"
             fill="transparent"
-            stroke={strokeColor}
-            strokeWidth="10"
+            stroke="currentColor"
+            strokeWidth="4"
             strokeLinecap="round"
-            strokeDasharray={2 * Math.PI * 134}
-            strokeDashoffset={2 * Math.PI * 134 * (1 - progress / 100)}
+            strokeDasharray={2 * Math.PI * 138}
+            strokeDashoffset={2 * Math.PI * 138 * (1 - progress / 100)}
             className={cn(
               "transition-all duration-1000 ease-linear",
-              isActive && "drop-shadow-[0_0_8px_rgba(var(--primary),0.5)]"
+              mode === "work" ? "text-primary" : "text-accent"
             )}
           />
         </svg>
 
         <div className="flex flex-col items-center z-10">
           <div className={cn(
-            "text-6xl font-black font-mono tracking-tighter mb-1 transition-colors duration-500",
-            colorClass
+            "text-7xl font-black font-mono tracking-tight transition-all duration-500",
+            colorClass,
+            isActive && "drop-shadow-2xl"
           )}>
             {formatTime(timeLeft)}
           </div>
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200">
-            <div className={cn("w-1.5 h-1.5 rounded-full animate-pulse", mode === "work" ? "bg-primary" : "bg-accent")} />
-            <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-              {mode === "work" ? "Enfoque" : "Descanso"}
+          <div className="mt-4 flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900 text-white shadow-lg">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em]">
+              {mode === "work" ? "FOCUS MODE" : "REST TIME"}
             </span>
           </div>
         </div>
@@ -144,38 +139,50 @@ export function PomodoroTimer({
             </PopoverTrigger>
             <PopoverContent className="w-64 rounded-3xl p-6 shadow-2xl border-none" align="end">
               <div className="space-y-4">
-                <h4 className="font-black text-[10px] uppercase tracking-widest text-muted-foreground">Preferencias de Sesión</h4>
+                <h4 className="font-black text-[10px] uppercase tracking-widest text-muted-foreground">Ajustes</h4>
                 <div className="grid gap-2">
-                  <Label className="text-[9px] font-black uppercase opacity-60">Tiempo Focus (min)</Label>
+                  <Label className="text-[9px] font-black uppercase opacity-60">Tiempo Focus</Label>
                   <Input type="number" value={localWork} onChange={(e) => setLocalWork(e.target.value)} className="rounded-xl border-none bg-muted/30 h-10 font-bold" />
                 </div>
                 <div className="grid gap-2">
-                  <Label className="text-[9px] font-black uppercase opacity-60">Tiempo Break (min)</Label>
+                  <Label className="text-[9px] font-black uppercase opacity-60">Tiempo Break</Label>
                   <Input type="number" value={localBreak} onChange={(e) => setLocalBreak(e.target.value)} className="rounded-xl border-none bg-muted/30 h-10 font-bold" />
                 </div>
-                <Button onClick={handleApplyChanges} className="w-full rounded-xl font-black h-12">GUARDAR CAMBIOS</Button>
+                <Button onClick={handleApplyChanges} className="w-full rounded-xl font-black h-12">GUARDAR</Button>
               </div>
             </PopoverContent>
           </Popover>
         </div>
       </div>
 
-      <div className="mt-8 grid grid-cols-2 gap-4 w-full">
-        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center">
-          <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider mb-1">Sesiones</span>
-          <div className="flex items-center gap-1.5 font-black text-xl">
+      <div className="mt-12 flex items-center justify-center gap-8 w-full">
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-1.5 font-black text-2xl text-slate-900">
              <Flame className="h-5 w-5 text-orange-500 fill-orange-500" />
              {sessionsCompleted}
           </div>
+          <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mt-1">Sesiones</span>
         </div>
-        <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center">
-          <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider mb-1">Ratio</span>
-          <div className="flex items-center gap-1.5 font-black text-xl">
-             <TimerIcon className="h-5 w-5 text-primary" />
-             {workMinutes}m
+        <div className="w-px h-8 bg-slate-100" />
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-1.5 font-black text-2xl text-slate-900">
+             {workMinutes}
+             <span className="text-xs text-muted-foreground">min</span>
           </div>
+          <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest mt-1">Ritmo</span>
         </div>
       </div>
+
+      <style jsx global>{`
+        @keyframes pulse-glow {
+          0% { opacity: 0.2; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(1.05); }
+          100% { opacity: 0.2; transform: scale(1); }
+        }
+        .pulse-glow {
+          animation: pulse-glow 3s ease-in-out infinite;
+        }
+      `}</style>
     </div>
   )
 }

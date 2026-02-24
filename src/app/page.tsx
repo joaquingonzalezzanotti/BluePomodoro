@@ -13,11 +13,9 @@ import {
   FolderKanban,
   UserCircle,
   Sparkles,
-  Flame,
   Brain,
   Shield,
-  Trophy,
-  Headphones
+  Trophy
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -78,21 +76,10 @@ function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => voi
               </Button>
             </div>
           </div>
-
-          <div className="relative max-w-5xl mx-auto rounded-[2.5rem] overflow-hidden shadow-2xl border-8 border-slate-100 animate-in zoom-in-95 duration-1000">
-            <Image 
-              src="https://picsum.photos/seed/productivity-focus/1200/800" 
-              alt="BluePomodoro Dashboard" 
-              width={1200} 
-              height={800}
-              className="w-full object-cover"
-              data-ai-hint="minimalist workspace"
-            />
-          </div>
         </section>
 
         <section className="py-24 bg-slate-50">
-          <div className="max-w-7xl mx-auto px-6">
+          <div className="max-w-7xl auto px-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
               <div className="space-y-4">
                 <div className="h-12 w-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
@@ -267,6 +254,7 @@ function DashboardContent({
 }
 
 export default function AppEntry() {
+  const [mounted, setMounted] = React.useState(false)
   const [activeTab, setActiveTab] = React.useState("dashboard")
   const { user, isUserLoading } = useUser()
   const auth = useAuth()
@@ -282,6 +270,10 @@ export default function AppEntry() {
   
   const [isAlarmModalOpen, setIsAlarmModalOpen] = React.useState(false)
   const audioRef = React.useRef<HTMLAudioElement | null>(null)
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const userRef = useMemoFirebase(() => {
     if (!db || !user) return null
@@ -350,6 +342,9 @@ export default function AppEntry() {
     if (!auth) return
     signOut(auth)
   }
+
+  // Prevención de errores de hidratación
+  if (!mounted) return null
 
   if (isUserLoading) return <div className="min-h-screen flex items-center justify-center bg-white"><CloudLightning className="h-12 w-12 text-primary animate-pulse" /></div>
 
