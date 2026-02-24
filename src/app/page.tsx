@@ -223,6 +223,7 @@ export default function AppEntry() {
   const db = useFirestore()
   const { toast } = useToast()
 
+  // Tiempos predeterminados 40/10 como solicitó el usuario
   const [workMinutes, setWorkMinutes] = React.useState(40)
   const [breakMinutes, setBreakMinutes] = React.useState(10)
   const [timeLeft, setTimeLeft] = React.useState(40 * 60)
@@ -319,6 +320,7 @@ export default function AppEntry() {
       }
     }
   }
+
   const handleGuestSignIn = async () => {
     if (!auth) {
       toast({ variant: "destructive", title: "Error", description: "Firebase no está inicializado." })
@@ -326,6 +328,7 @@ export default function AppEntry() {
     }
     initiateAnonymousSignIn(auth)
   }
+
   const handleSignOut = () => {
     if (!auth) return
     sessionStorage.removeItem('google_access_token');

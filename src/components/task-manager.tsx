@@ -49,6 +49,7 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
   const [editingSubTaskId, setEditingSubTaskId] = React.useState<{taskId: string, subId: string} | null>(null)
   const [editingSubText, setEditingSubText] = React.useState("")
 
+  // Estado para controlar qué tareas están expandidas (empiezan cerradas)
   const [expandedTasks, setExpandedTasks] = React.useState<Record<string, boolean>>({})
   
   const { toast } = useToast()
@@ -198,6 +199,7 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
               <Card className={cn("border-none shadow-sm transition-all rounded-[2rem] overflow-hidden", activeTaskId === task.id && "ring-2 ring-primary/40", task.estado === "Completada" && "opacity-60")}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between gap-6">
+                    {/* Título y estado (Izquierda) */}
                     <div className="flex items-center gap-4 flex-1 min-w-0">
                       <Button 
                         variant="ghost" size="icon" 
@@ -222,6 +224,7 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
                       </div>
                     </div>
 
+                    {/* Info de progreso y acciones (Derecha) */}
                     <div className="flex items-center gap-6 shrink-0">
                       {totalCount > 0 && (
                         <div className="w-24 space-y-1 hidden sm:block">
@@ -249,6 +252,7 @@ export function TaskManager({ onTaskSelect, activeTaskId }: TaskManagerProps) {
                     </div>
                   </div>
 
+                  {/* Contenido colapsable (Subtareas) */}
                   <CollapsibleContent className="mt-6 pt-6 border-t border-slate-50 space-y-3">
                      {normalizedSubTasks.length > 0 ? normalizedSubTasks.map(sub => (
                        <div key={sub.id} className="flex items-center gap-3 group/sub animate-in slide-in-from-top-2 duration-300">
