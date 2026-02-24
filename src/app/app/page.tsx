@@ -13,9 +13,7 @@ import {
   Timer as TimerIcon,
   FolderKanban,
   UserCircle,
-  Sparkles,
   CheckSquare,
-  Zap,
   Target,
   PanelLeft
 } from "lucide-react"
@@ -40,59 +38,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescript
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-
-function LandingPage({ onLoginGoogle, onLoginGuest }: { onLoginGoogle: () => void, onLoginGuest: () => void }) {
-  const [mounted, setMounted] = React.useState(false)
-  
-  React.useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) return <div className="min-h-screen bg-white" />
-
-  return (
-    <div className="min-h-screen bg-white text-slate-900 overflow-x-hidden font-sans">
-      <nav className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-md border-b border-slate-100 h-20 flex items-center px-6 md:px-12 justify-between">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 relative">
-             <Image src="/logo.png" alt="Logo BluePomodoro" width={40} height={40} className="rounded-xl object-contain" />
-          </div>
-          <span className="font-black text-xl tracking-tighter text-primary">BluePomodoro</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" className="hidden md:flex font-bold" onClick={onLoginGuest}>Demo Gratis</Button>
-          <Button onClick={onLoginGoogle} className="rounded-full px-6 font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-transform">
-            Empezar ahora
-          </Button>
-        </div>
-      </nav>
-
-      <main className="pt-40 pb-20 px-6 max-w-7xl mx-auto text-center">
-        <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 text-primary text-xs font-black uppercase tracking-widest mb-8 border border-primary/10">
-            <Sparkles className="h-3.5 w-3.5" /> La Productividad del Futuro
-          </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.95] mb-8 text-slate-900">
-            Domina tu tiempo, <br />
-            <span className="text-primary italic">con claridad mental.</span>
-          </h1>
-          <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 font-medium mb-10 leading-relaxed">
-            Diseñado específicamente para el cerebro moderno. Desglose de tareas con IA, 
-            temporizadores visuales para TDAH y gamificación real.
-          </p>
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4">
-            <Button size="lg" onClick={onLoginGoogle} className="h-16 px-10 rounded-2xl text-lg font-bold gap-3 shadow-xl shadow-primary/25 w-full md:w-auto hover:bg-primary/90 transition-all">
-              <LogIn className="h-5 w-5" /> Iniciar con Google
-            </Button>
-            <Button size="lg" variant="outline" onClick={onLoginGuest} className="h-16 px-10 rounded-2xl text-lg font-bold border-2 w-full md:w-auto hover:bg-slate-50">
-               Acceso Invitado
-            </Button>
-          </div>
-        </div>
-      </main>
-    </div>
-  )
-}
+import { useRouter } from "next/navigation"
 
 function SidebarToggle() {
   const { toggleSidebar, state } = useSidebar()
@@ -202,11 +148,9 @@ function DashboardContent({
           <div className="flex-1 p-8 w-full max-w-[1600px] mx-auto">
             {activeTab === "dashboard" && (
               <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-8 items-start">
-                {/* Lista de Tareas (Flexible) */}
                 <div className="min-w-0">
                   <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                 </div>
-                {/* Temporizador (Side / Bottom Bar) */}
                 <div className="xl:sticky xl:top-24 w-full">
                   <Card className="bg-white rounded-[2.5rem] p-6 xl:p-8 shadow-xl border border-slate-100 flex flex-col items-center justify-center overflow-hidden min-h-[140px] xl:min-h-0">
                     <PomodoroTimer 
@@ -289,6 +233,7 @@ export default function AppEntry() {
   const auth = useAuth()
   const db = useFirestore()
   const { toast } = useToast()
+  const router = useRouter()
 
   const [workMinutes, setWorkMinutes] = React.useState(40)
   const [breakMinutes, setBreakMinutes] = React.useState(10)
@@ -312,19 +257,6 @@ export default function AppEntry() {
 
   const { data: userData } = useDoc(userRef)
   const isBlocking = userData?.modoEstrictoActivo || false
-
-  React.useEffect(() => {
-    if (window.location.hash.includes("access_token")) {
-      const params = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = params.get("access_token");
-      if (accessToken && userRef) {
-        updateDocumentNonBlocking(userRef, { spotifyAccessToken: accessToken });
-        toast({ title: "¡Spotify Conectado!", description: "Tu cuenta ha sido vinculada exitosamente." });
-        window.location.hash = "";
-      }
-    }
-  }, [userRef, toast]);
-
 
   React.useEffect(() => {
     let interval: NodeJS.Timeout | null = null
@@ -373,59 +305,42 @@ export default function AppEntry() {
     setTimeLeft(mode === "work" ? workMinutes * 60 : breakMinutes * 60)
   }
 
-  const handleGoogleSignIn = async () => {
-    if (!auth) {
-      toast({ variant: "destructive", title: "Configuración Requerida", description: "Firebase Auth no está inicializado. Verifica tus variables de entorno en Vercel." })
-      return
-    }
-
-    try {
-      const provider = new GoogleAuthProvider();
-      provider.addScope('https://www.googleapis.com/auth/tasks.readonly');
-      provider.addScope('https://www.googleapis.com/auth/calendar.readonly');
-      provider.setCustomParameters({ prompt: 'select_account' });
-      
-      const result = await signInWithPopup(auth, provider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      if (credential?.accessToken) {
-        sessionStorage.setItem('google_access_token', credential.accessToken);
-      }
-      toast({ title: "¡Éxito!", description: "Sesión iniciada con Google." });
-    } catch (e: any) {
-      console.error("Login Error Details:", e);
-      let errorMsg = "Ocurrió un error al iniciar sesión.";
-      
-      if (e.code === 'auth/popup-blocked') {
-        errorMsg = "El navegador bloqueó el popup. Habilítalos para este sitio.";
-      } else if (e.code === 'auth/popup-closed-by-user') {
-        errorMsg = "La ventana se cerró inesperadamente. Si el error persiste, verifica los dominios autorizados en Firebase Console.";
-      } else {
-        errorMsg = e.message;
-      }
-
-      toast({ variant: "destructive", title: "Error de Login", description: errorMsg });
-    }
-  }
-
-  const handleGuestSignIn = async () => {
-    if (!auth) {
-      toast({ variant: "destructive", title: "Configuración Requerida", description: "Firebase Auth no está inicializado. Verifica tus variables de entorno en Vercel." })
-      return
-    }
-    initiateAnonymousSignIn(auth)
-  }
-
   const handleSignOut = () => {
     if (!auth) return
-    sessionStorage.removeItem('google_access_token');
-    signOut(auth)
+    signOut(auth).then(() => router.push("/"))
+  }
+
+  const handleGoogleSignIn = async () => {
+    if (!auth) return
+    const provider = new GoogleAuthProvider()
+    await signInWithPopup(auth, provider)
   }
 
   if (!mounted) return null
   if (isUserLoading) return <div className="min-h-screen flex items-center justify-center bg-white"><CloudLightning className="h-12 w-12 text-primary animate-pulse" /></div>
 
   if (!user) {
-    return <LandingPage onLoginGoogle={handleGoogleSignIn} onLoginGuest={handleGuestSignIn} />
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <Card className="max-w-md w-full p-10 rounded-[2.5rem] shadow-2xl bg-white text-center space-y-8">
+          <div className="h-20 w-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto">
+            <TimerIcon className="h-10 w-10 text-primary" />
+          </div>
+          <div className="space-y-2">
+            <h2 className="text-3xl font-black text-slate-900">Acceso Requerido</h2>
+            <p className="text-slate-500 font-medium">Inicia sesión para acceder a tu tablero de productividad.</p>
+          </div>
+          <div className="space-y-4">
+            <Button onClick={handleGoogleSignIn} className="w-full h-14 rounded-2xl font-black text-lg gap-3">
+              <LogIn className="h-5 w-5" /> Iniciar con Google
+            </Button>
+            <Button variant="ghost" onClick={() => router.push("/")} className="w-full font-bold">
+              Volver a la Landing Page
+            </Button>
+          </div>
+        </Card>
+      </div>
+    )
   }
 
   return (

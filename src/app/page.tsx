@@ -1,58 +1,129 @@
 
-import { Metadata } from 'next';
-import Link from 'next/link';
+"use client"
 
-export const metadata: Metadata = {
-  title: 'BluePomodoro - Aumenta tu Productividad con la Técnica Pomodoro',
-  description: 'Descubre cómo la técnica Pomodoro puede transformar tu gestión del tiempo y aumentar tu concentración. Empieza a usar BluePomodoro hoy mismo.',
-  keywords: 'Pomodoro, productividad, gestión del tiempo, concentración, TDAH, estudio',
-};
+import * as React from "react"
+import Image from "next/image"
+import Link from "next/link"
+import { 
+  LogIn, 
+  Sparkles,
+  CloudLightning
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { useAuth, useUser, initiateAnonymousSignIn } from "@/firebase"
+import { GoogleAuthProvider, signInWithPopup } from "firebase/auth"
+import { useToast } from "@/hooks/use-toast"
+import { useRouter } from "next/navigation"
 
-export default function LandingPage() {
+export default function RootLandingPage() {
+  const [mounted, setMounted] = React.useState(false)
+  const { user, isUserLoading } = useUser()
+  const auth = useAuth()
+  const { toast } = useToast()
+  const router = useRouter()
+
+  React.useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  // Si ya hay un usuario, lo enviamos directamente a la app
+  React.useEffect(() => {
+    if (user && !isUserLoading) {
+      router.push("/app")
+    }
+  }, [user, isUserLoading, router])
+
+  const handleGoogleSignIn = async () => {
+    if (!auth) {
+      toast({ variant: "destructive", title: "Error", description: "Servicio de autenticación no disponible." })
+      return
+    }
+    try {
+      const provider = new GoogleAuthProvider()
+      await signInWithPopup(auth, provider)
+      router.push("/app")
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error de Login", description: e.message })
+    }
+  }
+
+  const handleGuestSignIn = async () => {
+    if (!auth) return
+    try {
+      await initiateAnonymousSignIn(auth)
+      router.push("/app")
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Error", description: "No se pudo iniciar sesión como invitado." })
+    }
+  }
+
+  if (!mounted || isUserLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <CloudLightning className="h-12 w-12 text-primary animate-pulse" />
+      </div>
+    )
+  }
+
   return (
-    <div className="flex flex-col min-h-screen">
-      <header className="bg-gray-900 text-white py-4 px-6">
-        <div className="container mx-auto flex justify-between items-center">
-          <h1 className="text-2xl font-bold">BluePomodoro</h1>
-          <nav>
-            <Link href="/app" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-              Empezar ahora
-            </Link>
-          </nav>
-        </div>
-      </header>
-      <main className="flex-grow">
-        <section className="bg-gray-800 text-white py-20 px-6">
-          <div className="container mx-auto text-center">
-            <h1 className="text-5xl font-bold mb-4">Aumenta tu Productividad con BluePomodoro</h1>
-            <p className="text-xl mb-8">La herramienta definitiva para dominar la técnica Pomodoro y mejorar tu concentración.</p>
-            <Link href="/app" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg text-lg">
-              Empezar ahora
-            </Link>
+    <div className="min-h-screen bg-white text-slate-900 overflow-x-hidden font-sans">
+      <nav className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-md border-b border-slate-100 h-20 flex items-center px-6 md:px-12 justify-between">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 relative">
+             <Image src="/logo.png" alt="Logo BluePomodoro" width={40} height={40} className="rounded-xl object-contain" />
           </div>
-        </section>
-        <section className="py-20 px-6">
-          <div className="container mx-auto grid grid-cols-1 md:grid-cols-3 gap-12">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold mb-2">Gestión de Tareas</h2>
-              <p>Organiza tus tareas diarias y mantén el enfoque en lo que realmente importa.</p>
-            </div>
-            <div className="text-center">
-              <h2 className="text-2xl font-bold mb-2">Música Ambiental</h2>
-              <p>Integra tu música de Spotify para crear el ambiente de trabajo perfecto.</p>
-            </div>
-            <div className="text-center">
-              <h2 className="text-2xl font-bold mb-2">Estadísticas de Progreso</h2>
-              <p>Visualiza tu progreso y mantente motivado con nuestras estadísticas detalladas.</p>
-            </div>
+          <span className="font-black text-xl tracking-tighter text-primary">BluePomodoro</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" className="hidden md:flex font-bold" onClick={handleGuestSignIn}>Demo Gratis</Button>
+          <Button onClick={handleGoogleSignIn} className="rounded-full px-6 font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-transform">
+            Empezar ahora
+          </Button>
+        </div>
+      </nav>
+
+      <main className="pt-40 pb-20 px-6 max-w-7xl mx-auto text-center">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 text-primary text-xs font-black uppercase tracking-widest mb-8 border border-primary/10">
+            <Sparkles className="h-3.5 w-3.5" /> La Productividad del Futuro
+          </div>
+          <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.95] mb-8 text-slate-900">
+            Domina tu tiempo, <br />
+            <span className="text-primary italic">con claridad mental.</span>
+          </h1>
+          <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 font-medium mb-10 leading-relaxed">
+            Diseñado específicamente para el cerebro moderno. Desglose de tareas con IA, 
+            temporizadores visuales para TDAH y gamificación real.
+          </p>
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4">
+            <Button size="lg" onClick={handleGoogleSignIn} className="h-16 px-10 rounded-2xl text-lg font-bold gap-3 shadow-xl shadow-primary/25 w-full md:w-auto hover:bg-primary/90 transition-all">
+              <LogIn className="h-5 w-5" /> Iniciar con Google
+            </Button>
+            <Button size="lg" variant="outline" onClick={handleGuestSignIn} className="h-16 px-10 rounded-2xl text-lg font-bold border-2 w-full md:w-auto hover:bg-slate-50">
+               Acceso Invitado
+            </Button>
+          </div>
+        </div>
+
+        <section className="mt-32 grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+          <div className="p-8 rounded-[2rem] bg-slate-50 border border-slate-100">
+            <h3 className="text-xl font-black mb-4">IA Task Breakdown</h3>
+            <p className="text-slate-500 font-medium">Desglosa tareas complejas en pasos accionables de 25 minutos automáticamente.</p>
+          </div>
+          <div className="p-8 rounded-[2rem] bg-slate-50 border border-slate-100">
+            <h3 className="text-xl font-black mb-4">Focus Mode</h3>
+            <p className="text-slate-500 font-medium">Bloqueo de distracciones y música ambiental sincronizada para un flujo profundo.</p>
+          </div>
+          <div className="p-8 rounded-[2rem] bg-slate-50 border border-slate-100">
+            <h3 className="text-xl font-black mb-4">Gamificación</h3>
+            <p className="text-slate-500 font-medium">Gana puntos, sube de nivel y mantén tu racha de productividad diaria.</p>
           </div>
         </section>
       </main>
-      <footer className="bg-gray-900 text-white py-4 px-6">
-        <div className="container mx-auto text-center">
-          <p>&copy; {new Date().getFullYear()} BluePomodoro. Todos los derechos reservados.</p>
-        </div>
+
+      <footer className="py-12 border-t border-slate-100 text-center">
+        <p className="text-sm text-slate-400 font-bold">© {new Date().getFullYear()} BluePomodoro. Potenciado por IA para mentes brillantes.</p>
       </footer>
     </div>
-  );
+  )
 }
