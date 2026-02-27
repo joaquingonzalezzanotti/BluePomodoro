@@ -127,7 +127,7 @@ language plpgsql
 security definer
 as $$
 declare
-  current_date date;
+  current_focus_date date;
   last_date date;
   current_streak integer;
   reward_points integer := 100;
@@ -139,13 +139,13 @@ begin
      where id = new.user_id
      for update;
 
-    current_date := (new.completed_at at time zone 'UTC')::date;
+    current_focus_date := (new.completed_at at time zone 'UTC')::date;
 
     if last_date is null then
       current_streak := 1;
-    elsif current_date = last_date then
+    elsif current_focus_date = last_date then
       current_streak := current_streak;
-    elsif current_date = last_date + 1 then
+    elsif current_focus_date = last_date + 1 then
       current_streak := current_streak + 1;
     else
       current_streak := 1;
@@ -153,7 +153,7 @@ begin
 
     update public.profiles
        set puntos_totales = coalesce(puntos_totales, 0) + reward_points,
-           last_focus_date = current_date,
+           last_focus_date = current_focus_date,
            streak_days = current_streak
      where id = new.user_id;
 
