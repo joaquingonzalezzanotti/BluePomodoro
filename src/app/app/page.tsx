@@ -241,14 +241,20 @@ function DashboardContent({
           </header>
 
           <div className="flex-1 p-8 w-full max-w-[1600px] mx-auto space-y-8">
-            <div className="space-y-1">
-              <h1 className="text-4xl font-black text-slate-900 tracking-tight">{tabTitles[activeTab]}</h1>
-              <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">{activeTab}</p>
-            </div>
+            {activeTab !== "dashboard" && (
+              <div className="space-y-1">
+                <h1 className="text-4xl font-black text-slate-900 tracking-tight">{tabTitles[activeTab]}</h1>
+                <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">{activeTab}</p>
+              </div>
+            )}
 
             {activeTab === "dashboard" && (
               <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-8 items-start">
-                <div className="min-w-0">
+                <div className="min-w-0 space-y-8">
+                  <div className="space-y-1">
+                    <h1 className="text-4xl font-black text-slate-900 tracking-tight">{tabTitles[activeTab]}</h1>
+                    <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">{activeTab}</p>
+                  </div>
                   <TaskManager onTaskSelect={(id: string | null) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                 </div>
                 <div className="xl:sticky xl:top-24 w-full">
