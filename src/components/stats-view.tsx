@@ -36,6 +36,16 @@ export function StatsView() {
     () => buildRewardSummary(profile ?? null, sessions ?? [], stats),
     [profile, sessions, stats]
   )
+  const hasSessions = stats.workSessionsCount > 0
+  const chartData = React.useMemo(() => {
+    if (stats.sessionsByDay.length > 0) return stats.sessionsByDay
+    const today = new Date()
+    return Array.from({ length: 7 }).map((_, idx) => {
+      const date = new Date(today.getTime() - (6 - idx) * 24 * 60 * 60 * 1000)
+      const label = `${date.getDate()}/${date.getMonth() + 1}`
+      return { date: label, count: 0 }
+    })
+  }, [stats.sessionsByDay])
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -51,17 +61,34 @@ export function StatsView() {
             <CardTitle className="text-lg font-black flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-primary" /> Actividad Semanal
             </CardTitle>
+            {!hasSessions && (
+              <CardDescription className="text-xs font-medium text-slate-400">
+                Completa una sesión de enfoque para ver tus barras de actividad.
+              </CardDescription>
+            )}
           </CardHeader>
           <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={stats.sessionsByDay}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
-                <XAxis dataKey="date" fontSize={10} axisLine={false} tickLine={false} />
-                <YAxis fontSize={10} axisLine={false} tickLine={false} />
-                <RechartsTooltip />
-                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={30} />
-              </BarChart>
-            </ResponsiveContainer>
+            {hasSessions ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
+                  <XAxis dataKey="date" fontSize={10} axisLine={false} tickLine={false} />
+                  <YAxis fontSize={10} axisLine={false} tickLine={false} />
+                  <RechartsTooltip />
+                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} barSize={30} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-center gap-3">
+                <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <BarChart3 className="h-6 w-6 text-primary" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-black text-slate-700">Aún sin actividad</p>
+                  <p className="text-xs text-slate-400 font-medium">Tus sesiones aparecerán acá cuando completes tu primer pomodoro.</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
