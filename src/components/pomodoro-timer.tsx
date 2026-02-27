@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
+import { getSessionDurationSec, isLongBreakMode, type PomodoroRules } from "@/pomodoro/logic"
 
 interface PomodoroTimerProps {
   timeLeft: number
@@ -50,14 +51,17 @@ export function PomodoroTimer({
   React.useEffect(() => { setLocalWork(workMinutes.toString()) }, [workMinutes])
   React.useEffect(() => { setLocalBreak(breakMinutes.toString()) }, [breakMinutes])
 
-  const isLongBreakMode = mode === "break" && sessionsCompleted > 0 && sessionsCompleted % longBreakAfter === 0
-  const computedBreakMinutes = isLongBreakMode
-    ? (workMinutes >= longBreakThreshold ? longBreakMinutesHigh : longBreakMinutesLow)
-    : breakMinutes
+  const rules = React.useMemo<PomodoroRules>(() => ({
+    workMinutes,
+    breakMinutes,
+    longBreakAfter,
+    longBreakThreshold,
+    longBreakMinutesHigh,
+    longBreakMinutesLow,
+  }), [workMinutes, breakMinutes, longBreakAfter, longBreakThreshold, longBreakMinutesHigh, longBreakMinutesLow])
 
-  const initialTime = mode === "work" 
-    ? workMinutes * 60 
-    : computedBreakMinutes * 60
+  const longBreakActive = isLongBreakMode(mode, sessionsCompleted, longBreakAfter)
+  const initialTime = getSessionDurationSec(mode, rules, sessionsCompleted)
 
   const progress = Math.min(100, Math.max(0, ((initialTime - Math.max(0, timeLeft)) / initialTime) * 100))
 
@@ -81,7 +85,7 @@ export function PomodoroTimer({
     ? "text-red-500"
     : mode === "work" 
       ? "text-slate-900" 
-      : (isLongBreakMode ? "text-primary" : "text-accent")
+      : (longBreakActive ? "text-primary" : "text-accent")
 
   const primaryLabel = isOvertime ? "FIN DESCANSO" : (isActive ? "PAUSA" : "INICIAR")
 

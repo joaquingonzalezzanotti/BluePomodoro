@@ -9,6 +9,7 @@ import { useProfile, useSupabaseQuery } from "@/supabase/hooks"
 import type { PomodoroSession } from "@/supabase/types"
 import { BarChart3, PieChart as PieChartIcon, Flame, Clock, Trophy } from "lucide-react"
 import { GamifiedProgress } from "@/components/gamified-progress"
+import { buildPomodoroStats, buildRewardSummary } from "@/pomodoro/stats"
 
 export function StatsView() {
   const { user } = useUser()
@@ -31,35 +32,11 @@ export function StatsView() {
     user ? { table: "pomodoro_sessions", filter: `user_id=eq.${user.id}` } : null
   )
 
-  const statsData = React.useMemo(() => {
-    if (!sessions) return []
-    const groups: Record<string, number> = {}
-    sessions
-      .filter(s => s.mode === "work" && s.completed_at)
-      .forEach(s => {
-        const date = new Date(s.completed_at as any).toLocaleDateString()
-        groups[date] = (groups[date] || 0) + 1
-      })
-    return Object.entries(groups).map(([date, count]) => ({ date, count })).reverse()
-  }, [sessions])
-
-  const workSessions = React.useMemo(() => {
-    if (!sessions) return []
-    return sessions.filter(s => s.mode === "work")
-  }, [sessions])
-
-  const totalFocusHours = React.useMemo(() => {
-    const totalSec = workSessions.reduce((acc, s) => acc + (s.duration_sec || 0), 0)
-    return Math.round(totalSec / 3600)
-  }, [workSessions])
-
-  const breakOvertimeMinutes = React.useMemo(() => {
-    if (!sessions) return 0
-    const totalSec = sessions
-      .filter(s => s.mode === "break")
-      .reduce((acc, s) => acc + (s.overtime_sec || 0), 0)
-    return Math.round(totalSec / 60)
-  }, [sessions])
+  const stats = React.useMemo(() => buildPomodoroStats(sessions ?? []), [sessions])
+  const rewards = React.useMemo(
+    () => buildRewardSummary(profile ?? null, sessions ?? [], stats),
+    [profile, sessions, stats]
+  )
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -69,7 +46,7 @@ export function StatsView() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <GamifiedProgress />
+        <GamifiedProgress rewards={rewards} weeklyDeltaPercent={stats.weeklyDeltaPercent} />
         <Card className="border-none shadow-xl bg-white rounded-3xl">
           <CardHeader>
             <CardTitle className="text-lg font-black flex items-center gap-2">
@@ -78,7 +55,7 @@ export function StatsView() {
           </CardHeader>
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={statsData}>
+              <BarChart data={stats.sessionsByDay}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#eee" />
                 <XAxis dataKey="date" fontSize={10} axisLine={false} tickLine={false} />
                 <YAxis fontSize={10} axisLine={false} tickLine={false} />
@@ -93,19 +70,19 @@ export function StatsView() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="border-none shadow-xl bg-primary text-white p-6 rounded-3xl">
           <h4 className="text-[10px] font-black uppercase opacity-60">Total Sesiones</h4>
-          <p className="text-4xl font-black">{workSessions.length}</p>
+          <p className="text-4xl font-black">{stats.workSessionsCount}</p>
         </Card>
         <Card className="border-none shadow-xl bg-accent text-white p-6 rounded-3xl">
           <h4 className="text-[10px] font-black uppercase opacity-60">Horas Foco</h4>
-          <p className="text-4xl font-black">{totalFocusHours}h</p>
+          <p className="text-4xl font-black">{stats.focusHours}h</p>
         </Card>
         <Card className="border-none shadow-xl bg-orange-500 text-white p-6 rounded-3xl">
           <h4 className="text-[10px] font-black uppercase opacity-60">Descanso Extra</h4>
-          <p className="text-4xl font-black">{breakOvertimeMinutes > 0 ? `-${breakOvertimeMinutes}m` : "0m"}</p>
+          <p className="text-4xl font-black">{stats.breakOvertimeMinutes > 0 ? `-${stats.breakOvertimeMinutes}m` : "0m"}</p>
         </Card>
         <Card className="border-none shadow-xl bg-slate-900 text-white p-6 rounded-3xl">
           <h4 className="text-[10px] font-black uppercase opacity-60">Racha</h4>
-          <p className="text-4xl font-black flex items-center gap-2">{profile?.streak_days ?? 0} <Flame className="h-8 w-8 text-orange-500 fill-current" /></p>
+          <p className="text-4xl font-black flex items-center gap-2">{rewards.streakDays} <Flame className="h-8 w-8 text-orange-500 fill-current" /></p>
         </Card>
       </div>
     </div>

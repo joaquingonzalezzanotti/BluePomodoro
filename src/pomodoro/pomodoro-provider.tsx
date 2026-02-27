@@ -3,8 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useSupabase, useUser } from "@/supabase";
 import type { Profile } from "@/supabase/types";
-
-type PomodoroMode = "work" | "break";
+import { getSessionDurationSec, isLongBreakMode, type PomodoroMode, type PomodoroRules } from "@/pomodoro/logic";
 
 type PomodoroState = {
   mode: PomodoroMode;
@@ -76,15 +75,6 @@ function defaultState(): PomodoroState {
   };
 }
 
-function computeBreakMinutes(state: PomodoroState): number {
-  if (state.sessionsCompleted > 0 && state.sessionsCompleted % state.longBreakAfter === 0) {
-    return state.workMinutes >= state.longBreakThreshold
-      ? state.longBreakMinutesHigh
-      : state.longBreakMinutesLow;
-  }
-  return state.breakMinutes;
-}
-
 export function PomodoroProvider({ children }: { children: React.ReactNode }) {
   const supabase = useSupabase();
   const { user } = useUser();
@@ -103,24 +93,29 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  const isLongBreakMode = useMemo(() => {
-    return state.mode === "break" && state.sessionsCompleted > 0 && state.sessionsCompleted % state.longBreakAfter === 0;
-  }, [state.mode, state.sessionsCompleted, state.longBreakAfter]);
-
-  const sessionDurationSec = useMemo(() => {
-    if (state.mode === "work") return state.workMinutes * 60;
-    const breakMins = computeBreakMinutes(state);
-    return breakMins * 60;
-  }, [
-    state.mode,
+  const rules = useMemo<PomodoroRules>(() => ({
+    workMinutes: state.workMinutes,
+    breakMinutes: state.breakMinutes,
+    longBreakAfter: state.longBreakAfter,
+    longBreakThreshold: state.longBreakThreshold,
+    longBreakMinutesHigh: state.longBreakMinutesHigh,
+    longBreakMinutesLow: state.longBreakMinutesLow,
+  }), [
     state.workMinutes,
     state.breakMinutes,
     state.longBreakAfter,
     state.longBreakThreshold,
     state.longBreakMinutesHigh,
     state.longBreakMinutesLow,
-    state.sessionsCompleted,
   ]);
+
+  const isLongBreakModeValue = useMemo(() => {
+    return isLongBreakMode(state.mode, state.sessionsCompleted, state.longBreakAfter);
+  }, [state.mode, state.sessionsCompleted, state.longBreakAfter]);
+
+  const sessionDurationSec = useMemo(() => {
+    return getSessionDurationSec(state.mode, rules, state.sessionsCompleted);
+  }, [state.mode, rules, state.sessionsCompleted]);
 
   const timeLeft = useMemo(() => {
     if (!state.targetEndAt) {
@@ -269,7 +264,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     }
 
     const nextMode: PomodoroMode = state.mode === "work" ? "break" : "work";
-    const nextDuration = nextMode === "work" ? state.workMinutes * 60 : computeBreakMinutes(state) * 60;
+    const nextDuration = getSessionDurationSec(nextMode, rules, state.sessionsCompleted);
 
     setState(prev => ({
       ...prev,
@@ -398,7 +393,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
   const value: PomodoroContextValue = {
     ...state,
     timeLeft,
-    isLongBreakMode,
+    isLongBreakMode: isLongBreakModeValue,
     toggleTimer,
     resetTimer,
     stopAlarm,

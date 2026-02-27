@@ -98,6 +98,16 @@ export function ProjectManager() {
     if (selectedProjectId === id) setSelectedProjectId(null)
   }
 
+  const deleteMateria = async (id: string) => {
+    if (!user) return
+    const { error } = await supabase.from("subjects").delete().eq("id", id)
+    if (error) {
+      toast({ variant: "destructive", title: "Error", description: "No se pudo eliminar la materia." })
+      return
+    }
+    toast({ title: "Materia eliminada" })
+  }
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-700">
       <div className="flex items-center gap-4">
@@ -194,7 +204,12 @@ export function ProjectManager() {
                                <p className="text-[10px] text-muted-foreground uppercase font-black">ID: {m.id.slice(0,6)}</p>
                             </div>
                          </div>
-                         <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 text-slate-200 hover:text-destructive">
+                         <Button
+                           variant="ghost"
+                           size="icon"
+                           className="opacity-0 group-hover:opacity-100 text-slate-200 hover:text-destructive"
+                           onClick={() => deleteMateria(m.id)}
+                         >
                             <Trash2 className="h-4 w-4" />
                          </Button>
                       </div>
