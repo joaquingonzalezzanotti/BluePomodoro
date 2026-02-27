@@ -203,7 +203,7 @@ export function GoogleSyncSettings() {
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label className="text-sm font-bold">Importar Tareas</Label>
-                  <p className="text-[10px] text-muted-foreground">Sincronizar con Blue Tasks.</p>
+                  <p className="text-[10px] text-muted-foreground">Sincronizar con tareas de BluePomodoro.</p>
                 </div>
                 <Switch 
                   checked={!!profile?.google_tasks_sync}

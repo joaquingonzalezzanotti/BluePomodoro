@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { useSupabase, useUser } from "@/supabase";
+import { useSession, useSupabase, useUser } from "@/supabase";
 import type { Profile } from "@/supabase/types";
 import { getSessionDurationSec, isLongBreakMode, type PomodoroMode, type PomodoroRules } from "@/pomodoro/logic";
 
@@ -78,12 +78,42 @@ function defaultState(): PomodoroState {
 export function PomodoroProvider({ children }: { children: React.ReactNode }) {
   const supabase = useSupabase();
   const { user } = useUser();
+  const { session } = useSession();
   const [state, setState] = useState<PomodoroState>(() => {
     if (typeof window === "undefined") return defaultState();
     return safeParseState(window.localStorage.getItem(STORAGE_KEY)) ?? defaultState();
   });
   const [now, setNow] = useState<number>(() => Date.now());
   const alarmTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const pushSentRef = useRef<Set<string>>(new Set());
+
+  const sendPush = useCallback(
+    async (payload: { title: string; body: string; tag?: string; url?: string }) => {
+      if (!session?.access_token) return;
+      try {
+        await fetch("/api/push/send", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+      } catch {
+        // ignore push errors
+      }
+    },
+    [session?.access_token]
+  );
+
+  const notifyOnce = useCallback(
+    (key: string, payload: { title: string; body: string; tag?: string; url?: string }) => {
+      if (pushSentRef.current.has(key)) return;
+      pushSentRef.current.add(key);
+      sendPush(payload);
+    },
+    [sendPush]
+  );
 
   useEffect(() => {
     return () => {
@@ -92,6 +122,10 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
       }
     };
   }, []);
+
+  useEffect(() => {
+    pushSentRef.current.clear();
+  }, [state.currentSessionId, user?.id]);
 
   useEffect(() => {
     if (!state.alarmOpen || state.mode !== "break" || !state.alarmOpenedAt) {
@@ -111,6 +145,12 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     const remainingMs = state.overtimeGraceSeconds * 1000 - elapsedMs;
 
     if (remainingMs <= 0) {
+      notifyOnce(`overtime:${state.currentSessionId ?? state.targetEndAt ?? "break"}`, {
+        title: "Descanso excedido",
+        body: "El descanso se pasÃ³ del tiempo. Es hora de volver al foco.",
+        tag: "break-overtime",
+        url: "/app",
+      });
       setState(prev => {
         if (!prev.alarmOpen || prev.mode !== "break") return prev;
         return {
@@ -125,6 +165,12 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     }
 
     alarmTimerRef.current = setTimeout(() => {
+      notifyOnce(`overtime:${state.currentSessionId ?? state.targetEndAt ?? "break"}`, {
+        title: "Descanso excedido",
+        body: "El descanso se pasÃ³ del tiempo. Es hora de volver al foco.",
+        tag: "break-overtime",
+        url: "/app",
+      });
       setState(prev => {
         if (!prev.alarmOpen || prev.mode !== "break") return prev;
         return {
@@ -143,7 +189,15 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
         alarmTimerRef.current = null;
       }
     };
-  }, [state.alarmOpen, state.mode, state.alarmOpenedAt, state.overtimeGraceSeconds]);
+  }, [
+    state.alarmOpen,
+    state.mode,
+    state.alarmOpenedAt,
+    state.overtimeGraceSeconds,
+    state.currentSessionId,
+    state.targetEndAt,
+    notifyOnce,
+  ]);
 
   const rules = useMemo<PomodoroRules>(() => ({
     workMinutes: state.workMinutes,
@@ -241,6 +295,16 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     if (timeLeft > 0) return;
 
     if (state.mode === "work") {
+      const nextSessions = state.sessionsCompleted + 1;
+      const longBreakNext = isLongBreakMode("break", nextSessions, state.longBreakAfter);
+      notifyOnce(`work:${state.currentSessionId ?? state.targetEndAt ?? nextSessions}`, {
+        title: "Pomodoro completado",
+        body: longBreakNext
+          ? "Descanso largo disponible. Recupera energias."
+          : "Hora de descansar unos minutos.",
+        tag: longBreakNext ? "long-break" : "work-complete",
+        url: "/app",
+      });
       setState(prev => ({
         ...prev,
         isActive: false,
@@ -280,9 +344,13 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     state.currentSessionId,
     state.currentSessionStartedAt,
     state.activeTaskId,
+    state.sessionsCompleted,
+    state.longBreakAfter,
+    state.targetEndAt,
     sessionDurationSec,
     recordSession,
     openAlarmWithGrace,
+    notifyOnce,
   ]);
 
   const stopAlarm = useCallback(() => {
@@ -298,6 +366,15 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
         overtimeSec,
         taskId: state.activeTaskId,
         clientSessionId: state.currentSessionId,
+      });
+    }
+
+    if (state.mode === "break") {
+      notifyOnce(`break:${state.currentSessionId ?? state.targetEndAt ?? "break-end"}`, {
+        title: "Descanso terminado",
+        body: "Hora de volver al foco.",
+        tag: "break-complete",
+        url: "/app",
       });
     }
 
@@ -324,6 +401,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     state.workMinutes,
     sessionDurationSec,
     recordSession,
+    notifyOnce,
   ]);
 
   const toggleTimer = useCallback(() => {

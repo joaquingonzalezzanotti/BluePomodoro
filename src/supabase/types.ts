@@ -68,3 +68,13 @@ export type PomodoroSession = {
   created_at: string;
   client_session_id: string;
 };
+
+export type PushSubscription = {
+  id: string;
+  user_id: string;
+  endpoint: string;
+  p256dh: string;
+  auth: string;
+  created_at: string;
+  last_seen_at: string | null;
+};

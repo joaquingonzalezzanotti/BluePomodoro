@@ -99,6 +99,19 @@ create table if not exists public.pomodoro_sessions (
 create index if not exists pomodoro_sessions_user_id_idx on public.pomodoro_sessions(user_id);
 create index if not exists pomodoro_sessions_completed_at_idx on public.pomodoro_sessions(completed_at);
 
+-- Push subscriptions (PWA notifications)
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  endpoint text not null,
+  p256dh text not null,
+  auth text not null,
+  created_at timestamptz not null default now(),
+  last_seen_at timestamptz
+);
+create unique index if not exists push_subscriptions_user_endpoint_unique on public.push_subscriptions(user_id, endpoint);
+create index if not exists push_subscriptions_user_id_idx on public.push_subscriptions(user_id);
+
 -- Add missing columns if upgrading an existing database
 alter table public.profiles add column if not exists spotify_refresh_token text;
 alter table public.profiles add column if not exists spotify_token_expires_at timestamptz;
@@ -186,6 +199,7 @@ alter table public.projects enable row level security;
 alter table public.subjects enable row level security;
 alter table public.tasks enable row level security;
 alter table public.pomodoro_sessions enable row level security;
+alter table public.push_subscriptions enable row level security;
 
 -- Policies
 drop policy if exists "profiles_select_own" on public.profiles;
@@ -220,6 +234,12 @@ create policy "tasks_crud_own"
 drop policy if exists "pomodoro_sessions_crud_own" on public.pomodoro_sessions;
 create policy "pomodoro_sessions_crud_own"
   on public.pomodoro_sessions for all
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+drop policy if exists "push_subscriptions_crud_own" on public.push_subscriptions;
+create policy "push_subscriptions_crud_own"
+  on public.push_subscriptions for all
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 

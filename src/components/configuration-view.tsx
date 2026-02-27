@@ -6,7 +6,7 @@ import { Settings, Music, Cloud, ExternalLink, Save, Shield, Bell, CheckCircle2 
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { useSupabase, useUser } from "@/supabase"
+import { useSession, useSupabase, useUser } from "@/supabase"
 import { useProfile } from "@/supabase/hooks"
 import { useToast } from "@/hooks/use-toast"
 import { DistractionBlocker } from "@/components/distraction-blocker"
@@ -19,6 +19,17 @@ function base64UrlEncode(bytes: Uint8Array) {
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
 }
 
+function urlBase64ToUint8Array(base64String: string) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4)
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/")
+  const rawData = atob(base64)
+  const outputArray = new Uint8Array(rawData.length)
+  for (let i = 0; i < rawData.length; i += 1) {
+    outputArray[i] = rawData.charCodeAt(i)
+  }
+  return outputArray
+}
+
 async function createCodeChallenge(verifier: string) {
   const data = new TextEncoder().encode(verifier)
   const digest = await crypto.subtle.digest("SHA-256", data)
@@ -27,10 +38,14 @@ async function createCodeChallenge(verifier: string) {
 
 export function ConfigurationView() {
   const { user } = useUser()
+  const { session } = useSession()
   const supabase = useSupabase()
   const { toast } = useToast()
   const [spotifyInput, setSpotifyInput] = React.useState("")
   const [notifPermission, setNotifPermission] = React.useState<"default" | "granted" | "denied">("default")
+  const [pushEnabled, setPushEnabled] = React.useState(false)
+  const [pushLoading, setPushLoading] = React.useState(false)
+  const [pushSupported, setPushSupported] = React.useState(true)
   const [longBreakAfterInput, setLongBreakAfterInput] = React.useState("4")
   const [longBreakThresholdInput, setLongBreakThresholdInput] = React.useState("40")
   const [longBreakHighInput, setLongBreakHighInput] = React.useState("20")
@@ -58,6 +73,17 @@ export function ConfigurationView() {
     }
   }, [])
 
+  React.useEffect(() => {
+    if (typeof window === "undefined") return
+    const supported = "serviceWorker" in navigator && "PushManager" in window
+    setPushSupported(supported)
+    if (!supported) return
+    navigator.serviceWorker.ready
+      .then(reg => reg.pushManager.getSubscription())
+      .then(sub => setPushEnabled(!!sub))
+      .catch(() => setPushEnabled(false))
+  }, [])
+
   const requestPermission = async () => {
     if (!("Notification" in window)) {
       toast({ variant: "destructive", title: "No soportado", description: "Tu navegador no soporta notificaciones." })
@@ -67,6 +93,89 @@ export function ConfigurationView() {
     setNotifPermission(permission)
     if (permission === "granted") {
       toast({ title: "¡Permiso Concedido!", description: "Recibirás alertas al terminar tus sesiones." })
+    }
+  }
+
+  const handleEnablePush = async () => {
+    if (!session?.access_token) {
+      toast({ variant: "destructive", title: "Sesion requerida", description: "Inicia sesion para activar notificaciones push." })
+      return
+    }
+    const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+    if (!vapidKey) {
+      toast({ variant: "destructive", title: "VAPID no configurado", description: "Falta NEXT_PUBLIC_VAPID_PUBLIC_KEY." })
+      return
+    }
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      toast({ variant: "destructive", title: "No soportado", description: "Este navegador no soporta push." })
+      return
+    }
+
+    setPushLoading(true)
+    try {
+      const permission = Notification.permission === "granted"
+        ? "granted"
+        : await Notification.requestPermission()
+      setNotifPermission(permission)
+      if (permission != "granted") {
+        toast({ variant: "destructive", title: "Permiso denegado", description: "Habilita notificaciones para continuar." })
+        return
+      }
+
+      const registration = await navigator.serviceWorker.register("/sw.js")
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      })
+
+      const subscribeRes = await fetch("/api/push/subscribe", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ subscription }),
+      })
+      if (!subscribeRes.ok) {
+        throw new Error("push-subscribe-failed")
+      }
+
+      setPushEnabled(true)
+      toast({ title: "Push activado", description: "Te avisaremos al completar tus sesiones." })
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "No se pudo activar el push." })
+    } finally {
+      setPushLoading(false)
+    }
+  }
+
+  const handleDisablePush = async () => {
+    if (!session?.access_token) return
+    if (!("serviceWorker" in navigator)) return
+    setPushLoading(true)
+    try {
+      const registration = await navigator.serviceWorker.ready
+      const subscription = await registration.pushManager.getSubscription()
+      if (subscription) {
+        const unsubscribeRes = await fetch("/api/push/unsubscribe", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ endpoint: subscription.endpoint }),
+        })
+        if (!unsubscribeRes.ok) {
+          throw new Error("push-unsubscribe-failed")
+        }
+        await subscription.unsubscribe()
+      }
+      setPushEnabled(false)
+      toast({ title: "Push desactivado", description: "Puedes reactivarlo cuando quieras." })
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "No se pudo desactivar el push." })
+    } finally {
+      setPushLoading(false)
     }
   }
 
@@ -266,25 +375,41 @@ export function ConfigurationView() {
               <CardDescription>Configura cómo quieres que te avisemos al terminar tus sesiones.</CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
-              <div className="flex items-center justify-between p-6 bg-muted/30 rounded-2xl">
+              <div className="flex items-center justify-between p-6 bg-muted/30 rounded-2xl gap-6">
                 <div className="space-y-1">
-                  <h4 className="font-bold">Notificaciones de Escritorio</h4>
-                  <p className="text-xs text-muted-foreground">Recibe alertas nativas aunque el navegador esté minimizado.</p>
+                  <h4 className="font-bold">Notificaciones Push (Android)</h4>
+                  <p className="text-xs text-muted-foreground">Alertas aunque el navegador este minimizado.</p>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground/70">
+                    Permiso: {notifPermission === "granted" ? "Concedido" : notifPermission === "denied" ? "Bloqueado" : "Pendiente"}
+                  </p>
+                </div>
+                {!pushSupported ? (
+                  <div className="text-xs font-black uppercase text-muted-foreground">No soportado</div>
+                ) : pushEnabled ? (
+                  <Button onClick={handleDisablePush} variant="outline" className="rounded-xl font-bold" disabled={pushLoading}>
+                    Desactivar
+                  </Button>
+                ) : (
+                  <Button onClick={handleEnablePush} className="rounded-xl font-bold" disabled={pushLoading}>
+                    {pushLoading ? "Activando..." : "Activar"}
+                  </Button>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between p-6 bg-white/60 rounded-2xl border border-slate-100">
+                <div className="space-y-1">
+                  <h4 className="font-bold">Notificaciones locales</h4>
+                  <p className="text-xs text-muted-foreground">Avisos dentro de la app cuando termina el timer.</p>
                 </div>
                 {notifPermission === "granted" ? (
                   <div className="flex items-center gap-2 text-green-600 font-bold bg-green-50 px-4 py-2 rounded-full border border-green-100">
-                    <CheckCircle2 className="h-4 w-4" /> Activadas
+                    <CheckCircle2 className="h-4 w-4" /> Activas
                   </div>
                 ) : (
                   <Button onClick={requestPermission} variant="outline" className="rounded-xl font-bold">
                     Habilitar
                   </Button>
                 )}
-              </div>
-
-              <div className="p-6 border border-dashed border-muted-foreground/20 rounded-2xl text-center">
-                <h4 className="text-xs font-black uppercase text-muted-foreground mb-2">Próximamente</h4>
-                <p className="text-sm text-muted-foreground">Sincronizacion con notificaciones push para alertas moviles nativas.</p>
               </div>
             </CardContent>
           </Card>

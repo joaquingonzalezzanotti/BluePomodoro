@@ -1,6 +1,7 @@
 import type {Metadata} from 'next';
 import './globals.css';
 import { SupabaseProvider } from "@/supabase";
+import { PwaRegister } from "@/components/pwa-register";
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ??
@@ -12,6 +13,8 @@ export const metadata: Metadata = {
   description: 'La herramienta definitiva de productividad diseñada para mentes neurodivergentes. Desglose de tareas con IA, técnica Pomodoro gamificada y modo de enfoque profundo sin distracciones.',
   keywords: ['pomodoro', 'IA', 'TDAH', 'productividad', 'gestión de tareas', 'enfoque', 'focus', 'neurodivergente'],
   authors: [{ name: 'BluePomodoro Team' }],
+  manifest: "/manifest.json",
+  themeColor: "#2563eb",
   openGraph: {
     title: 'BluePomodoro - Domina tu Tiempo',
     description: 'Gestión de tareas impulsada por IA para mentes extraordinarias.',
@@ -46,9 +49,13 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+        <link rel="manifest" href="/manifest.json" />
       </head>
       <body className="font-sans antialiased selection:bg-primary/20">
-        <SupabaseProvider>{children}</SupabaseProvider>
+        <SupabaseProvider>
+          <PwaRegister />
+          {children}
+        </SupabaseProvider>
       </body>
     </html>
   );

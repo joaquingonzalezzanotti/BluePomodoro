@@ -32,6 +32,20 @@ Opcional:
 Redirect URIs importantes en Spotify:
 - `https://tu-app.vercel.app/app`
 
+### 4) PWA + Push (Android)
+- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+- `VAPID_PRIVATE_KEY`
+- `VAPID_SUBJECT` (ej: `mailto:admin@bluepomodoro.app`)
+
+Genera las claves con:
+```
+npx web-push generate-vapid-keys
+```
+
+Notas:
+- El service worker vive en `public/sw.js`.
+- El manifest vive en `public/manifest.json`.
+
 ## Costos y Limites
 - IA (Gemini): Free tier.
 - Supabase: Plan Free.
