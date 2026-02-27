@@ -175,7 +175,7 @@ function DashboardContent({
                   <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                 </div>
                 <div className="xl:sticky xl:top-24 w-full">
-                  <Card className="bg-white rounded-[2.5rem] p-6 xl:p-8 shadow-xl border border-slate-100 flex flex-col items-center justify-center overflow-hidden min-h-[140px] xl:min-h-0">
+                  <Card className="bg-white rounded-[2.5rem] p-6 xl:p-8 pt-4 xl:pt-6 shadow-xl border border-slate-100 flex flex-col items-center justify-start overflow-hidden min-h-[140px] xl:min-h-0">
                     <PomodoroTimer 
                       timeLeft={timeLeft}
                       isActive={isActive}

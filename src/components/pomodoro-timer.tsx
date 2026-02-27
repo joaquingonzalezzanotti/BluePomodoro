@@ -103,7 +103,7 @@ export function PomodoroTimer({
         {/* Visualización del Tiempo (Reloj) */}
         <div className={cn(
           "relative flex items-center justify-center transition-all duration-500 shrink-0",
-          large ? "w-72 h-72 sm:w-80 sm:h-80 lg:w-96 lg:h-96 mb-8 lg:mb-0" : "xl:w-80 xl:h-80 xl:mb-16 w-32 h-32 lg:w-40 lg:h-40 xl:scale-100"
+          large ? "w-72 h-72 sm:w-80 sm:h-80 lg:w-96 lg:h-96 mb-8 lg:mb-0" : "xl:w-80 xl:h-80 xl:mb-6 w-32 h-32 lg:w-40 lg:h-40 xl:scale-100"
         )}>
           {/* Glow Effect */}
           <div className={cn(
@@ -223,7 +223,7 @@ export function PomodoroTimer({
         {/* Resumen de Sesiones / Estadísticas */}
         <div className={cn(
           "flex items-center justify-center transition-all",
-          large ? "mt-6 lg:mt-0 gap-8" : "xl:mt-16 xl:gap-12 lg:gap-6 gap-4 xl:w-full lg:w-auto mt-0 ml-auto hidden md:flex"
+          large ? "mt-6 lg:mt-0 gap-8" : "xl:mt-6 xl:gap-12 lg:gap-6 gap-4 xl:w-full lg:w-auto mt-0 ml-auto hidden md:flex"
         )}>
           <div className="flex flex-col items-center">
             <div className="flex items-center gap-1.5 font-black text-xl xl:text-3xl text-slate-900 leading-none">
