@@ -55,6 +55,46 @@ function SidebarToggle() {
   )
 }
 
+function MobileSidebarHotZone() {
+  const { isMobile, openMobile, setOpenMobile } = useSidebar()
+  const startRef = React.useRef<{ x: number; y: number } | null>(null)
+
+  if (!isMobile || openMobile) return null
+
+  const handleStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    const touch = event.touches[0]
+    if (!touch) return
+    startRef.current = { x: touch.clientX, y: touch.clientY }
+  }
+
+  const handleMove = (event: React.TouchEvent<HTMLDivElement>) => {
+    if (!startRef.current) return
+    const touch = event.touches[0]
+    if (!touch) return
+    const deltaX = touch.clientX - startRef.current.x
+    const deltaY = touch.clientY - startRef.current.y
+    if (deltaX > 50 && Math.abs(deltaY) < 30) {
+      setOpenMobile(true)
+      startRef.current = null
+    }
+  }
+
+  const handleEnd = () => {
+    startRef.current = null
+  }
+
+  return (
+    <div
+      aria-hidden="true"
+      className="fixed left-0 top-0 z-40 h-full w-4 bg-transparent touch-pan-y md:hidden"
+      onTouchStart={handleStart}
+      onTouchMove={handleMove}
+      onTouchEnd={handleEnd}
+      onTouchCancel={handleEnd}
+    />
+  )
+}
+
 function DashboardContent({ 
   user, 
   activeTab, 
@@ -98,6 +138,7 @@ function DashboardContent({
   return (
     <SidebarProvider defaultOpen={true} style={{ "--sidebar-width": "16rem", "--sidebar-width-icon": "5rem" } as React.CSSProperties}>
       <div className="flex min-h-screen w-full bg-slate-50/50 pb-24">
+        <MobileSidebarHotZone />
         <Sidebar collapsible="icon" className="border-r border-primary/5 bg-white/80 backdrop-blur-xl transition-all duration-300">
           <SidebarHeader className="p-4 flex items-center justify-center">
             <SidebarMenu>
