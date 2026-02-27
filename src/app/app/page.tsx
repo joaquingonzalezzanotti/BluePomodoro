@@ -77,6 +77,7 @@ function DashboardContent({
   longBreakMinutesLow,
   signOutAction 
 }: any) {
+  const { toggleSidebar, isMobile, setOpenMobile } = useSidebar()
   const displayName =
     (user as any)?.user_metadata?.full_name ||
     (user as any)?.user_metadata?.name ||
@@ -117,7 +118,10 @@ function DashboardContent({
                   <SidebarMenuItem key={item.id}>
                     <SidebarMenuButton 
                       isActive={activeTab === item.id} 
-                      onClick={() => setActiveTab(item.id)} 
+                      onClick={() => {
+                        setActiveTab(item.id)
+                        if (isMobile) setOpenMobile(false)
+                      }} 
                       className="rounded-xl h-12 flex items-center group-data-[collapsible=icon]:justify-center transition-all" 
                       tooltip={item.label}
                     >
@@ -149,6 +153,15 @@ function DashboardContent({
           <header className="h-16 border-b border-primary/5 bg-white/70 backdrop-blur-md sticky top-0 z-20 px-8 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleSidebar}
+                  className="md:hidden h-9 w-9 rounded-lg"
+                  aria-label="Abrir menú"
+                >
+                  <PanelLeft className="h-5 w-5 text-primary" />
+                </Button>
                 <div className="h-8 w-8 relative overflow-hidden rounded-lg bg-white shadow-sm border border-slate-100 flex items-center justify-center">
                   <Image src="/logo.png" alt="Logo BluePomodoro" width={24} height={24} className="rounded-md object-contain" />
                 </div>
