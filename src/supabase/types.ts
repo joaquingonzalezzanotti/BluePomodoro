@@ -10,6 +10,8 @@ export type Profile = {
   sitios_bloqueados: string[] | null;
   spotify_playlist_url: string | null;
   spotify_access_token: string | null;
+  spotify_refresh_token: string | null;
+  spotify_token_expires_at: string | null;
   google_calendar_sync: boolean;
   google_tasks_sync: boolean;
   pomodoro_work_minutes: number;

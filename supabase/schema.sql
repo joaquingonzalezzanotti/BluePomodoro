@@ -29,6 +29,8 @@ create table if not exists public.profiles (
   sitios_bloqueados text[] not null default array['facebook.com','youtube.com','twitter.com','reddit.com'],
   spotify_playlist_url text,
   spotify_access_token text,
+  spotify_refresh_token text,
+  spotify_token_expires_at timestamptz,
   google_calendar_sync boolean not null default false,
   google_tasks_sync boolean not null default false,
   pomodoro_work_minutes integer not null default 40,
@@ -96,6 +98,10 @@ create table if not exists public.pomodoro_sessions (
 );
 create index if not exists pomodoro_sessions_user_id_idx on public.pomodoro_sessions(user_id);
 create index if not exists pomodoro_sessions_completed_at_idx on public.pomodoro_sessions(completed_at);
+
+-- Add missing columns if upgrading an existing database
+alter table public.profiles add column if not exists spotify_refresh_token text;
+alter table public.profiles add column if not exists spotify_token_expires_at timestamptz;
 
 -- Profile auto-create on auth signup
 create or replace function public.handle_new_user()

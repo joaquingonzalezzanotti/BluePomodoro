@@ -29,7 +29,7 @@ import { FocusMusic } from "@/components/focus-music"
 import { SpotifyRealTime } from "@/components/spotify-real-time"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { useSupabase, useUser } from "@/supabase"
+import { useSession, useSupabase, useUser } from "@/supabase"
 import { useProfile } from "@/supabase/hooks"
 import { usePomodoro } from "@/pomodoro/pomodoro-provider"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -262,6 +262,7 @@ function DashboardContent({
 export default function AppEntry() {
   const [mounted, setMounted] = React.useState(false)
   const { user, isUserLoading } = useUser()
+  const { session } = useSession()
   const supabase = useSupabase()
   const { data: profile } = useProfile()
   const {
@@ -301,22 +302,40 @@ export default function AppEntry() {
 
   React.useEffect(() => {
     if (!user || typeof window === "undefined") return
-    const hash = window.location.hash
-    if (!hash || hash.length < 2) return
-    const params = new URLSearchParams(hash.substring(1))
-    const spotifyToken = params.get("access_token")
+    const params = new URLSearchParams(window.location.search)
+    const code = params.get("code")
     const state = params.get("state")
-    if (!spotifyToken || state !== "spotify") return
+    if (!code || !state) return
 
-    const persistToken = async () => {
+    const storedState = sessionStorage.getItem("spotify_pkce_state")
+    const codeVerifier = sessionStorage.getItem("spotify_pkce_verifier")
+    const accessToken = session?.access_token
+    if (!storedState || storedState !== state || !codeVerifier || !accessToken) return
+
+    const redirectUri = `${window.location.origin}/app`
+
+    const exchange = async () => {
       try {
-        await supabase.from("profiles").update({ spotify_access_token: spotifyToken }).eq("id", user.id)
+        await fetch("/api/spotify/token", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ code, redirectUri, codeVerifier }),
+        })
       } finally {
-        window.history.replaceState({}, document.title, window.location.pathname + window.location.search)
+        sessionStorage.removeItem("spotify_pkce_state")
+        sessionStorage.removeItem("spotify_pkce_verifier")
+        params.delete("code")
+        params.delete("state")
+        const nextUrl = `${window.location.pathname}${params.toString() ? `?${params}` : ""}`
+        window.history.replaceState({}, document.title, nextUrl)
       }
     }
-    persistToken()
-  }, [user, supabase])
+
+    exchange()
+  }, [user, session?.access_token])
 
   React.useEffect(() => {
     if (!user || !profile) return

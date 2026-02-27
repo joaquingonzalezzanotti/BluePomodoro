@@ -1,31 +1,52 @@
 
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from "react";
 import { useProfile } from "@/supabase/hooks";
+import { useSession } from "@/supabase";
 
 export function SpotifyRealTime() {
   const { data: profile } = useProfile();
+  const { session } = useSession();
   const [currentlyPlaying, setCurrentlyPlaying] = useState<any>(null);
+  const refreshInFlight = useRef(false);
 
   useEffect(() => {
     const fetchCurrentlyPlaying = async () => {
-      if (profile?.spotify_access_token) {
-        const response = await fetch('https://api.spotify.com/v1/me/player/currently-playing', {
-          headers: {
-            Authorization: `Bearer ${profile.spotify_access_token}`,
-          },
+      if (!profile?.spotify_access_token) return;
+
+      let token = profile.spotify_access_token;
+      let response = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.status === 401 && session?.access_token && !refreshInFlight.current) {
+        refreshInFlight.current = true;
+        const refreshRes = await fetch("/api/spotify/refresh", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${session.access_token}` },
         });
+        refreshInFlight.current = false;
 
-        if (response.status === 204) {
-          setCurrentlyPlaying(null);
-          return;
+        if (refreshRes.ok) {
+          const refreshJson = await refreshRes.json();
+          if (refreshJson?.access_token) {
+            token = refreshJson.access_token;
+            response = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+          }
         }
+      }
 
-        if (response.ok) {
-          const data = await response.json();
-          setCurrentlyPlaying(data);
-        }
+      if (response.status === 204) {
+        setCurrentlyPlaying(null);
+        return;
+      }
+
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentlyPlaying(data);
       }
     };
 
@@ -33,7 +54,7 @@ export function SpotifyRealTime() {
     const interval = setInterval(fetchCurrentlyPlaying, 5000);
 
     return () => clearInterval(interval);
-  }, [profile?.spotify_access_token]);
+  }, [profile?.spotify_access_token, session?.access_token]);
 
   if (!currentlyPlaying) {
     return <div>No song playing</div>;

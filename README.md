@@ -27,6 +27,7 @@ Opcional:
 
 ### 3) Spotify
 - `NEXT_PUBLIC_SPOTIFY_CLIENT_ID`
+- `SPOTIFY_CLIENT_SECRET`
 
 Redirect URIs importantes en Spotify:
 - `https://tu-app.vercel.app/app`

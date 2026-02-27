@@ -14,6 +14,17 @@ import { GoogleSyncSettings } from "@/components/google-sync-settings"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 
+function base64UrlEncode(bytes: Uint8Array) {
+  const binary = String.fromCharCode(...bytes)
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "")
+}
+
+async function createCodeChallenge(verifier: string) {
+  const data = new TextEncoder().encode(verifier)
+  const digest = await crypto.subtle.digest("SHA-256", data)
+  return base64UrlEncode(new Uint8Array(digest))
+}
+
 export function ConfigurationView() {
   const { user } = useUser()
   const supabase = useSupabase()
@@ -72,7 +83,7 @@ export function ConfigurationView() {
     toast({ title: "Spotify vinculado", description: "Tu musica ha sido actualizada." })
   }
 
-  const handleLinkSpotifyReal = () => {
+  const handleLinkSpotifyReal = async () => {
     const clientId = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID
     if (!clientId) {
       toast({ variant: "destructive", title: "Spotify no configurado", description: "Falta NEXT_PUBLIC_SPOTIFY_CLIENT_ID." })
@@ -80,8 +91,23 @@ export function ConfigurationView() {
     }
     const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/app` : ''
     const scopes = "user-read-currently-playing user-read-playback-state"
-    const state = "spotify"
-    window.location.href = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&state=${state}`
+    const state = crypto.randomUUID()
+    const codeVerifier = base64UrlEncode(crypto.getRandomValues(new Uint8Array(32)))
+    const codeChallenge = await createCodeChallenge(codeVerifier)
+
+    sessionStorage.setItem("spotify_pkce_verifier", codeVerifier)
+    sessionStorage.setItem("spotify_pkce_state", state)
+
+    const params = new URLSearchParams({
+      client_id: clientId,
+      response_type: "code",
+      redirect_uri: redirectUri,
+      scope: scopes,
+      state,
+      code_challenge_method: "S256",
+      code_challenge: codeChallenge,
+    })
+    window.location.href = `https://accounts.spotify.com/authorize?${params.toString()}`
   }
 
   const handleSavePomodoroSettings = async () => {
