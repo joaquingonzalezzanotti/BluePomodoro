@@ -124,42 +124,43 @@ export function PomodoroTimer({
       "w-full transition-all duration-700",
       large ? "flex flex-col items-center py-8 w-full" : "flex flex-col xl:items-center"
     )}>
+      {setActiveTaskId && (
+        <div className={cn(
+          "w-full flex items-center justify-center mb-6",
+          large ? "max-w-6xl" : "xl:mb-4"
+        )}>
+          <div className={cn(
+            "flex items-center gap-3 rounded-2xl border border-slate-100 bg-white/80 px-4 py-2 shadow-sm",
+            large ? "w-full max-w-2xl justify-center" : "w-full max-w-md"
+          )}>
+            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tarea activa</span>
+            <Select value={activeTaskId ?? "none"} onValueChange={(value) => setActiveTaskId(value === "none" ? null : value)}>
+              <SelectTrigger className="h-9 w-[220px] rounded-xl bg-white border-slate-100 text-xs font-bold">
+                <SelectValue placeholder="Sin tarea" />
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                <SelectItem value="none">Sin tarea</SelectItem>
+                {tasks?.map(task => (
+                  <SelectItem key={task.id} value={task.id}>
+                    {task.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {activeTaskLabel && (
+              <span className="text-[10px] font-black uppercase tracking-wide text-primary bg-primary/10 px-2 py-1 rounded-full">
+                Vinculada
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Contenedor Adaptativo Principal */}
       <div className={cn(
         "flex w-full items-center",
-        large ? "flex-col lg:flex-row lg:items-center lg:justify-between gap-10 lg:gap-16" : "flex-col xl:flex-col lg:flex-row md:flex-row flex-row gap-4 xl:gap-0"
+        large ? "flex-col lg:flex-row lg:items-center lg:justify-center gap-10 lg:gap-16" : "flex-col xl:flex-col lg:flex-row md:flex-row flex-row gap-4 xl:gap-0"
       )}>
-        {setActiveTaskId && (
-          <div className={cn(
-            "w-full flex items-center justify-center mb-4",
-            large ? "lg:mb-0 lg:justify-start" : "xl:mb-4"
-          )}>
-            <div className={cn(
-              "flex items-center gap-3 rounded-2xl border border-slate-100 bg-white/80 px-4 py-2 shadow-sm",
-              large ? "w-full lg:w-auto" : "w-full max-w-md"
-            )}>
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tarea activa</span>
-              <Select value={activeTaskId ?? "none"} onValueChange={(value) => setActiveTaskId(value === "none" ? null : value)}>
-                <SelectTrigger className="h-9 w-[220px] rounded-xl bg-white border-slate-100 text-xs font-bold">
-                  <SelectValue placeholder="Sin tarea" />
-                </SelectTrigger>
-                <SelectContent className="max-h-64">
-                  <SelectItem value="none">Sin tarea</SelectItem>
-                  {tasks?.map(task => (
-                    <SelectItem key={task.id} value={task.id}>
-                      {task.title}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {activeTaskLabel && (
-                <span className="text-[10px] font-black uppercase tracking-wide text-primary bg-primary/10 px-2 py-1 rounded-full">
-                  Vinculada
-                </span>
-              )}
-            </div>
-          </div>
-        )}
         
         {/* Visualización del Tiempo (Reloj) */}
         <div className={cn(
