@@ -61,8 +61,6 @@ function DashboardContent({
   setActiveTab, 
   isActive, 
   timeLeft, 
-  isBlocking, 
-  onToggleBlocking,
   activeTaskId, 
   setActiveTaskId, 
   mode, 
@@ -159,8 +157,8 @@ function DashboardContent({
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <Switch checked={isBlocking} onCheckedChange={onToggleBlocking} className="scale-75" />
-                <span className="text-[10px] font-black uppercase text-muted-foreground">Modo Focus</span>
+                <Switch checked={activeTab === "foco"} onCheckedChange={(checked) => setActiveTab(checked ? "foco" : "dashboard")} className="scale-75" />
+                <span className="text-[10px] font-black uppercase text-muted-foreground">Modo Zen</span>
               </div>
             </div>
           </header>
@@ -392,13 +390,6 @@ export default function AppEntry() {
     }
   }, [alarmOpen])
 
-  const isBlocking = profile?.modo_estricto_activo || false
-
-  const handleToggleBlocking = async (checked: boolean) => {
-    if (!user) return
-    await supabase.from("profiles").update({ modo_estricto_activo: checked }).eq("id", user.id)
-  }
-
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     router.push("/")
@@ -449,8 +440,6 @@ export default function AppEntry() {
         setActiveTab={setActiveTab} 
         isActive={isActive} 
         timeLeft={timeLeft} 
-        isBlocking={isBlocking} 
-        onToggleBlocking={handleToggleBlocking}
         activeTaskId={activeTaskId} 
         setActiveTaskId={setActiveTaskId} 
         mode={mode} 
