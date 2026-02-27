@@ -20,6 +20,10 @@ Notas:
 Auth en Supabase:
 - Habilita Google provider.
 - Habilita Anonymous sign-ins para el modo invitado.
+- Google OAuth pedira permisos para Google Tasks y Google Calendar (read-only).
+
+Opcional:
+- `NEXT_PUBLIC_SITE_URL` (para metadataBase en Open Graph).
 
 ### 3) Spotify
 - `NEXT_PUBLIC_SPOTIFY_CLIENT_ID`

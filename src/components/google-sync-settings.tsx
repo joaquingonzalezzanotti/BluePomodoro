@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { useSupabase, useUser } from "@/supabase"
+import { useSession, useSupabase, useUser } from "@/supabase"
 import { useProfile } from "@/supabase/hooks"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
@@ -19,14 +19,11 @@ export function GoogleSyncSettings() {
   const supabase = useSupabase()
   const { toast } = useToast()
   const [isSyncing, setIsSyncing] = React.useState(false)
-  const [hasToken, setHasToken] = React.useState(false)
-
   const { data: profile } = useProfile()
+  const { session } = useSession()
 
-  React.useEffect(() => {
-    const token = sessionStorage.getItem('google_access_token');
-    setHasToken(!!token);
-  }, []);
+  const token = session?.provider_token ?? (typeof window !== "undefined" ? sessionStorage.getItem("google_access_token") : null)
+  const hasToken = !!token
 
   const handleToggle = (key: "google_calendar_sync" | "google_tasks_sync", value: boolean) => {
     if (!user) return
@@ -34,12 +31,20 @@ export function GoogleSyncSettings() {
   }
 
   const handleRealSync = async () => {
-    const token = sessionStorage.getItem('google_access_token');
+    if (!profile?.google_tasks_sync) {
+      toast({
+        variant: "destructive",
+        title: "Importacion desactivada",
+        description: "Activa 'Importar Tareas' para sincronizar con Google Tasks."
+      })
+      return
+    }
+
     if (!token) {
       toast({
         variant: "destructive",
-        title: "Sesión de Google expirada",
-        description: "Por favor, cierra sesión e inicia de nuevo con Google para actualizar los permisos."
+        title: "Sesion de Google expirada",
+        description: "Cierra sesion e inicia de nuevo con Google para actualizar los permisos."
       });
       return;
     }
@@ -110,7 +115,7 @@ export function GoogleSyncSettings() {
         <Button 
           variant="default" 
           onClick={handleRealSync} 
-          disabled={isSyncing || !hasToken}
+          disabled={isSyncing || !hasToken || !profile?.google_tasks_sync}
           className="gap-2 rounded-xl shadow-lg shadow-primary/20 h-12 px-6"
         >
           <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />

@@ -390,6 +390,7 @@ export default function AppEntry() {
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/app`,
+        scopes: "https://www.googleapis.com/auth/tasks.readonly https://www.googleapis.com/auth/calendar.readonly",
       },
     })
   }
