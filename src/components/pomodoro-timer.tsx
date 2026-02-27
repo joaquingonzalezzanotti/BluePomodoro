@@ -200,16 +200,16 @@ export function PomodoroTimer({
               <PopoverContent className="w-72 rounded-[2.5rem] p-8 shadow-2xl border-none" align="end">
                 <div className="space-y-6">
                   <div>
-                    <h4 className="font-black text-[10px] uppercase tracking-widest text-primary mb-1">Ajustes Rápidos</h4>
+                    <h4 className="font-black text-[10px] uppercase tracking-widest text-primary mb-1">Ajustes rapidos</h4>
                     <p className="text-[10px] text-muted-foreground font-medium">Personaliza tus intervalos.</p>
                   </div>
                   <div className="grid gap-4">
                     <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase opacity-60">Tiempo Focus (min)</Label>
+                      <Label className="text-[9px] font-black uppercase opacity-60">Enfoque (min)</Label>
                       <Input type="number" value={localWork} onChange={(e) => setLocalWork(e.target.value)} className="rounded-xl border-none bg-muted/40 h-12 font-bold px-4" />
                     </div>
                     <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase opacity-60">Tiempo Break (min)</Label>
+                      <Label className="text-[9px] font-black uppercase opacity-60">Descanso corto (min)</Label>
                       <Input type="number" value={localBreak} onChange={(e) => setLocalBreak(e.target.value)} className="rounded-xl border-none bg-muted/40 h-12 font-bold px-4" />
                     </div>
                   </div>

@@ -221,7 +221,7 @@ export function ConfigurationView() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <p className="text-[10px] font-black uppercase text-muted-foreground">Descanso Alto</p>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground">Descanso largo (mayor o igual al umbral)</p>
                   <Input
                     type="number"
                     value={longBreakHighInput}
@@ -230,7 +230,7 @@ export function ConfigurationView() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <p className="text-[10px] font-black uppercase text-muted-foreground">Descanso Bajo</p>
+                  <p className="text-[10px] font-black uppercase text-muted-foreground">Descanso largo (menor al umbral)</p>
                   <Input
                     type="number"
                     value={longBreakLowInput}
