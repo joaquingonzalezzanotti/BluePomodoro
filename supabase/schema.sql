@@ -165,7 +165,8 @@ begin
 
     if new.task_id is not null then
       update public.tasks
-         set pomodoros_completed = pomodoros_completed + 1
+         set pomodoros_completed = pomodoros_completed + 1,
+             effort_estimated = greatest(effort_estimated - 1, 0)
        where id = new.task_id;
     end if;
   end if;

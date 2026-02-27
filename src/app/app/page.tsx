@@ -185,7 +185,7 @@ function DashboardContent({
             {activeTab === "dashboard" && (
               <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-8 items-start">
                 <div className="min-w-0">
-                  <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
+                  <TaskManager onTaskSelect={(id: string | null) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                 </div>
                 <div className="xl:sticky xl:top-24 w-full">
                   <Card className="bg-white rounded-[2.5rem] p-6 xl:p-8 pt-4 xl:pt-6 shadow-xl border border-slate-100 flex flex-col items-center justify-start overflow-hidden min-h-[140px] xl:min-h-0">
@@ -233,7 +233,7 @@ function DashboardContent({
                   />
                 </div>
                 <div className="max-w-2xl w-full">
-                   <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} onlyActive />
+                   <TaskManager onTaskSelect={(id: string | null) => setActiveTaskId(id)} activeTaskId={activeTaskId} onlyActive />
                 </div>
               </div>
             )}
@@ -249,7 +249,7 @@ function DashboardContent({
                     </TabsList>
                   </div>
                   <TabsContent value="lista" className="animate-in fade-in duration-500">
-                    <TaskManager onTaskSelect={(id: string) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
+                    <TaskManager onTaskSelect={(id: string | null) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
                   </TabsContent>
                   <TabsContent value="kanban" className="animate-in slide-in-from-bottom-4 duration-500">
                     <KanbanBoard />

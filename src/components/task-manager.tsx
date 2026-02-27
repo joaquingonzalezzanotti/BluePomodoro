@@ -14,7 +14,8 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Minus
+  Minus,
+  Target
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -38,7 +39,7 @@ interface SubTask {
 }
 
 interface TaskManagerProps {
-  onTaskSelect?: (id: string) => void
+  onTaskSelect?: (id: string | null) => void
   activeTaskId?: string | null
   onlyActive?: boolean
 }
@@ -265,6 +266,10 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
           const esfuerzo = task.effort_estimated || 1
           const displayEmoji = getLeadingEmoji(task.title)
           const displayTitle = stripLeadingEmoji(task.title)
+          const isActiveTask = activeTaskId === task.id
+          const handleSelectTask = () => {
+            onTaskSelect?.(isActiveTask ? null : task.id)
+          }
 
           return (
             <Collapsible key={task.id} open={isExpanded} onOpenChange={() => toggleExpand(task.id)}>
@@ -306,7 +311,7 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                         </PopoverContent>
                       </Popover>
 
-                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onTaskSelect?.(task.id)}>
+                      <div className="flex-1 min-w-0 cursor-pointer" onClick={handleSelectTask}>
                         {editingTaskId === task.id ? (
                           <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                             <Input value={editingText} onChange={(e) => setEditingText(e.target.value)} className="h-8 text-sm font-black" autoFocus />
@@ -316,6 +321,9 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                           <div className="flex items-center gap-2 group min-w-0">
                             <h4 className={cn("text-lg font-black truncate leading-tight", task.status === "Completada" && "line-through text-slate-400")}>{displayTitle || task.title}</h4>
                             <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100 shrink-0" onClick={(e) => { e.stopPropagation(); setEditingTaskId(task.id); setEditingText(task.title); }}><Edit2 className="h-3 w-3" /></Button>
+                            {isActiveTask && (
+                              <Badge className="bg-primary/10 text-primary border border-primary/20 text-[9px] font-black uppercase tracking-wide">Vinculada</Badge>
+                            )}
                           </div>
                         )}
                         {materia && <span className="text-[10px] font-black uppercase text-primary/60 flex items-center gap-1 mt-1 truncate"><BookOpen className="h-3 w-3 shrink-0" /> {materia.name}</span>}
@@ -368,6 +376,17 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                       </div>
 
                       <div className="flex items-center gap-1 border-l pl-4 border-slate-100">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            "h-9 w-9",
+                            isActiveTask ? "text-primary bg-primary/10" : "text-slate-300 hover:text-primary"
+                          )}
+                          onClick={(e) => { e.stopPropagation(); handleSelectTask(); }}
+                        >
+                          <Target className="h-4 w-4" />
+                        </Button>
                         <Button variant="ghost" size="icon" disabled={isAiLoading === task.id} onClick={() => handleAiBreakdown(task.id, task.title)} className="h-9 w-9 text-primary hover:bg-primary/5"><Sparkles className={cn("h-4 w-4", isAiLoading === task.id && "animate-spin")} /></Button>
                         <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)} className="h-9 w-9 text-slate-300 hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                         <CollapsibleTrigger asChild>
