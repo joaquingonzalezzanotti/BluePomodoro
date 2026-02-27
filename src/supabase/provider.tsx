@@ -47,6 +47,16 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
     };
   }, [supabase]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const provider = session?.user?.app_metadata?.provider;
+    if (provider === "google" && session?.provider_token) {
+      sessionStorage.setItem("google_access_token", session.provider_token);
+      return;
+    }
+    sessionStorage.removeItem("google_access_token");
+  }, [session?.provider_token, session?.user?.app_metadata?.provider]);
+
   const value: SupabaseContextValue = {
     supabase,
     user,

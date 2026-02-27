@@ -24,7 +24,6 @@ export function StatsView() {
         .select("*")
         .eq("user_id", user.id)
         .order("completed_at", { ascending: false })
-        .limit(50)
       if (error) throw error
       return (data ?? []) as PomodoroSession[]
     },

@@ -93,6 +93,58 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (!state.alarmOpen || state.mode !== "break" || !state.alarmOpenedAt) {
+      if (alarmTimerRef.current) {
+        clearTimeout(alarmTimerRef.current);
+        alarmTimerRef.current = null;
+      }
+      return;
+    }
+
+    if (alarmTimerRef.current) {
+      clearTimeout(alarmTimerRef.current);
+      alarmTimerRef.current = null;
+    }
+
+    const elapsedMs = Date.now() - state.alarmOpenedAt;
+    const remainingMs = state.overtimeGraceSeconds * 1000 - elapsedMs;
+
+    if (remainingMs <= 0) {
+      setState(prev => {
+        if (!prev.alarmOpen || prev.mode !== "break") return prev;
+        return {
+          ...prev,
+          alarmOpen: false,
+          isActive: true,
+          isOvertime: true,
+          targetEndAt: prev.targetEndAt ?? Date.now(),
+        };
+      });
+      return;
+    }
+
+    alarmTimerRef.current = setTimeout(() => {
+      setState(prev => {
+        if (!prev.alarmOpen || prev.mode !== "break") return prev;
+        return {
+          ...prev,
+          alarmOpen: false,
+          isActive: true,
+          isOvertime: true,
+          targetEndAt: prev.targetEndAt ?? Date.now(),
+        };
+      });
+    }, remainingMs);
+
+    return () => {
+      if (alarmTimerRef.current) {
+        clearTimeout(alarmTimerRef.current);
+        alarmTimerRef.current = null;
+      }
+    };
+  }, [state.alarmOpen, state.mode, state.alarmOpenedAt, state.overtimeGraceSeconds]);
+
   const rules = useMemo<PomodoroRules>(() => ({
     workMinutes: state.workMinutes,
     breakMinutes: state.breakMinutes,
@@ -176,26 +228,12 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
   );
 
   const openAlarmWithGrace = useCallback(() => {
-    if (alarmTimerRef.current) clearTimeout(alarmTimerRef.current);
     setState(prev => ({
       ...prev,
       alarmOpen: true,
       alarmOpenedAt: Date.now(),
       isActive: false,
     }));
-
-    alarmTimerRef.current = setTimeout(() => {
-      setState(prev => {
-        if (!prev.alarmOpen || prev.mode !== "break") return prev;
-        return {
-          ...prev,
-          alarmOpen: false,
-          isActive: true,
-          isOvertime: true,
-          targetEndAt: prev.targetEndAt ?? Date.now(),
-        };
-      });
-    }, state.overtimeGraceSeconds * 1000);
   }, [state.overtimeGraceSeconds]);
 
   useEffect(() => {

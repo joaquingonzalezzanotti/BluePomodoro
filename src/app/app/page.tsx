@@ -300,6 +300,25 @@ export default function AppEntry() {
   }, [profile, syncSettingsFromProfile])
 
   React.useEffect(() => {
+    if (!user || typeof window === "undefined") return
+    const hash = window.location.hash
+    if (!hash || hash.length < 2) return
+    const params = new URLSearchParams(hash.substring(1))
+    const spotifyToken = params.get("access_token")
+    const state = params.get("state")
+    if (!spotifyToken || state !== "spotify") return
+
+    const persistToken = async () => {
+      try {
+        await supabase.from("profiles").update({ spotify_access_token: spotifyToken }).eq("id", user.id)
+      } finally {
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.search)
+      }
+    }
+    persistToken()
+  }, [user, supabase])
+
+  React.useEffect(() => {
     if (!user || !profile) return
     const needsUpdate =
       profile.pomodoro_work_minutes !== workMinutes ||
