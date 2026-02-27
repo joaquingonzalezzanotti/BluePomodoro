@@ -7,8 +7,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { getSessionDurationSec, isLongBreakMode, type PomodoroRules } from "@/pomodoro/logic"
+import { useSupabase, useUser } from "@/supabase"
+import { useSupabaseQuery } from "@/supabase/hooks"
+import type { Task } from "@/supabase/types"
 
 interface PomodoroTimerProps {
   timeLeft: number
@@ -26,6 +30,8 @@ interface PomodoroTimerProps {
   longBreakMinutesHigh?: number
   longBreakMinutesLow?: number
   large?: boolean
+  activeTaskId?: string | null
+  setActiveTaskId?: (id: string | null) => void
 }
 
 export function PomodoroTimer({
@@ -43,10 +49,14 @@ export function PomodoroTimer({
   longBreakThreshold = 40,
   longBreakMinutesHigh = 20,
   longBreakMinutesLow = 15,
-  large = false
+  large = false,
+  activeTaskId = null,
+  setActiveTaskId
 }: PomodoroTimerProps) {
   const [localWork, setLocalWork] = React.useState(workMinutes.toString())
   const [localBreak, setLocalBreak] = React.useState(breakMinutes.toString())
+  const supabase = useSupabase()
+  const { user } = useUser()
 
   React.useEffect(() => { setLocalWork(workMinutes.toString()) }, [workMinutes])
   React.useEffect(() => { setLocalBreak(breakMinutes.toString()) }, [breakMinutes])
@@ -89,6 +99,26 @@ export function PomodoroTimer({
 
   const primaryLabel = isOvertime ? "FIN DESCANSO" : (isActive ? "PAUSA" : "INICIAR")
 
+  const { data: tasks } = useSupabaseQuery<Task[]>(
+    async (client) => {
+      if (!user) return []
+      const { data, error } = await client
+        .from("tasks")
+        .select("id,title,status")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+      if (error) throw error
+      return (data ?? []) as Task[]
+    },
+    [supabase, user?.id],
+    user ? { table: "tasks", filter: `user_id=eq.${user.id}` } : null
+  )
+
+  const activeTaskLabel = React.useMemo(() => {
+    if (!tasks || !activeTaskId) return null
+    return tasks.find(task => task.id === activeTaskId)?.title ?? null
+  }, [tasks, activeTaskId])
+
   return (
     <div className={cn(
       "w-full transition-all duration-700",
@@ -99,6 +129,37 @@ export function PomodoroTimer({
         "flex w-full items-center",
         large ? "flex-col lg:flex-row lg:items-center lg:justify-between gap-10 lg:gap-16" : "flex-col xl:flex-col lg:flex-row md:flex-row flex-row gap-4 xl:gap-0"
       )}>
+        {setActiveTaskId && (
+          <div className={cn(
+            "w-full flex items-center justify-center mb-4",
+            large ? "lg:mb-0 lg:justify-start" : "xl:mb-4"
+          )}>
+            <div className={cn(
+              "flex items-center gap-3 rounded-2xl border border-slate-100 bg-white/80 px-4 py-2 shadow-sm",
+              large ? "w-full lg:w-auto" : "w-full max-w-md"
+            )}>
+              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tarea activa</span>
+              <Select value={activeTaskId ?? "none"} onValueChange={(value) => setActiveTaskId(value === "none" ? null : value)}>
+                <SelectTrigger className="h-9 w-[220px] rounded-xl bg-white border-slate-100 text-xs font-bold">
+                  <SelectValue placeholder="Sin tarea" />
+                </SelectTrigger>
+                <SelectContent className="max-h-64">
+                  <SelectItem value="none">Sin tarea</SelectItem>
+                  {tasks?.map(task => (
+                    <SelectItem key={task.id} value={task.id}>
+                      {task.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {activeTaskLabel && (
+                <span className="text-[10px] font-black uppercase tracking-wide text-primary bg-primary/10 px-2 py-1 rounded-full">
+                  Vinculada
+                </span>
+              )}
+            </div>
+          </div>
+        )}
         
         {/* Visualización del Tiempo (Reloj) */}
         <div className={cn(

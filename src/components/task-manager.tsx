@@ -270,11 +270,16 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
           const handleSelectTask = () => {
             onTaskSelect?.(isActiveTask ? null : task.id)
           }
+          const handleCardClick = (event: React.MouseEvent<HTMLDivElement>) => {
+            const target = event.target as HTMLElement
+            if (target.closest("button, a, input, textarea, select")) return
+            handleSelectTask()
+          }
 
           return (
             <Collapsible key={task.id} open={isExpanded} onOpenChange={() => toggleExpand(task.id)}>
               <Card className={cn("border-none shadow-sm transition-all rounded-[2rem] overflow-hidden bg-white", activeTaskId === task.id && "ring-2 ring-primary/40", task.status === "Completada" && "opacity-60")}>
-                <CardContent className="p-6">
+                <CardContent className="p-6" onClick={handleCardClick}>
                   {/* Layout de 2 Filas obligatorio */}
                   <div className="flex flex-col gap-4">
                     

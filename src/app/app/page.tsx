@@ -260,6 +260,8 @@ function DashboardContent({
                       sessionsCompleted={sessionsCompleted}
                       toggleTimer={toggleTimer}
                       resetTimer={resetTimer}
+                      activeTaskId={activeTaskId}
+                      setActiveTaskId={setActiveTaskId}
                       workMinutes={workMinutes}
                       setWorkMinutes={setWorkMinutes}
                       breakMinutes={breakMinutes}
@@ -278,16 +280,18 @@ function DashboardContent({
             {activeTab === "foco" && (
               <div className="flex flex-col items-center justify-center gap-12 min-h-[70vh] animate-in zoom-in-95 duration-700">
                 <div className="bg-white rounded-[4rem] p-8 lg:p-16 shadow-2xl border border-slate-100 flex flex-col items-center justify-center w-full max-w-6xl">
-                  <PomodoroTimer 
-                    timeLeft={timeLeft}
-                    isActive={isActive}
-                    mode={mode}
-                    sessionsCompleted={sessionsCompleted}
-                    toggleTimer={toggleTimer}
-                    resetTimer={resetTimer}
-                    workMinutes={workMinutes}
-                    setWorkMinutes={setWorkMinutes}
-                    breakMinutes={breakMinutes}
+                    <PomodoroTimer 
+                      timeLeft={timeLeft}
+                      isActive={isActive}
+                      mode={mode}
+                      sessionsCompleted={sessionsCompleted}
+                      toggleTimer={toggleTimer}
+                      resetTimer={resetTimer}
+                      activeTaskId={activeTaskId}
+                      setActiveTaskId={setActiveTaskId}
+                      workMinutes={workMinutes}
+                      setWorkMinutes={setWorkMinutes}
+                      breakMinutes={breakMinutes}
                     setBreakMinutes={setBreakMinutes}
                     longBreakAfter={longBreakAfter}
                     longBreakThreshold={longBreakThreshold}
