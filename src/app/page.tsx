@@ -3,22 +3,20 @@
 
 import * as React from "react"
 import Image from "next/image"
-import Link from "next/link"
 import { 
   LogIn, 
   Sparkles,
   CloudLightning
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useAuth, useUser, initiateAnonymousSignIn } from "@/firebase"
-import { GoogleAuthProvider, signInWithPopup } from "firebase/auth"
+import { useSupabase, useUser } from "@/supabase"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 
 export default function RootLandingPage() {
   const [mounted, setMounted] = React.useState(false)
   const { user, isUserLoading } = useUser()
-  const auth = useAuth()
+  const supabase = useSupabase()
   const { toast } = useToast()
   const router = useRouter()
 
@@ -34,26 +32,25 @@ export default function RootLandingPage() {
   }, [user, isUserLoading, router])
 
   const handleGoogleSignIn = async () => {
-    if (!auth) {
-      toast({ variant: "destructive", title: "Error", description: "Servicio de autenticación no disponible." })
-      return
-    }
     try {
-      const provider = new GoogleAuthProvider()
-      await signInWithPopup(auth, provider)
-      router.push("/app")
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/app`,
+        },
+      })
     } catch (e: any) {
       toast({ variant: "destructive", title: "Error de Login", description: e.message })
     }
   }
 
   const handleGuestSignIn = async () => {
-    if (!auth) return
     try {
-      await initiateAnonymousSignIn(auth)
+      const { error } = await supabase.auth.signInAnonymously()
+      if (error) throw error
       router.push("/app")
     } catch (e: any) {
-      toast({ variant: "destructive", title: "Error", description: "No se pudo iniciar sesión como invitado." })
+      toast({ variant: "destructive", title: "Error", description: "No se pudo iniciar sesion como invitado." })
     }
   }
 

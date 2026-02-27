@@ -5,8 +5,7 @@ import * as React from "react"
 import { Music, Headphones, ChevronUp, ChevronDown, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { doc } from "firebase/firestore"
+import { useProfile } from "@/supabase/hooks"
 import { cn } from "@/lib/utils"
 
 interface FocusMusicProps {
@@ -14,17 +13,9 @@ interface FocusMusicProps {
 }
 
 export function FocusMusic({ layout = "dashboard" }: FocusMusicProps) {
-  const { user } = useUser()
-  const db = useFirestore()
+  const { data: profile } = useProfile()
   const [isExpanded, setIsExpanded] = React.useState(false)
-
-  const userRef = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return doc(db, "usuarios", user.uid)
-  }, [db, user])
-
-  const { data: userData } = useDoc(userRef)
-  const activeUrl = userData?.spotifyPlaylistUrl || "https://open.spotify.com/playlist/0vvXsWCC9xrXsKd4FyS8kM"
+  const activeUrl = profile?.spotify_playlist_url || "https://open.spotify.com/playlist/0vvXsWCC9xrXsKd4FyS8kM"
 
   const getEmbedUrl = (url: string) => {
     if (!url) return "https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator"

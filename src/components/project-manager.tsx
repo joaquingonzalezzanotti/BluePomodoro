@@ -15,8 +15,9 @@ import {
   Hash,
   FolderKanban 
 } from "lucide-react"
-import { useFirestore, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase"
-import { collection, query, orderBy, serverTimestamp, doc, where } from "firebase/firestore"
+import { useSupabase, useUser } from "@/supabase"
+import { useSupabaseQuery } from "@/supabase/hooks"
+import type { Project, Subject } from "@/supabase/types"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,52 +27,74 @@ import { cn } from "@/lib/utils"
 
 export function ProjectManager() {
   const { user } = useUser()
-  const db = useFirestore()
+  const supabase = useSupabase()
   const { toast } = useToast()
   
   const [newProjectName, setNewProjectName] = React.useState("")
   const [selectedProjectId, setSelectedProjectId] = React.useState<string | null>(null)
   const [newMateriaName, setNewMateriaName] = React.useState("")
 
-  const projectsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "usuarios", user.uid, "proyectos"), orderBy("fechaCreacion", "desc"))
-  }, [db, user])
+  const { data: projects } = useSupabaseQuery<Project[]>(
+    async (client) => {
+      if (!user) return []
+      const { data, error } = await client
+        .from("projects")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+      if (error) throw error
+      return (data ?? []) as Project[]
+    },
+    [supabase, user?.id],
+    user ? { table: "projects", filter: `user_id=eq.${user.id}` } : null
+  )
 
-  const { data: projects } = useCollection(projectsQuery)
 
-  const materiasQuery = useMemoFirebase(() => {
-    if (!db || !user || !selectedProjectId) return null
-    return query(collection(db, "usuarios", user.uid, "materias"), where("proyectoId", "==", selectedProjectId))
-  }, [db, user, selectedProjectId])
+  const { data: materias } = useSupabaseQuery<Subject[]>(
+    async (client) => {
+      if (!user || !selectedProjectId) return []
+      const { data, error } = await client
+        .from("subjects")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("project_id", selectedProjectId)
+      if (error) throw error
+      return (data ?? []) as Subject[]
+    },
+    [supabase, user?.id, selectedProjectId],
+    user && selectedProjectId ? { table: "subjects", filter: `user_id=eq.${user.id}` } : null
+  )
 
-  const { data: materias } = useCollection(materiasQuery)
 
-  const addProject = () => {
-    if (!newProjectName.trim() || !user || !db) return
-    const projectsRef = collection(db, "usuarios", user.uid, "proyectos")
-    addDocumentNonBlocking(projectsRef, {
-      nombre: newProjectName,
-      fechaCreacion: serverTimestamp(),
+  const addProject = async () => {
+    if (!newProjectName.trim() || !user) return
+    const { error } = await supabase.from("projects").insert({
+      user_id: user.id,
+      name: newProjectName,
+      created_at: new Date().toISOString(),
     })
-    setNewProjectName("")
-    toast({ title: "Proyecto creado" })
+    if (!error) {
+      setNewProjectName("")
+      toast({ title: "Proyecto creado" })
+    }
   }
 
-  const addMateria = () => {
-    if (!newMateriaName.trim() || !selectedProjectId || !user || !db) return
-    const materiasRef = collection(db, "usuarios", user.uid, "materias")
-    addDocumentNonBlocking(materiasRef, {
-      nombre: newMateriaName,
-      proyectoId: selectedProjectId,
+  const addMateria = async () => {
+    if (!newMateriaName.trim() || !selectedProjectId || !user) return
+    const { error } = await supabase.from("subjects").insert({
+      user_id: user.id,
+      project_id: selectedProjectId,
+      name: newMateriaName,
     })
-    setNewMateriaName("")
-    toast({ title: "Materia añadida" })
+    if (!error) {
+      setNewMateriaName("")
+      toast({ title: "Materia a??adida" })
+    }
   }
 
-  const deleteProject = (id: string) => {
-    if (!user || !db) return
-    deleteDocumentNonBlocking(doc(db, "usuarios", user.uid, "proyectos", id))
+  const deleteProject = async (id: string) => {
+    if (!user) return
+    await supabase.from("projects").delete().eq("id", id)
     if (selectedProjectId === id) setSelectedProjectId(null)
   }
 
@@ -120,7 +143,7 @@ export function ProjectManager() {
               >
                 <div className="flex items-center gap-3">
                   <Folder className={cn("h-5 w-5", selectedProjectId === p.id ? "text-white" : "text-primary")} />
-                  <span className="font-black text-sm">{p.nombre}</span>
+                  <span className="font-black text-sm">{p.name}</span>
                 </div>
                 <Button 
                   variant="ghost" 
@@ -139,7 +162,7 @@ export function ProjectManager() {
           {selectedProjectId ? (
             <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-black">Materias de {projects?.find(p => p.id === selectedProjectId)?.nombre}</h3>
+                <h3 className="text-xl font-black">Materias de {projects?.find(p => p.id === selectedProjectId)?.name}</h3>
                 <Badge className="bg-primary/10 text-primary border-none">{materias?.length || 0} materias</Badge>
               </div>
 
@@ -167,7 +190,7 @@ export function ProjectManager() {
                                <Hash className="h-6 w-6" />
                             </div>
                             <div>
-                               <h4 className="font-black text-lg">{m.nombre}</h4>
+                               <h4 className="font-black text-lg">{m.name}</h4>
                                <p className="text-[10px] text-muted-foreground uppercase font-black">ID: {m.id.slice(0,6)}</p>
                             </div>
                          </div>

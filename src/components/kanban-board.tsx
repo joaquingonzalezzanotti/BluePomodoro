@@ -2,8 +2,9 @@
 "use client"
 
 import * as React from "react"
-import { useFirestore, useUser, useCollection, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase"
-import { collection, doc, query, orderBy } from "firebase/firestore"
+import { useSupabase, useUser } from "@/supabase"
+import { useSupabaseQuery } from "@/supabase/hooks"
+import type { Task } from "@/supabase/types"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -18,23 +19,30 @@ const COLUMNS = [
 
 export function KanbanBoard() {
   const { user } = useUser()
-  const db = useFirestore()
+  const supabase = useSupabase()
 
-  const tasksQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "usuarios", user.uid, "tareas"), orderBy("fechaCreacion", "desc"))
-  }, [db, user])
+  const { data: tasks } = useSupabaseQuery<Task[]>(
+    async (client) => {
+      if (!user) return []
+      const { data, error } = await client
+        .from("tasks")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+      if (error) throw error
+      return (data ?? []) as Task[]
+    },
+    [supabase, user?.id],
+    user ? { table: "tasks", filter: `user_id=eq.${user.id}` } : null
+  )
 
-  const { data: tasks } = useCollection(tasksQuery)
-
-  const moveTask = (taskId: string, newStatus: string) => {
-    if (!user || !db) return
-    const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
-    updateDocumentNonBlocking(taskRef, { estado: newStatus })
+  const moveTask = async (taskId: string, newStatus: string) => {
+    if (!user) return
+    await supabase.from("tasks").update({ status: newStatus }).eq("id", taskId)
   }
 
   const renderColumn = (col: typeof COLUMNS[0]) => {
-    const colTasks = tasks?.filter(t => t.estado === col.id || (!t.estado && col.id === "Pendiente")) || []
+    const colTasks = tasks?.filter(t => t.status === col.id || (!t.status && col.id === "Pendiente")) || []
 
     return (
       <div key={col.id} className="flex flex-col gap-4 min-w-[320px] flex-1">
@@ -44,7 +52,7 @@ export function KanbanBoard() {
         </div>
         <div className="flex flex-col gap-4 p-2 min-h-[600px] rounded-2xl">
           {colTasks.map(task => {
-            const subTasks = (task.subtareas || [])
+            const subTasks = (task.subtasks || [])
             const totalCount = subTasks.length
             const completedCount = subTasks.filter((st: any) => typeof st === 'object' && st.completed).length
             const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
@@ -53,8 +61,8 @@ export function KanbanBoard() {
               <Card key={task.id} className="border-none shadow-sm hover:shadow-md transition-all rounded-2xl bg-white overflow-hidden">
                 <CardContent className="p-5 space-y-4">
                   <div className="flex justify-between items-start gap-2">
-                    <h4 className="text-sm font-black leading-tight flex-1">{task.titulo}</h4>
-                    {task.estado === "Completada" && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+                    <h4 className="text-sm font-black leading-tight flex-1">{task.title}</h4>
+                    {task.status === "Completada" && <CheckCircle2 className="h-4 w-4 text-green-500" />}
                   </div>
                   
                   {totalCount > 0 && (
@@ -69,7 +77,7 @@ export function KanbanBoard() {
 
                   <div className="flex items-center gap-3 text-[10px] font-black uppercase text-muted-foreground/60">
                     <span className="flex items-center gap-1"><Layout className="h-3.5 w-3.5" /> {totalCount} Subtareas</span>
-                    <span className="flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-primary" /> {task.esfuerzoEstimadoPomodoros || 1}</span>
+                    <span className="flex items-center gap-1"><Zap className="h-3.5 w-3.5 text-primary" /> {task.effort_estimated || 1}</span>
                   </div>
 
                   <div className="flex justify-between pt-2 border-t border-slate-50">

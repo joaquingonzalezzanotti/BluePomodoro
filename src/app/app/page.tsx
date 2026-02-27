@@ -29,19 +29,19 @@ import { FocusMusic } from "@/components/focus-music"
 import { SpotifyRealTime } from "@/components/spotify-real-time"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { useAuth, useUser, useFirestore, useMemoFirebase, updateDocumentNonBlocking, useDoc } from "@/firebase"
-import { GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth"
+import { useSupabase, useUser } from "@/supabase"
+import { useProfile } from "@/supabase/hooks"
+import { usePomodoro } from "@/pomodoro/pomodoro-provider"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { doc, increment } from "firebase/firestore"
 import { Switch } from "@/components/ui/switch"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { useRouter } from "next/navigation"
 
 function SidebarToggle() {
   const { toggleSidebar, state } = useSidebar()
+
   return (
     <SidebarMenuItem>
       <SidebarMenuButton 
@@ -62,7 +62,7 @@ function DashboardContent({
   isActive, 
   timeLeft, 
   isBlocking, 
-  userRef, 
+  onToggleBlocking,
   activeTaskId, 
   setActiveTaskId, 
   mode, 
@@ -73,8 +73,20 @@ function DashboardContent({
   setWorkMinutes, 
   breakMinutes, 
   setBreakMinutes, 
+  longBreakAfter,
+  longBreakThreshold,
+  longBreakMinutesHigh,
+  longBreakMinutesLow,
   signOutAction 
 }: any) {
+  const displayName =
+    (user as any)?.user_metadata?.full_name ||
+    (user as any)?.user_metadata?.name ||
+    user?.email ||
+    "Usuario"
+  const photoUrl = (user as any)?.user_metadata?.avatar_url || ""
+  const isGuest = (user as any)?.is_anonymous || false
+
   const tabTitles: Record<string, string> = {
     dashboard: "Tablero de Enfoque",
     foco: "Modo Zen",
@@ -122,11 +134,11 @@ function DashboardContent({
           <SidebarFooter className="p-4 border-t border-primary/5">
             <div className="flex items-center gap-3 p-2 bg-muted/30 rounded-xl group-data-[collapsible=icon]:justify-center overflow-hidden transition-all">
               <Avatar className="h-8 w-8 shrink-0">
-                <AvatarImage src={user.photoURL || ""} />
-                <AvatarFallback>{user.displayName?.charAt(0) || <UserCircle className="h-5 w-5" />}</AvatarFallback>
+                <AvatarImage src={photoUrl} />
+                <AvatarFallback>{displayName?.charAt(0) || <UserCircle className="h-5 w-5" />}</AvatarFallback>
               </Avatar>
               <div className="flex-1 group-data-[collapsible=icon]:hidden overflow-hidden">
-                <p className="text-[10px] font-black truncate">{user.isAnonymous ? "Invitado" : user.displayName}</p>
+                <p className="text-[10px] font-black truncate">{isGuest ? "Invitado" : displayName}</p>
               </div>
               <Button variant="ghost" size="icon" className="h-8 w-8 group-data-[collapsible=icon]:hidden shrink-0" onClick={signOutAction}>
                 <LogOut className="h-4 w-4" />
@@ -147,7 +159,7 @@ function DashboardContent({
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <Switch checked={isBlocking} onCheckedChange={(c) => userRef && updateDocumentNonBlocking(userRef, { modoEstrictoActivo: c })} className="scale-75" />
+                <Switch checked={isBlocking} onCheckedChange={onToggleBlocking} className="scale-75" />
                 <span className="text-[10px] font-black uppercase text-muted-foreground">Modo Focus</span>
               </div>
             </div>
@@ -177,6 +189,10 @@ function DashboardContent({
                       setWorkMinutes={setWorkMinutes}
                       breakMinutes={breakMinutes}
                       setBreakMinutes={setBreakMinutes}
+                      longBreakAfter={longBreakAfter}
+                      longBreakThreshold={longBreakThreshold}
+                      longBreakMinutesHigh={longBreakMinutesHigh}
+                      longBreakMinutesLow={longBreakMinutesLow}
                     />
                   </Card>
                    <SpotifyRealTime />
@@ -198,6 +214,10 @@ function DashboardContent({
                     setWorkMinutes={setWorkMinutes}
                     breakMinutes={breakMinutes}
                     setBreakMinutes={setBreakMinutes}
+                    longBreakAfter={longBreakAfter}
+                    longBreakThreshold={longBreakThreshold}
+                    longBreakMinutesHigh={longBreakMinutesHigh}
+                    longBreakMinutesLow={longBreakMinutesLow}
                     large
                   />
                 </div>
@@ -242,91 +262,117 @@ function DashboardContent({
 export default function AppEntry() {
   const [mounted, setMounted] = React.useState(false)
   const { user, isUserLoading } = useUser()
+  const supabase = useSupabase()
+  const { data: profile } = useProfile()
+  const {
+    mode,
+    isActive,
+    timeLeft,
+    sessionsCompleted,
+    toggleTimer,
+    resetTimer,
+    workMinutes,
+    setWorkMinutes,
+    breakMinutes,
+    setBreakMinutes,
+    longBreakAfter,
+    longBreakThreshold,
+    longBreakMinutesHigh,
+    longBreakMinutesLow,
+    stopAlarm,
+    alarmOpen,
+    activeTaskId,
+    setActiveTaskId,
+    syncSettingsFromProfile,
+  } = usePomodoro()
   const [activeTab, setActiveTab] = React.useState("dashboard")
-  const auth = useAuth()
-  const db = useFirestore()
-  const { toast } = useToast()
   const router = useRouter()
-
-  const [workMinutes, setWorkMinutes] = React.useState(40)
-  const [breakMinutes, setBreakMinutes] = React.useState(10)
-  const [timeLeft, setTimeLeft] = React.useState(40 * 60)
-  const [isActive, setIsActive] = React.useState(false)
-  const [mode, setMode] = React.useState<"work" | "break">("work")
-  const [sessionsCompleted, setSessionsCompleted] = React.useState(0)
-  const [activeTaskId, setActiveTaskId] = React.useState<string | null>(null)
-  
-  const [isAlarmModalOpen, setIsAlarmModalOpen] = React.useState(false)
   const audioRef = React.useRef<HTMLAudioElement | null>(null)
 
   React.useEffect(() => {
     setMounted(true)
   }, [])
 
-  const userRef = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return doc(db, "usuarios", user.uid)
-  }, [db, user])
-
-  const { data: userData } = useDoc(userRef)
-  const isBlocking = userData?.modoEstrictoActivo || false
+  React.useEffect(() => {
+    if (profile) {
+      syncSettingsFromProfile(profile)
+    }
+  }, [profile, syncSettingsFromProfile])
 
   React.useEffect(() => {
-    let interval: NodeJS.Timeout | null = null
-    if (isActive && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((prev) => prev - 1)
-      }, 1000)
-    } else if (timeLeft === 0 && isActive) {
-      handleSessionEnd()
-    }
-    return () => { if (interval) clearInterval(interval) }
-  }, [isActive, timeLeft])
+    if (!user || !profile) return
+    const needsUpdate =
+      profile.pomodoro_work_minutes !== workMinutes ||
+      profile.pomodoro_break_minutes !== breakMinutes ||
+      profile.pomodoro_long_break_after !== longBreakAfter ||
+      profile.pomodoro_long_break_threshold !== longBreakThreshold ||
+      profile.pomodoro_long_break_minutes_high !== longBreakMinutesHigh ||
+      profile.pomodoro_long_break_minutes_low !== longBreakMinutesLow
 
-  const handleSessionEnd = () => {
-    setIsActive(false)
-    setIsAlarmModalOpen(true)
+    if (!needsUpdate) return
+
+    const timeout = setTimeout(() => {
+      supabase
+        .from("profiles")
+        .update({
+          pomodoro_work_minutes: workMinutes,
+          pomodoro_break_minutes: breakMinutes,
+          pomodoro_long_break_after: longBreakAfter,
+          pomodoro_long_break_threshold: longBreakThreshold,
+          pomodoro_long_break_minutes_high: longBreakMinutesHigh,
+          pomodoro_long_break_minutes_low: longBreakMinutesLow,
+        })
+        .eq("id", user.id)
+    }, 500)
+    return () => clearTimeout(timeout)
+  }, [
+    user,
+    profile,
+    supabase,
+    workMinutes,
+    breakMinutes,
+    longBreakAfter,
+    longBreakThreshold,
+    longBreakMinutesHigh,
+    longBreakMinutesLow,
+  ])
+
+  React.useEffect(() => {
+    if (!alarmOpen) {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
+      return
+    }
+
     if (typeof window !== "undefined") {
       const audio = new Audio("https://actions.google.com/sounds/v1/alarms/alarm_clock_beeping.ogg")
       audio.loop = true
       audio.play().catch(() => {})
       audioRef.current = audio
     }
-    if (mode === "work") {
-      setSessionsCompleted(prev => prev + 1)
-      if (userRef) {
-        updateDocumentNonBlocking(userRef, { puntosTotales: increment(100) })
-      }
-    }
+  }, [alarmOpen])
+
+  const isBlocking = profile?.modo_estricto_activo || false
+
+  const handleToggleBlocking = async (checked: boolean) => {
+    if (!user) return
+    await supabase.from("profiles").update({ modo_estricto_activo: checked }).eq("id", user.id)
   }
 
-  const stopAlarm = () => {
-    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
-    setIsAlarmModalOpen(false)
-    if (mode === "work") {
-      setMode("break")
-      setTimeLeft(breakMinutes * 60)
-    } else {
-      setMode("work")
-      setTimeLeft(workMinutes * 60)
-    }
-  }
-
-  const toggleTimer = () => setIsActive(!isActive)
-  const resetTimer = () => {
-    setIsActive(false)
-    setTimeLeft(mode === "work" ? workMinutes * 60 : breakMinutes * 60)
-  }
-
-  const handleSignOut = () => {
-    if (!auth) return
-    signOut(auth).then(() => router.push("/"))
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    router.push("/")
   }
 
   const handleGoogleSignIn = async () => {
-    if (!auth) return
-    const provider = new GoogleAuthProvider()
-    await signInWithPopup(auth, provider)
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/app`,
+      },
+    })
   }
 
   if (!mounted) return null
@@ -341,7 +387,7 @@ export default function AppEntry() {
           </div>
           <div className="space-y-2">
             <h2 className="text-3xl font-black text-slate-900">Acceso Requerido</h2>
-            <p className="text-slate-500 font-medium">Inicia sesión para acceder a tu tablero de productividad.</p>
+            <p className="text-slate-500 font-medium">Inicia sesion para acceder a tu tablero de productividad.</p>
           </div>
           <div className="space-y-4">
             <Button onClick={handleGoogleSignIn} className="w-full h-14 rounded-2xl font-black text-lg gap-3">
@@ -365,7 +411,7 @@ export default function AppEntry() {
         isActive={isActive} 
         timeLeft={timeLeft} 
         isBlocking={isBlocking} 
-        userRef={userRef} 
+        onToggleBlocking={handleToggleBlocking}
         activeTaskId={activeTaskId} 
         setActiveTaskId={setActiveTaskId} 
         mode={mode} 
@@ -376,18 +422,22 @@ export default function AppEntry() {
         setWorkMinutes={setWorkMinutes} 
         breakMinutes={breakMinutes} 
         setBreakMinutes={setBreakMinutes} 
+        longBreakAfter={longBreakAfter}
+        longBreakThreshold={longBreakThreshold}
+        longBreakMinutesHigh={longBreakMinutesHigh}
+        longBreakMinutesLow={longBreakMinutesLow}
         signOutAction={handleSignOut} 
       />
 
-      <AlertDialog open={isAlarmModalOpen}>
+      <AlertDialog open={alarmOpen}>
         <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl p-10 max-w-sm">
           <AlertDialogHeader className="items-center text-center">
             <div className="h-20 w-20 bg-primary/10 rounded-full flex items-center justify-center mb-4 animate-bounce">
               <TimerIcon className="h-10 w-10 text-primary" />
             </div>
-            <AlertDialogTitle className="text-2xl font-black text-primary">¡Tiempo Cumplido!</AlertDialogTitle>
+            <AlertDialogTitle className="text-2xl font-black text-primary">Tiempo Cumplido!</AlertDialogTitle>
             <AlertDialogDescription className="text-sm font-medium text-slate-500">
-              Has completado tu sesión de {mode === "work" ? "enfoque" : "descanso"}.
+              Has completado tu sesion de {mode === "work" ? "enfoque" : "descanso"}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="sm:justify-center mt-6">

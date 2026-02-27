@@ -20,6 +20,10 @@ interface PomodoroTimerProps {
   setWorkMinutes: (m: number) => void
   breakMinutes: number
   setBreakMinutes: (m: number) => void
+  longBreakAfter?: number
+  longBreakThreshold?: number
+  longBreakMinutesHigh?: number
+  longBreakMinutesLow?: number
   large?: boolean
 }
 
@@ -34,6 +38,10 @@ export function PomodoroTimer({
   setWorkMinutes,
   breakMinutes,
   setBreakMinutes,
+  longBreakAfter = 4,
+  longBreakThreshold = 40,
+  longBreakMinutesHigh = 20,
+  longBreakMinutesLow = 15,
   large = false
 }: PomodoroTimerProps) {
   const [localWork, setLocalWork] = React.useState(workMinutes.toString())
@@ -42,18 +50,24 @@ export function PomodoroTimer({
   React.useEffect(() => { setLocalWork(workMinutes.toString()) }, [workMinutes])
   React.useEffect(() => { setLocalBreak(breakMinutes.toString()) }, [breakMinutes])
 
-  const isLongBreakMode = mode === "break" && sessionsCompleted > 0 && sessionsCompleted % 4 === 0
-  
+  const isLongBreakMode = mode === "break" && sessionsCompleted > 0 && sessionsCompleted % longBreakAfter === 0
+  const computedBreakMinutes = isLongBreakMode
+    ? (workMinutes >= longBreakThreshold ? longBreakMinutesHigh : longBreakMinutesLow)
+    : breakMinutes
+
   const initialTime = mode === "work" 
     ? workMinutes * 60 
-    : (isLongBreakMode ? 20 * 60 : breakMinutes * 60)
-    
-  const progress = ((initialTime - timeLeft) / initialTime) * 100
+    : computedBreakMinutes * 60
+
+  const progress = Math.min(100, Math.max(0, ((initialTime - Math.max(0, timeLeft)) / initialTime) * 100))
 
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
-    const secs = seconds % 60
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
+    const isNegative = seconds < 0
+    const abs = Math.abs(seconds)
+    const mins = Math.floor(abs / 60)
+    const secs = abs % 60
+    const sign = isNegative ? "-" : ""
+    return `${sign}${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
   const handleApplyChanges = () => {
@@ -62,9 +76,14 @@ export function PomodoroTimer({
     if (!isNaN(b) && b > 0) setBreakMinutes(b)
   }
 
-  const colorClass = mode === "work" 
-    ? "text-slate-900" 
-    : (isLongBreakMode ? "text-primary" : "text-accent")
+  const isOvertime = mode === "break" && timeLeft < 0
+  const colorClass = isOvertime
+    ? "text-red-500"
+    : mode === "work" 
+      ? "text-slate-900" 
+      : (isLongBreakMode ? "text-primary" : "text-accent")
+
+  const primaryLabel = isOvertime ? "FIN DESCANSO" : (isActive ? "PAUSA" : "INICIAR")
 
   return (
     <div className={cn(
@@ -145,7 +164,7 @@ export function PomodoroTimer({
             )}
           >
             {isActive ? <Pause className="h-5 w-5 xl:h-8 xl:w-8 mr-2" /> : <Play className="h-5 w-5 xl:h-8 xl:w-8 mr-2 fill-current" />}
-            {isActive ? "PAUSA" : "INICIAR"}
+            {primaryLabel}
           </Button>
           
           <div className="flex gap-2 xl:gap-3">

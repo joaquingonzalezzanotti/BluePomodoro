@@ -8,34 +8,29 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { useFirestore, useUser, useMemoFirebase, setDocumentNonBlocking, useDoc, addDocumentNonBlocking } from "@/firebase"
-import { doc, collection, serverTimestamp } from "firebase/firestore"
+import { useSupabase, useUser } from "@/supabase"
+import { useProfile } from "@/supabase/hooks"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 
 export function GoogleSyncSettings() {
   const { user } = useUser()
-  const db = useFirestore()
+  const supabase = useSupabase()
   const { toast } = useToast()
   const [isSyncing, setIsSyncing] = React.useState(false)
   const [hasToken, setHasToken] = React.useState(false)
 
-  const syncRef = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return doc(db, "usuarios", user.uid, "configuracionesSincronizacionGoogle", "default")
-  }, [db, user])
-
-  const { data: syncData } = useDoc(syncRef)
+  const { data: profile } = useProfile()
 
   React.useEffect(() => {
     const token = sessionStorage.getItem('google_access_token');
     setHasToken(!!token);
   }, []);
 
-  const handleToggle = (key: string, value: boolean) => {
-    if (!syncRef) return
-    setDocumentNonBlocking(syncRef, { [key]: value }, { merge: true })
+  const handleToggle = (key: "google_calendar_sync" | "google_tasks_sync", value: boolean) => {
+    if (!user) return
+    supabase.from("profiles").update({ [key]: value }).eq("id", user.id)
   }
 
   const handleRealSync = async () => {
@@ -49,7 +44,7 @@ export function GoogleSyncSettings() {
       return;
     }
 
-    if (!db || !user) return
+    if (!user) return
     setIsSyncing(true)
 
     try {
@@ -70,21 +65,21 @@ export function GoogleSyncSettings() {
         return;
       }
 
-      const tareasRef = collection(db, "usuarios", user.uid, "tareas")
       let importedCount = 0;
 
       for (const task of googleTasks) {
         if (task.title) {
-          addDocumentNonBlocking(tareasRef, {
-            titulo: task.title,
-            estado: "Pendiente",
-            esfuerzoEstimadoPomodoros: 1,
-            completadosPomodoros: 0,
-            subtareas: [],
-            fechaCreacion: serverTimestamp(),
-            importadoDeGoogle: true,
-            googleTaskId: task.id
-          });
+          await supabase.from("tasks").upsert({
+            user_id: user.id,
+            title: task.title,
+            status: "Pendiente",
+            effort_estimated: 1,
+            pomodoros_completed: 0,
+            subtasks: [],
+            created_at: new Date().toISOString(),
+            imported_from_google: true,
+            google_task_id: task.id
+          }, { onConflict: "user_id,google_task_id" });
           importedCount++;
         }
       }
@@ -153,7 +148,7 @@ export function GoogleSyncSettings() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-8 text-center">
-                {!syncData?.calendarSync ? (
+                {!profile?.google_calendar_sync ? (
                   <p className="text-xs text-muted-foreground italic">Desactivado.</p>
                 ) : (
                   <div className="space-y-4">
@@ -171,7 +166,7 @@ export function GoogleSyncSettings() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-8 text-center">
-                {!syncData?.tasksSync ? (
+                {!profile?.google_tasks_sync ? (
                   <p className="text-xs text-muted-foreground italic">Desactivado.</p>
                 ) : (
                   <div className="space-y-4">
@@ -196,8 +191,8 @@ export function GoogleSyncSettings() {
                   <p className="text-[10px] text-muted-foreground">Lectura de eventos.</p>
                 </div>
                 <Switch 
-                  checked={!!syncData?.calendarSync}
-                  onCheckedChange={(v) => handleToggle("calendarSync", v)} 
+                  checked={!!profile?.google_calendar_sync}
+                  onCheckedChange={(v) => handleToggle("google_calendar_sync", v)} 
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -206,8 +201,8 @@ export function GoogleSyncSettings() {
                   <p className="text-[10px] text-muted-foreground">Sincronizar con Blue Tasks.</p>
                 </div>
                 <Switch 
-                  checked={!!syncData?.tasksSync}
-                  onCheckedChange={(v) => handleToggle("tasksSync", v)} 
+                  checked={!!profile?.google_tasks_sync}
+                  onCheckedChange={(v) => handleToggle("google_tasks_sync", v)} 
                 />
               </div>
               

@@ -22,8 +22,9 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
-import { useFirestore, useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase"
-import { collection, doc, serverTimestamp, query, orderBy } from "firebase/firestore"
+import { useSupabase, useUser } from "@/supabase"
+import { useSupabaseQuery } from "@/supabase/hooks"
+import type { Task, Subject } from "@/supabase/types"
 import { cn } from "@/lib/utils"
 import { aiAssistedTaskBreakdown } from "@/ai/flows/ai-assisted-task-breakdown-flow"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -54,60 +55,84 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
   const [expandedTasks, setExpandedTasks] = React.useState<Record<string, boolean>>({})
   
   const { toast } = useToast()
-  const db = useFirestore()
+  const supabase = useSupabase()
   const { user } = useUser()
 
-  const tasksQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "usuarios", user.uid, "tareas"), orderBy("fechaCreacion", "desc"))
-  }, [db, user])
+  const { data: tasks, isLoading } = useSupabaseQuery<Task[]>(
+    async (client) => {
+      if (!user) return []
+      const { data, error } = await client
+        .from("tasks")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+      if (error) throw error
+      return (data ?? []) as Task[]
+    },
+    [supabase, user?.id],
+    user ? { table: "tasks", filter: `user_id=eq.${user.id}` } : null
+  )
 
-  const materiasQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return collection(db, "usuarios", user.uid, "materias")
-  }, [db, user])
-
-  const { data: tasks, isLoading } = useCollection(tasksQuery)
-  const { data: materias } = useCollection(materiasQuery)
+  const { data: materias } = useSupabaseQuery<Subject[]>(
+    async (client) => {
+      if (!user) return []
+      const { data, error } = await client
+        .from("subjects")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+      if (error) throw error
+      return (data ?? []) as Subject[]
+    },
+    [supabase, user?.id],
+    user ? { table: "subjects", filter: `user_id=eq.${user.id}` } : null
+  )
 
   const toggleExpand = (taskId: string) => {
     setExpandedTasks(prev => ({ ...prev, [taskId]: !prev[taskId] }))
   }
 
-  const addTask = () => {
-    if (!newTaskText.trim() || !user || !db) return
-    const tasksRef = collection(db, "usuarios", user.uid, "tareas")
-    addDocumentNonBlocking(tasksRef, {
-      usuarioId: user.uid,
-      materiaId: selectedMateriaId === "none" ? null : selectedMateriaId,
-      titulo: newTaskText,
-      estado: "Pendiente",
-      esfuerzoEstimadoPomodoros: 1,
-      completadosPomodoros: 0,
-      subtareas: [],
-      fechaCreacion: serverTimestamp()
+  const addTask = async () => {
+    if (!newTaskText.trim() || !user) return
+    const { error } = await supabase.from("tasks").insert({
+      user_id: user.id,
+      subject_id: selectedMateriaId === "none" ? null : selectedMateriaId,
+      title: newTaskText,
+      status: "Pendiente",
+      effort_estimated: 1,
+      pomodoros_completed: 0,
+      subtasks: [],
+      created_at: new Date().toISOString(),
     })
+    if (error) {
+      toast({ variant: "destructive", title: "Error", description: "No se pudo crear la tarea." })
+      return
+    }
     setNewTaskText("")
-    toast({ title: "Tarea añadida" })
+    toast({ title: "Tarea a??adida" })
   }
 
   const handleAiBreakdown = async (taskId: string, description: string) => {
-    if (!user || !db) return
+    if (!user) return
     setIsAiLoading(taskId)
     try {
       const result = await aiAssistedTaskBreakdown({ largeTaskDescription: description })
-      const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
       
       const formattedSubTasks: SubTask[] = result.subTasks.map((st, idx) => ({
         id: `${Date.now()}-${idx}`,
-        text: typeof st === 'string' ? st : (st as any).text || String(st),
-        completed: false
+        text: typeof st === "string" ? st : (st as any).text || String(st),
+        completed: false,
       }))
 
-      updateDocumentNonBlocking(taskRef, { 
-        subtareas: formattedSubTasks,
-        esfuerzoEstimadoPomodoros: Math.max(1, Math.ceil(formattedSubTasks.length / 2)) 
-      })
+      const { error } = await supabase
+        .from("tasks")
+        .update({
+          subtasks: formattedSubTasks,
+          effort_estimated: Math.max(1, Math.ceil(formattedSubTasks.length / 2)),
+        })
+        .eq("id", taskId)
+      if (error) throw error
+
       toast({ title: "IA: Tarea desglosada", description: `Se han creado ${formattedSubTasks.length} subtareas.` })
       setExpandedTasks(prev => ({ ...prev, [taskId]: true }))
     } catch (error) {
@@ -117,46 +142,42 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
     }
   }
 
-  const updateTaskTitle = (taskId: string) => {
-    if (!user || !db || !editingText.trim()) return
-    const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
-    updateDocumentNonBlocking(taskRef, { titulo: editingText })
+  const updateTaskTitle = async (taskId: string) => {
+    if (!user || !editingText.trim()) return
+    await supabase.from("tasks").update({ title: editingText }).eq("id", taskId)
     setEditingTaskId(null)
   }
 
-  const updatePomodoros = (taskId: string, current: number, delta: number) => {
-    if (!user || !db) return
-    const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
+  const updatePomodoros = async (taskId: string, current: number, delta: number) => {
+    if (!user) return
     const newVal = Math.max(1, current + delta)
-    updateDocumentNonBlocking(taskRef, { esfuerzoEstimadoPomodoros: newVal })
+    await supabase.from("tasks").update({ effort_estimated: newVal }).eq("id", taskId)
   }
 
-  const updateSubTaskText = (taskId: string, subTasks: SubTask[], subId: string) => {
-    if (!user || !db || !editingSubText.trim()) return
-    const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
+  const updateSubTaskText = async (taskId: string, subTasks: SubTask[], subId: string) => {
+    if (!user || !editingSubText.trim()) return
     const newSubTasks = subTasks.map(st => st.id === subId ? { ...st, text: editingSubText } : st)
-    updateDocumentNonBlocking(taskRef, { subtareas: newSubTasks })
+    await supabase.from("tasks").update({ subtasks: newSubTasks }).eq("id", taskId)
     setEditingSubTaskId(null)
   }
 
-  const toggleSubTask = (taskId: string, subTasks: SubTask[], subTaskId: string) => {
-    if (!user || !db) return
-    const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
-    const newSubTasks = subTasks.map(st => 
+  const toggleSubTask = async (taskId: string, subTasks: SubTask[], subTaskId: string) => {
+    if (!user) return
+    const newSubTasks = subTasks.map(st =>
       st.id === subTaskId ? { ...st, completed: !st.completed } : st
     )
-    updateDocumentNonBlocking(taskRef, { subtareas: newSubTasks })
+    await supabase.from("tasks").update({ subtasks: newSubTasks }).eq("id", taskId)
   }
 
-  const deleteTask = (id: string) => {
-    if (!user || !db) return
-    deleteDocumentNonBlocking(doc(db, "usuarios", user.uid, "tareas", id))
+  const deleteTask = async (id: string) => {
+    if (!user) return
+    await supabase.from("tasks").delete().eq("id", id)
   }
 
-  const toggleComplete = (taskId: string, currentStatus: string) => {
-    if (!user || !db) return
-    const taskRef = doc(db, "usuarios", user.uid, "tareas", taskId)
-    updateDocumentNonBlocking(taskRef, { estado: currentStatus === "Completada" ? "Pendiente" : "Completada" })
+  const toggleComplete = async (taskId: string, currentStatus: string) => {
+    if (!user) return
+    const nextStatus = currentStatus === "Completada" ? "Pendiente" : "Completada"
+    await supabase.from("tasks").update({ status: nextStatus }).eq("id", taskId)
   }
 
   const filteredTasks = onlyActive && activeTaskId 
@@ -185,7 +206,7 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                 <SelectContent>
                   <SelectItem value="none">Sin Materia</SelectItem>
                   {materias?.map(m => (
-                    <SelectItem key={m.id} value={m.id}>{m.nombre}</SelectItem>
+                    <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -197,8 +218,8 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
 
       <div className="space-y-4">
         {filteredTasks?.map(task => {
-          const materia = materias?.find(m => m.id === task.materiaId)
-          const rawSubTasks = task.subtareas || []
+          const materia = materias?.find(m => m.id === task.subject_id)
+          const rawSubTasks = task.subtasks || []
           const normalizedSubTasks: SubTask[] = rawSubTasks.map((st: any, i: number) => 
             typeof st === 'string' ? { id: `st-${i}`, text: st, completed: false } : st
           )
@@ -207,11 +228,11 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
           const totalCount = normalizedSubTasks.length
           const progressValue = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
           const isExpanded = !!expandedTasks[task.id]
-          const esfuerzo = task.esfuerzoEstimadoPomodoros || 1
+          const esfuerzo = task.effort_estimated || 1
 
           return (
             <Collapsible key={task.id} open={isExpanded} onOpenChange={() => toggleExpand(task.id)}>
-              <Card className={cn("border-none shadow-sm transition-all rounded-[2rem] overflow-hidden bg-white", activeTaskId === task.id && "ring-2 ring-primary/40", task.estado === "Completada" && "opacity-60")}>
+              <Card className={cn("border-none shadow-sm transition-all rounded-[2rem] overflow-hidden bg-white", activeTaskId === task.id && "ring-2 ring-primary/40", task.status === "Completada" && "opacity-60")}>
                 <CardContent className="p-6">
                   {/* Layout de 2 Filas obligatorio */}
                   <div className="flex flex-col gap-4">
@@ -220,8 +241,8 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                     <div className="flex items-center gap-4 w-full" onClick={() => onTaskSelect?.(task.id)}>
                       <Button 
                         variant="ghost" size="icon" 
-                        className={cn("h-10 w-10 rounded-full shrink-0 border-2", task.estado === "Completada" ? "text-green-500 border-green-500" : "text-slate-200 border-slate-100")}
-                        onClick={(e) => { e.stopPropagation(); toggleComplete(task.id, task.estado); }}
+                        className={cn("h-10 w-10 rounded-full shrink-0 border-2", task.status === "Completada" ? "text-green-500 border-green-500" : "text-slate-200 border-slate-100")}
+                        onClick={(e) => { e.stopPropagation(); toggleComplete(task.id, task.status); }}
                       >
                         <CheckCircle2 className="h-6 w-6" />
                       </Button>
@@ -233,11 +254,11 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 group min-w-0">
-                            <h4 className={cn("text-lg font-black truncate leading-tight", task.estado === "Completada" && "line-through text-slate-400")}>{task.titulo}</h4>
-                            <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100 shrink-0" onClick={(e) => { e.stopPropagation(); setEditingTaskId(task.id); setEditingText(task.titulo); }}><Edit2 className="h-3 w-3" /></Button>
+                            <h4 className={cn("text-lg font-black truncate leading-tight", task.status === "Completada" && "line-through text-slate-400")}>{task.title}</h4>
+                            <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100 shrink-0" onClick={(e) => { e.stopPropagation(); setEditingTaskId(task.id); setEditingText(task.title); }}><Edit2 className="h-3 w-3" /></Button>
                           </div>
                         )}
-                        {materia && <span className="text-[10px] font-black uppercase text-primary/60 flex items-center gap-1 mt-1 truncate"><BookOpen className="h-3 w-3 shrink-0" /> {materia.nombre}</span>}
+                        {materia && <span className="text-[10px] font-black uppercase text-primary/60 flex items-center gap-1 mt-1 truncate"><BookOpen className="h-3 w-3 shrink-0" /> {materia.name}</span>}
                       </div>
                     </div>
 
@@ -278,7 +299,7 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                       </div>
 
                       <div className="flex items-center gap-1 border-l pl-4 border-slate-100">
-                        <Button variant="ghost" size="icon" disabled={isAiLoading === task.id} onClick={() => handleAiBreakdown(task.id, task.titulo)} className="h-9 w-9 text-primary hover:bg-primary/5"><Sparkles className={cn("h-4 w-4", isAiLoading === task.id && "animate-spin")} /></Button>
+                        <Button variant="ghost" size="icon" disabled={isAiLoading === task.id} onClick={() => handleAiBreakdown(task.id, task.title)} className="h-9 w-9 text-primary hover:bg-primary/5"><Sparkles className={cn("h-4 w-4", isAiLoading === task.id && "animate-spin")} /></Button>
                         <Button variant="ghost" size="icon" onClick={() => deleteTask(task.id)} className="h-9 w-9 text-slate-300 hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
                         <CollapsibleTrigger asChild>
                           <Button variant="ghost" size="icon" className="h-9 w-9">

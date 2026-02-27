@@ -1,6 +1,6 @@
 import type {Metadata} from 'next';
 import './globals.css';
-import { FirebaseClientProvider } from '@/firebase';
+import { SupabaseProvider } from "@/supabase";
 
 export const metadata: Metadata = {
   title: 'BluePomodoro - Domina tu Productividad con IA y Focus TDAH',
@@ -43,9 +43,7 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
       <body className="font-sans antialiased selection:bg-primary/20">
-        <FirebaseClientProvider>
-          {children}
-        </FirebaseClientProvider>
+        <SupabaseProvider>{children}</SupabaseProvider>
       </body>
     </html>
   );

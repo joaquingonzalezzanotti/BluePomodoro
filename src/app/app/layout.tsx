@@ -1,4 +1,5 @@
 import { PersistentMusicPlayer } from '@/components/persistent-music-player';
+import { PomodoroProvider } from "@/pomodoro/pomodoro-provider";
 
 export default function AppLayout({
   children,
@@ -7,7 +8,7 @@ export default function AppLayout({
 }>) {
   return (
     <>
-      {children}
+      <PomodoroProvider>{children}</PomodoroProvider>
       <PersistentMusicPlayer />
     </>
   );

@@ -8,47 +8,42 @@ import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { useFirestore, useUser, useDoc, useMemoFirebase, updateDocumentNonBlocking } from "@/firebase"
-import { doc } from "firebase/firestore"
+import { useSupabase, useUser } from "@/supabase"
+import { useProfile } from "@/supabase/hooks"
 import { useToast } from "@/hooks/use-toast"
 
 export function DistractionBlocker() {
   const { user } = useUser()
-  const db = useFirestore()
+  const supabase = useSupabase()
   const { toast } = useToast()
   const [newSite, setNewSite] = React.useState("")
 
-  const userRef = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return doc(db, "usuarios", user.uid)
-  }, [db, user])
+  const { data: profile } = useProfile()
+  const isBlocking = profile?.modo_estricto_activo || false
+  const blockedSites = profile?.sitios_bloqueados || ["facebook.com", "youtube.com", "twitter.com", "reddit.com"]
 
-  const { data: userData } = useDoc(userRef)
-  const isBlocking = userData?.modoEstrictoActivo || false
-  const blockedSites = userData?.sitiosBloqueados || ["facebook.com", "youtube.com", "twitter.com", "reddit.com"]
-
-  const handleToggleBlocking = (checked: boolean) => {
-    if (!userRef) return
-    updateDocumentNonBlocking(userRef, { modoEstrictoActivo: checked })
+  const handleToggleBlocking = async (checked: boolean) => {
+    if (!user) return
+    await supabase.from("profiles").update({ modo_estricto_activo: checked }).eq("id", user.id)
   }
 
-  const handleAddSite = () => {
-    if (!newSite.trim() || !userRef) return
+  const handleAddSite = async () => {
+    if (!newSite.trim() || !user) return
     const site = newSite.trim().toLowerCase()
     if (blockedSites.includes(site)) {
       toast({ variant: "destructive", title: "Sitio ya en lista", description: `${site} ya está bloqueado.` })
       return
     }
     const newList = [...blockedSites, site]
-    updateDocumentNonBlocking(userRef, { sitiosBloqueados: newList })
+    await await supabase.from("profiles").update({ sitios_bloqueados: newList }).eq("id", user.id)
     setNewSite("")
     toast({ title: "Sitio añadido", description: `${site} se bloqueará en modo Focus.` })
   }
 
-  const handleRemoveSite = (site: string) => {
-    if (!userRef) return
+  const handleRemoveSite = async (site: string) => {
+    if (!user) return
     const newList = blockedSites.filter((s: string) => s !== site)
-    updateDocumentNonBlocking(userRef, { sitiosBloqueados: newList })
+    await await supabase.from("profiles").update({ sitios_bloqueados: newList }).eq("id", user.id)
     toast({ title: "Sitio removido", description: `${site} ya no está en la lista.` })
   }
 

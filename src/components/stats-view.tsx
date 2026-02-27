@@ -4,30 +4,61 @@
 import * as React from "react"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, Cell, PieChart, Pie } from "recharts"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { useFirestore, useUser, useCollection, useMemoFirebase } from "@/firebase"
-import { collection, query, orderBy, limit, doc } from "firebase/firestore"
+import { useSupabase, useUser } from "@/supabase"
+import { useProfile, useSupabaseQuery } from "@/supabase/hooks"
+import type { PomodoroSession } from "@/supabase/types"
 import { BarChart3, PieChart as PieChartIcon, Flame, Clock, Trophy } from "lucide-react"
 import { GamifiedProgress } from "@/components/gamified-progress"
 
 export function StatsView() {
   const { user } = useUser()
-  const db = useFirestore()
+  const supabase = useSupabase()
+  const { data: profile } = useProfile()
 
-  const sessionsQuery = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return query(collection(db, "usuarios", user.uid, "sesionesPomodoro"), orderBy("fecha", "desc"), limit(50))
-  }, [db, user])
-
-  const { data: sessions } = useCollection(sessionsQuery)
+  const { data: sessions } = useSupabaseQuery<PomodoroSession[]>(
+    async (client) => {
+      if (!user) return []
+      const { data, error } = await client
+        .from("pomodoro_sessions")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("completed_at", { ascending: false })
+        .limit(50)
+      if (error) throw error
+      return (data ?? []) as PomodoroSession[]
+    },
+    [supabase, user?.id],
+    user ? { table: "pomodoro_sessions", filter: `user_id=eq.${user.id}` } : null
+  )
 
   const statsData = React.useMemo(() => {
     if (!sessions) return []
     const groups: Record<string, number> = {}
-    sessions.forEach(s => {
-      const date = s.fecha?.seconds ? new Date(s.fecha.seconds * 1000).toLocaleDateString() : 'Desconocido'
-      groups[date] = (groups[date] || 0) + 1
-    })
+    sessions
+      .filter(s => s.mode === "work" && s.completed_at)
+      .forEach(s => {
+        const date = new Date(s.completed_at as any).toLocaleDateString()
+        groups[date] = (groups[date] || 0) + 1
+      })
     return Object.entries(groups).map(([date, count]) => ({ date, count })).reverse()
+  }, [sessions])
+
+  const workSessions = React.useMemo(() => {
+    if (!sessions) return []
+    return sessions.filter(s => s.mode === "work")
+  }, [sessions])
+
+  const totalFocusHours = React.useMemo(() => {
+    const totalSec = workSessions.reduce((acc, s) => acc + (s.duration_sec || 0), 0)
+    return Math.round(totalSec / 3600)
+  }, [workSessions])
+
+  const breakOvertimeMinutes = React.useMemo(() => {
+    if (!sessions) return 0
+    const totalSec = sessions
+      .filter(s => s.mode === "break")
+      .reduce((acc, s) => acc + (s.overtime_sec || 0), 0)
+    return Math.round(totalSec / 60)
   }, [sessions])
 
   return (
@@ -59,18 +90,22 @@ export function StatsView() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card className="border-none shadow-xl bg-primary text-white p-6 rounded-3xl">
           <h4 className="text-[10px] font-black uppercase opacity-60">Total Sesiones</h4>
-          <p className="text-4xl font-black">{sessions?.length || 0}</p>
+          <p className="text-4xl font-black">{workSessions.length}</p>
         </Card>
         <Card className="border-none shadow-xl bg-accent text-white p-6 rounded-3xl">
           <h4 className="text-[10px] font-black uppercase opacity-60">Horas Foco</h4>
-          <p className="text-4xl font-black">{Math.round((sessions?.length || 0) * 25 / 60)}h</p>
+          <p className="text-4xl font-black">{totalFocusHours}h</p>
+        </Card>
+        <Card className="border-none shadow-xl bg-orange-500 text-white p-6 rounded-3xl">
+          <h4 className="text-[10px] font-black uppercase opacity-60">Descanso Extra</h4>
+          <p className="text-4xl font-black">{breakOvertimeMinutes > 0 ? `-${breakOvertimeMinutes}m` : "0m"}</p>
         </Card>
         <Card className="border-none shadow-xl bg-slate-900 text-white p-6 rounded-3xl">
           <h4 className="text-[10px] font-black uppercase opacity-60">Racha</h4>
-          <p className="text-4xl font-black flex items-center gap-2">1 <Flame className="h-8 w-8 text-orange-500 fill-current" /></p>
+          <p className="text-4xl font-black flex items-center gap-2">{profile?.streak_days ?? 0} <Flame className="h-8 w-8 text-orange-500 fill-current" /></p>
         </Card>
       </div>
     </div>

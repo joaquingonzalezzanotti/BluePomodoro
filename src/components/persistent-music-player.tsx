@@ -2,20 +2,11 @@
 "use client"
 
 import * as React from "react"
-import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase"
-import { doc } from "firebase/firestore"
+import { useProfile } from "@/supabase/hooks"
 
 export function PersistentMusicPlayer() {
-  const { user } = useUser()
-  const db = useFirestore()
-
-  const userRef = useMemoFirebase(() => {
-    if (!db || !user) return null
-    return doc(db, "usuarios", user.uid)
-  }, [db, user])
-
-  const { data: userData } = useDoc(userRef)
-  const activeUrl = userData?.spotifyPlaylistUrl || "https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator"
+  const { data: profile } = useProfile()
+  const activeUrl = profile?.spotify_playlist_url || "https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator"
 
   const getEmbedUrl = (url: string) => {
     if (!url) return "https://open.spotify.com/embed/playlist/0vvXsWCC9xrXsKd4FyS8kM?utm_source=generator"
