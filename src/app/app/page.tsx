@@ -202,7 +202,7 @@ function DashboardContent({
 
             {activeTab === "foco" && (
               <div className="flex flex-col items-center justify-center gap-12 min-h-[70vh] animate-in zoom-in-95 duration-700">
-                <div className="bg-white rounded-[4rem] p-16 shadow-2xl border border-slate-100 flex flex-col items-center justify-center">
+                <div className="bg-white rounded-[4rem] p-8 lg:p-16 shadow-2xl border border-slate-100 flex flex-col items-center justify-center w-full max-w-6xl">
                   <PomodoroTimer 
                     timeLeft={timeLeft}
                     isActive={isActive}
