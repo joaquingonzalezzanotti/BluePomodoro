@@ -56,20 +56,35 @@ export function SpotifyRealTime() {
     return () => clearInterval(interval);
   }, [profile?.spotify_access_token, session?.access_token]);
 
-  if (!currentlyPlaying) {
-    return <div>No song playing</div>;
+  const item = currentlyPlaying?.item;
+  const isPlaying = Boolean(currentlyPlaying && item);
+  const title = item?.name ?? "Sin titulo";
+  const artistNames = Array.isArray(item?.artists)
+    ? item.artists.map((artist: { name: string }) => artist.name).join(", ")
+    : "";
+  const cover = item?.album?.images?.[0]?.url as string | undefined;
+
+  if (!isPlaying) {
+    return (
+      <div className="mt-6 rounded-3xl border border-slate-100 bg-white/80 px-5 py-4 text-center text-xs font-bold uppercase tracking-widest text-slate-300 shadow-sm">
+        Sin reproduccion activa
+      </div>
+    );
   }
 
-  const title = currentlyPlaying?.item?.name ?? "Sin titulo";
-  const artistNames = Array.isArray(currentlyPlaying?.item?.artists)
-    ? currentlyPlaying.item.artists.map((artist: { name: string }) => artist.name).join(", ")
-    : "";
-
   return (
-    <div>
-      <h2>Currently Playing</h2>
-      <p>{title}</p>
-      <p>{artistNames}</p>
+    <div className="mt-6 rounded-3xl border border-slate-100 bg-white px-5 py-4 shadow-sm flex items-center gap-4">
+      {cover ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={cover} alt="Album cover" className="h-12 w-12 rounded-xl object-cover" />
+      ) : (
+        <div className="h-12 w-12 rounded-xl bg-slate-100" />
+      )}
+      <div className="min-w-0">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Now Playing</p>
+        <p className="text-sm font-black truncate text-slate-900">{title}</p>
+        <p className="text-xs font-medium text-slate-400 truncate">{artistNames}</p>
+      </div>
     </div>
   );
 }
