@@ -159,7 +159,7 @@ export function PomodoroTimer({
       {/* Contenedor Adaptativo Principal */}
       <div className={cn(
         "flex w-full items-center",
-        large ? "flex-col lg:flex-row lg:items-center lg:justify-center gap-10 lg:gap-16" : "flex-col xl:flex-col lg:flex-row md:flex-row flex-row gap-4 xl:gap-0"
+        large ? "flex-col items-center gap-8" : "flex-col xl:flex-col lg:flex-row md:flex-row flex-row gap-4 xl:gap-0"
       )}>
         
         {/* Visualización del Tiempo (Reloj) */}
@@ -219,7 +219,7 @@ export function PomodoroTimer({
         {/* Controles del Temporizador */}
         <div className={cn(
           "flex items-center gap-3 transition-all flex-1 justify-center",
-          large ? "gap-6" : "xl:gap-6 lg:gap-3 gap-2"
+          large ? "gap-6 w-full" : "xl:gap-6 lg:gap-3 gap-2"
         )}>
           <Button
             size="lg"
@@ -285,7 +285,7 @@ export function PomodoroTimer({
         {/* Resumen de Sesiones / Estadísticas */}
         <div className={cn(
           "flex items-center justify-center transition-all",
-          large ? "mt-6 lg:mt-0 gap-8" : "xl:mt-6 xl:gap-12 lg:gap-6 gap-4 xl:w-full lg:w-auto mt-0 ml-auto hidden md:flex"
+          large ? "mt-4 gap-8" : "xl:mt-6 xl:gap-12 lg:gap-6 gap-4 xl:w-full lg:w-auto mt-0 ml-auto hidden md:flex"
         )}>
           <div className="flex flex-col items-center">
             <div className="flex items-center gap-1.5 font-black text-xl xl:text-3xl text-slate-900 leading-none">
