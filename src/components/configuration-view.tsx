@@ -73,7 +73,11 @@ export function ConfigurationView() {
   }
 
   const handleLinkSpotifyReal = () => {
-    const clientId = "b5df5cc5dcbc45e8a34738bd946675ac"
+    const clientId = process.env.NEXT_PUBLIC_SPOTIFY_CLIENT_ID
+    if (!clientId) {
+      toast({ variant: "destructive", title: "Spotify no configurado", description: "Falta NEXT_PUBLIC_SPOTIFY_CLIENT_ID." })
+      return
+    }
     const redirectUri = typeof window !== 'undefined' ? `${window.location.origin}/app` : ''
     const scopes = "user-read-currently-playing user-read-playback-state"
     const state = "spotify"
