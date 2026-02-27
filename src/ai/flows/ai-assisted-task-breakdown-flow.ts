@@ -27,6 +27,9 @@ export type TaskBreakdownOutput = z.infer<typeof TaskBreakdownOutputSchema>;
 export async function aiAssistedTaskBreakdown(
   input: TaskBreakdownInput
 ): Promise<TaskBreakdownOutput> {
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("Falta GEMINI_API_KEY para usar IA.");
+  }
   return taskBreakdownFlow(input);
 }
 

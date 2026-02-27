@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils"
 import { aiAssistedTaskBreakdown } from "@/ai/flows/ai-assisted-task-breakdown-flow"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 
 interface SubTask {
   id: string
@@ -40,6 +41,28 @@ interface TaskManagerProps {
   onTaskSelect?: (id: string) => void
   activeTaskId?: string | null
   onlyActive?: boolean
+}
+
+const EMOJI_CHOICES = ["✨", "🧠", "📝", "🎯", "🚀", "📚", "💼", "🧹", "✅", "⚡", "🎧", "🧩"]
+
+const stripLeadingEmoji = (title: string) => {
+  const trimmed = title.trim()
+  for (const emoji of EMOJI_CHOICES) {
+    if (trimmed.startsWith(emoji)) {
+      return trimmed.slice(emoji.length).trimStart()
+    }
+  }
+  return trimmed
+}
+
+const getLeadingEmoji = (title: string) => {
+  const trimmed = title.trim()
+  for (const emoji of EMOJI_CHOICES) {
+    if (trimmed.startsWith(emoji)) {
+      return emoji
+    }
+  }
+  return EMOJI_CHOICES[0]
 }
 
 export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskManagerProps) {
@@ -109,7 +132,7 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
       return
     }
     setNewTaskText("")
-    toast({ title: "Tarea a??adida" })
+    toast({ title: "Tarea agregada" })
   }
 
   const handleAiBreakdown = async (taskId: string, description: string) => {
@@ -136,7 +159,11 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
       toast({ title: "IA: Tarea desglosada", description: `Se han creado ${formattedSubTasks.length} subtareas.` })
       setExpandedTasks(prev => ({ ...prev, [taskId]: true }))
     } catch (error) {
-      toast({ variant: "destructive", title: "Error IA", description: "No se pudo desglosar la tarea." })
+      const message = (error as any)?.message || ""
+      const description = message.includes("GEMINI_API_KEY")
+        ? "Falta GEMINI_API_KEY en las variables de entorno."
+        : "No se pudo desglosar la tarea."
+      toast({ variant: "destructive", title: "Error IA", description })
     } finally {
       setIsAiLoading(null)
     }
@@ -146,6 +173,13 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
     if (!user || !editingText.trim()) return
     await supabase.from("tasks").update({ title: editingText }).eq("id", taskId)
     setEditingTaskId(null)
+  }
+
+  const updateTaskEmoji = async (taskId: string, currentTitle: string, emoji: string) => {
+    if (!user) return
+    const cleaned = stripLeadingEmoji(currentTitle)
+    const nextTitle = cleaned ? `${emoji} ${cleaned}` : emoji
+    await supabase.from("tasks").update({ title: nextTitle }).eq("id", taskId)
   }
 
   const updatePomodoros = async (taskId: string, current: number, delta: number) => {
@@ -229,6 +263,8 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
           const progressValue = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
           const isExpanded = !!expandedTasks[task.id]
           const esfuerzo = task.effort_estimated || 1
+          const displayEmoji = getLeadingEmoji(task.title)
+          const displayTitle = stripLeadingEmoji(task.title)
 
           return (
             <Collapsible key={task.id} open={isExpanded} onOpenChange={() => toggleExpand(task.id)}>
@@ -238,15 +274,39 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                   <div className="flex flex-col gap-4">
                     
                     {/* Fila 1 (Nombre de la Tarea) - Ocupa todo el ancho */}
-                    <div className="flex items-center gap-4 w-full" onClick={() => onTaskSelect?.(task.id)}>
-                      <Button 
-                        variant="ghost" size="icon" 
-                        className={cn("h-10 w-10 rounded-full shrink-0 border-2", task.status === "Completada" ? "text-green-500 border-green-500" : "text-slate-200 border-slate-100")}
-                        onClick={(e) => { e.stopPropagation(); toggleComplete(task.id, task.status); }}
-                      >
-                        <CheckCircle2 className="h-6 w-6" />
-                      </Button>
-                      <div className="flex-1 min-w-0 cursor-pointer">
+                    <div className="flex items-center gap-4 w-full">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-10 w-10 rounded-full shrink-0 bg-slate-50 border border-slate-100 text-lg"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <span>{displayEmoji}</span>
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-52 p-3 rounded-2xl" align="start">
+                          <div className="grid grid-cols-6 gap-2">
+                            {EMOJI_CHOICES.map((emoji) => (
+                              <Button
+                                key={emoji}
+                                variant="ghost"
+                                size="icon"
+                                className="h-9 w-9 rounded-xl"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  updateTaskEmoji(task.id, task.title, emoji)
+                                }}
+                              >
+                                <span className="text-lg">{emoji}</span>
+                              </Button>
+                            ))}
+                          </div>
+                        </PopoverContent>
+                      </Popover>
+
+                      <div className="flex-1 min-w-0 cursor-pointer" onClick={() => onTaskSelect?.(task.id)}>
                         {editingTaskId === task.id ? (
                           <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                             <Input value={editingText} onChange={(e) => setEditingText(e.target.value)} className="h-8 text-sm font-black" autoFocus />
@@ -254,12 +314,21 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 group min-w-0">
-                            <h4 className={cn("text-lg font-black truncate leading-tight", task.status === "Completada" && "line-through text-slate-400")}>{task.title}</h4>
+                            <h4 className={cn("text-lg font-black truncate leading-tight", task.status === "Completada" && "line-through text-slate-400")}>{displayTitle || task.title}</h4>
                             <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100 shrink-0" onClick={(e) => { e.stopPropagation(); setEditingTaskId(task.id); setEditingText(task.title); }}><Edit2 className="h-3 w-3" /></Button>
                           </div>
                         )}
                         {materia && <span className="text-[10px] font-black uppercase text-primary/60 flex items-center gap-1 mt-1 truncate"><BookOpen className="h-3 w-3 shrink-0" /> {materia.name}</span>}
                       </div>
+
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={cn("h-10 w-10 rounded-full shrink-0 border-2", task.status === "Completada" ? "text-green-500 border-green-500" : "text-slate-200 border-slate-100")}
+                        onClick={(e) => { e.stopPropagation(); toggleComplete(task.id, task.status); }}
+                      >
+                        <CheckCircle2 className="h-6 w-6" />
+                      </Button>
                     </div>
 
                     {/* Fila 2 (Acciones y Metadatos) - Alineado a la derecha */}
