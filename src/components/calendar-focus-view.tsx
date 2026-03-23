@@ -1,11 +1,12 @@
 "use client"
 
 import * as React from "react"
-import { ArrowLeft, ArrowRight, CalendarDays, Clock3, RefreshCw, Sparkles, Target } from "lucide-react"
+import { ArrowLeft, ArrowRight, CalendarDays, Clock3, RefreshCw, Search, Sparkles, Target } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { useProfile, useSupabaseQuery } from "@/supabase/hooks"
 import { useSession, useSupabase, useUser } from "@/supabase/provider"
@@ -108,6 +109,35 @@ function deriveSelectionMode(total: number, selected: number): CalendarSelection
   return "some"
 }
 
+function formatCalendarName(summary: string): string {
+  const value = summary.trim()
+  if (!value) return "Sin nombre"
+  if (/^https?:\/\//i.test(value)) {
+    try {
+      const url = new URL(value)
+      const path = url.pathname && url.pathname !== "/" ? url.pathname.slice(0, 28) : ""
+      return `${url.hostname}${path}${url.pathname.length > 28 ? "..." : ""}`
+    } catch {
+      return value.length > 40 ? `${value.slice(0, 40)}...` : value
+    }
+  }
+  return value.length > 56 ? `${value.slice(0, 56)}...` : value
+}
+
+function formatLocationText(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ""
+  if (/^https?:\/\//i.test(trimmed)) {
+    try {
+      const url = new URL(trimmed)
+      return `${url.hostname}${url.pathname && url.pathname !== "/" ? url.pathname : ""}`.slice(0, 70)
+    } catch {
+      return trimmed.length > 70 ? `${trimmed.slice(0, 70)}...` : trimmed
+    }
+  }
+  return trimmed.length > 90 ? `${trimmed.slice(0, 90)}...` : trimmed
+}
+
 function computeFocusSlots(day: Date, events: CalendarEvent[], workMinutes: number): Slot[] {
   const windowStart = new Date(day)
   windowStart.setHours(8, 0, 0, 0)
@@ -191,9 +221,11 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
   const [calendarOptions, setCalendarOptions] = React.useState<CalendarOption[]>([])
   const [calendarSelectionMode, setCalendarSelectionMode] = React.useState<CalendarSelectionMode>("all")
   const [selectedCalendarIds, setSelectedCalendarIds] = React.useState<string[]>([])
+  const [calendarSearch, setCalendarSearch] = React.useState("")
   const [isLoadingCalendarOptions, setIsLoadingCalendarOptions] = React.useState(false)
   const [isSavingCalendarSelection, setIsSavingCalendarSelection] = React.useState(false)
   const [calendarSelectionError, setCalendarSelectionError] = React.useState<string | null>(null)
+  const [calendarSaveMessage, setCalendarSaveMessage] = React.useState<string | null>(null)
 
   const weekDates = React.useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart])
   const weekEnd = React.useMemo(() => {
@@ -228,9 +260,22 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
       return a.summary.localeCompare(b.summary, "es")
     })
   }, [calendarOptions, selectedCalendarSet])
-  const selectedCalendars = React.useMemo(
-    () => sortedCalendarOptions.filter((calendar) => selectedCalendarSet.has(calendar.id)),
-    [selectedCalendarSet, sortedCalendarOptions]
+  const filteredCalendarOptions = React.useMemo(() => {
+    const query = calendarSearch.trim().toLowerCase()
+    if (!query) return sortedCalendarOptions
+    return sortedCalendarOptions.filter((calendar) => {
+      const label = formatCalendarName(calendar.summary).toLowerCase()
+      const raw = calendar.summary.toLowerCase()
+      return label.includes(query) || raw.includes(query)
+    })
+  }, [calendarSearch, sortedCalendarOptions])
+  const selectedFilteredCalendars = React.useMemo(
+    () => filteredCalendarOptions.filter((calendar) => selectedCalendarSet.has(calendar.id)),
+    [filteredCalendarOptions, selectedCalendarSet]
+  )
+  const unselectedFilteredCalendars = React.useMemo(
+    () => filteredCalendarOptions.filter((calendar) => !selectedCalendarSet.has(calendar.id)),
+    [filteredCalendarOptions, selectedCalendarSet]
   )
 
   React.useEffect(() => {
@@ -300,6 +345,12 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
     loadCalendarOptions().catch(() => {})
   }, [loadCalendarOptions, profile?.google_calendar_sync, session?.access_token])
 
+  React.useEffect(() => {
+    if (!calendarSaveMessage) return
+    const timeout = window.setTimeout(() => setCalendarSaveMessage(null), 2000)
+    return () => window.clearTimeout(timeout)
+  }, [calendarSaveMessage])
+
   const loadEvents = React.useCallback(async () => {
     if (!session?.access_token) return
     if (!profile?.google_calendar_sync) {
@@ -361,6 +412,7 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
       if (!user) return false
       setIsSavingCalendarSelection(true)
       setCalendarSelectionError(null)
+      setCalendarSaveMessage(null)
       try {
         const uniqueIds = Array.from(new Set(nextIds))
         const payloadIds = nextMode === "some" ? uniqueIds : []
@@ -380,10 +432,12 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
         setSelectedCalendarIds(payloadIds)
         await refetchProfile()
         await loadEvents()
+        setCalendarSaveMessage("Guardado")
         return true
       } catch (error: any) {
         const message = error?.message ?? "No se pudo guardar la seleccion de calendarios."
         setCalendarSelectionError(message)
+        setCalendarSaveMessage(null)
         toast({
           variant: "destructive",
           title: "No se pudo actualizar calendarios",
@@ -532,8 +586,16 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
 
           <Card className="rounded-2xl border-slate-100 shadow-none">
             <CardHeader className="pb-3">
-              <CardTitle className="text-base font-black">Mis calendarios</CardTitle>
-              <p className="text-xs text-muted-foreground">Elegi que calendarios impactan en esta agenda.</p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base font-black">Mis calendarios</CardTitle>
+                  <p className="text-xs text-muted-foreground">Marcá qué calendarios impactan en esta agenda.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  {calendarSaveMessage ? <span className="text-[11px] text-emerald-600">{calendarSaveMessage}</span> : null}
+                  {isSavingCalendarSelection ? <span className="text-[11px] text-slate-500">Guardando...</span> : null}
+                </div>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
               {!profile?.google_calendar_sync ? (
@@ -553,56 +615,89 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
                 </div>
               ) : (
                 <>
-                  {selectedCalendars.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {selectedCalendars.map((calendar) => (
-                        <div
-                          key={`active-${calendar.id}`}
-                          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700"
-                        >
-                          <span
-                            className="h-2 w-2 rounded-full"
-                            style={{ backgroundColor: calendar.backgroundColor ?? "#94a3b8" }}
-                          />
-                          <span className="truncate max-w-48">{calendar.summary}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">No hay calendarios seleccionados.</p>
-                  )}
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      value={calendarSearch}
+                      onChange={(event) => setCalendarSearch(event.target.value)}
+                      placeholder="Buscar calendarios..."
+                      className="h-9 pl-9 pr-3 text-sm"
+                    />
+                  </div>
 
                   <div className="max-h-52 overflow-auto rounded-lg border border-slate-200 bg-white">
-                    {sortedCalendarOptions.length === 0 ? (
+                    {filteredCalendarOptions.length === 0 ? (
                       <p className="px-3 py-4 text-xs text-muted-foreground">
-                        {isLoadingCalendarOptions ? "Cargando calendarios..." : "No se encontraron calendarios en tu cuenta."}
+                        {isLoadingCalendarOptions
+                          ? "Cargando calendarios..."
+                          : calendarSearch.trim().length > 0
+                          ? "No hay coincidencias para esa busqueda."
+                          : "No se encontraron calendarios en tu cuenta."}
                       </p>
                     ) : (
-                      sortedCalendarOptions.map((calendar) => {
-                        const isChecked = effectiveSelectedCalendarIds.includes(calendar.id)
-                        return (
-                          <label
-                            key={calendar.id}
-                            className={`flex items-center gap-3 px-3 py-2 border-b border-slate-100 last:border-b-0 cursor-pointer transition-colors ${
-                              isChecked ? "bg-primary/5" : "hover:bg-slate-50"
-                            }`}
-                          >
-                            <Checkbox
-                              checked={isChecked}
-                              disabled={isSavingCalendarSelection}
-                              onCheckedChange={(value) => handleCalendarChecked(calendar.id, value === true)}
-                            />
-                            <span
-                              className="h-2.5 w-2.5 rounded-full"
-                              style={{ backgroundColor: calendar.backgroundColor ?? "#94a3b8" }}
-                            />
-                            <span className="text-sm text-slate-700 truncate flex-1">{calendar.summary}</span>
-                            {calendar.primary ? (
-                              <span className="text-[10px] uppercase tracking-wide text-slate-400">principal</span>
-                            ) : null}
-                          </label>
-                        )
-                      })
+                      <>
+                        {selectedFilteredCalendars.length > 0 ? (
+                          <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 bg-slate-50 border-b border-slate-100">
+                            Seleccionados
+                          </div>
+                        ) : null}
+                        {selectedFilteredCalendars.map((calendar) => {
+                          const isChecked = true
+                          const label = formatCalendarName(calendar.summary)
+                          return (
+                            <label
+                              key={calendar.id}
+                              className="flex items-center gap-3 px-3 py-2 border-b border-slate-100 cursor-pointer bg-primary/5"
+                              title={calendar.summary}
+                            >
+                              <Checkbox
+                                checked={isChecked}
+                                disabled={isSavingCalendarSelection}
+                                onCheckedChange={(value) => handleCalendarChecked(calendar.id, value === true)}
+                              />
+                              <span
+                                className="h-2.5 w-2.5 rounded-full"
+                                style={{ backgroundColor: calendar.backgroundColor ?? "#94a3b8" }}
+                              />
+                              <span className="text-sm text-slate-700 truncate flex-1">{label}</span>
+                              {calendar.primary ? (
+                                <span className="text-[10px] uppercase tracking-wide text-slate-400">principal</span>
+                              ) : null}
+                            </label>
+                          )
+                        })}
+
+                        {unselectedFilteredCalendars.length > 0 ? (
+                          <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 bg-slate-50 border-b border-slate-100">
+                            Disponibles
+                          </div>
+                        ) : null}
+                        {unselectedFilteredCalendars.map((calendar, index) => {
+                          const label = formatCalendarName(calendar.summary)
+                          const isLast = index === unselectedFilteredCalendars.length - 1
+                          return (
+                            <label
+                              key={calendar.id}
+                              className={`flex items-center gap-3 px-3 py-2 ${isLast ? "" : "border-b border-slate-100"} cursor-pointer hover:bg-slate-50 transition-colors`}
+                              title={calendar.summary}
+                            >
+                              <Checkbox
+                                checked={false}
+                                disabled={isSavingCalendarSelection}
+                                onCheckedChange={(value) => handleCalendarChecked(calendar.id, value === true)}
+                              />
+                              <span
+                                className="h-2.5 w-2.5 rounded-full"
+                                style={{ backgroundColor: calendar.backgroundColor ?? "#94a3b8" }}
+                              />
+                              <span className="text-sm text-slate-700 truncate flex-1">{label}</span>
+                              {calendar.primary ? (
+                                <span className="text-[10px] uppercase tracking-wide text-slate-400">principal</span>
+                              ) : null}
+                            </label>
+                          )
+                        })}
+                      </>
                     )}
                   </div>
                 </>
@@ -610,8 +705,8 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_1fr] gap-6">
-            <Card className="rounded-2xl border-slate-100 shadow-none">
+          <div className="grid grid-cols-1 min-[1700px]:grid-cols-[minmax(0,1.3fr)_340px] gap-6">
+            <Card className="rounded-2xl border-slate-100 shadow-none min-w-0">
               <CardHeader>
                 <CardTitle className="text-lg font-black">
                   {selectedDay.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "long" })}
@@ -627,7 +722,9 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
                 ) : (
                   selectedDayEvents.map((event) => (
                     <div key={event.id} className="rounded-xl border border-slate-100 p-3 bg-white">
-                      <p className="text-sm font-bold text-slate-900">{event.summary}</p>
+                      <p className="text-sm font-bold text-slate-900 break-words" title={event.summary}>
+                        {event.summary}
+                      </p>
                       <p className="text-xs text-slate-500 mt-1">
                         {event.allDay
                           ? "Todo el dia"
@@ -639,18 +736,24 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
                             className="h-2 w-2 rounded-full"
                             style={{ backgroundColor: event.calendarColor ?? "#94a3b8" }}
                           />
-                          <p className="text-[11px] text-slate-500 truncate">{event.calendarSummary}</p>
+                          <p className="text-[11px] text-slate-500 truncate" title={event.calendarSummary}>
+                            {formatCalendarName(event.calendarSummary)}
+                          </p>
                         </div>
                       ) : null}
-                      {event.location ? <p className="text-xs text-slate-500">{event.location}</p> : null}
+                      {event.location ? (
+                        <p className="text-xs text-slate-500 break-words" title={event.location}>
+                          {formatLocationText(event.location)}
+                        </p>
+                      ) : null}
                     </div>
                   ))
                 )}
               </CardContent>
             </Card>
 
-            <div className="space-y-4">
-              <Card className="rounded-2xl border-slate-100 shadow-none">
+            <div className="space-y-4 min-w-0">
+              <Card className="rounded-2xl border-slate-100 shadow-none min-w-0">
                 <CardHeader>
                   <CardTitle className="text-base font-black flex items-center gap-2">
                     <Sparkles className="h-4 w-4 text-primary" /> Capacidad de foco
@@ -673,7 +776,7 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
                 </CardContent>
               </Card>
 
-              <Card className="rounded-2xl border-slate-100 shadow-none">
+              <Card className="rounded-2xl border-slate-100 shadow-none min-w-0">
                 <CardHeader>
                   <CardTitle className="text-base font-black">Slots de enfoque recomendados</CardTitle>
                 </CardHeader>
@@ -695,7 +798,7 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
                 </CardContent>
               </Card>
 
-              <Card className="rounded-2xl border-slate-100 shadow-none">
+              <Card className="rounded-2xl border-slate-100 shadow-none min-w-0">
                 <CardHeader>
                   <CardTitle className="text-base font-black">Tareas sugeridas para este bloque</CardTitle>
                 </CardHeader>
