@@ -133,7 +133,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: profile, error: profileError } = await supabase
+  let profileQuery = await supabase
     .from("profiles")
     .select(
       "id, google_calendar_sync, google_access_token, google_refresh_token, google_calendar_selection_mode, google_calendar_selected_ids"
@@ -141,7 +141,28 @@ export async function GET(req: Request) {
     .eq("id", userData.user.id)
     .single();
 
-  const typedProfile = (profile ?? null) as ProfileRow | null;
+  if (profileQuery.error?.message?.includes("google_calendar_selection_mode")) {
+    profileQuery = await supabase
+      .from("profiles")
+      .select("id, google_calendar_sync, google_access_token, google_refresh_token")
+      .eq("id", userData.user.id)
+      .single();
+  }
+
+  const profile = profileQuery.data as Partial<ProfileRow> | null;
+  const profileError = profileQuery.error;
+  const typedProfile = profile
+    ? ({
+        id: String(profile.id),
+        google_calendar_sync: Boolean(profile.google_calendar_sync),
+        google_access_token: profile.google_access_token ?? null,
+        google_refresh_token: profile.google_refresh_token ?? null,
+        google_calendar_selection_mode: normalizeSelectionMode(profile.google_calendar_selection_mode),
+        google_calendar_selected_ids: Array.isArray(profile.google_calendar_selected_ids)
+          ? profile.google_calendar_selected_ids
+          : [],
+      } as ProfileRow)
+    : null;
   if (profileError || !typedProfile) {
     return NextResponse.json({ error: profileError?.message ?? "Profile not found." }, { status: 500 });
   }
@@ -340,4 +361,3 @@ export async function GET(req: Request) {
     },
   });
 }
-

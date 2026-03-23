@@ -163,7 +163,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data: profile, error: profileError } = await supabase
+  let profileQuery = await supabase
     .from("profiles")
     .select(
       "id, google_tasks_sync, google_calendar_sync, google_access_token, google_refresh_token, google_token_expires_at, google_last_synced_at, google_calendar_selection_mode, google_calendar_selected_ids"
@@ -171,7 +171,33 @@ export async function POST(req: Request) {
     .eq("id", userData.user.id)
     .single();
 
-  const typedProfile = (profile ?? null) as ProfileRow | null;
+  if (profileQuery.error?.message?.includes("google_calendar_selection_mode")) {
+    profileQuery = await supabase
+      .from("profiles")
+      .select(
+        "id, google_tasks_sync, google_calendar_sync, google_access_token, google_refresh_token, google_token_expires_at, google_last_synced_at"
+      )
+      .eq("id", userData.user.id)
+      .single();
+  }
+
+  const profile = profileQuery.data as Partial<ProfileRow> | null;
+  const profileError = profileQuery.error;
+  const typedProfile = profile
+    ? ({
+        id: String(profile.id),
+        google_tasks_sync: Boolean(profile.google_tasks_sync),
+        google_calendar_sync: Boolean(profile.google_calendar_sync),
+        google_access_token: profile.google_access_token ?? null,
+        google_refresh_token: profile.google_refresh_token ?? null,
+        google_token_expires_at: profile.google_token_expires_at ?? null,
+        google_last_synced_at: profile.google_last_synced_at ?? null,
+        google_calendar_selection_mode: normalizeSelectionMode(profile.google_calendar_selection_mode),
+        google_calendar_selected_ids: Array.isArray(profile.google_calendar_selected_ids)
+          ? profile.google_calendar_selected_ids
+          : [],
+      } as ProfileRow)
+    : null;
 
   if (profileError || !typedProfile) {
     return NextResponse.json(

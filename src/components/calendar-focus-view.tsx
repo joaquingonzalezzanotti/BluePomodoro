@@ -1,13 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { ArrowLeft, ArrowRight, CalendarDays, Clock3, RefreshCw, Sparkles, Target } from "lucide-react"
+import { ArrowLeft, ArrowRight, CalendarDays, ChevronDown, ChevronRight, Clock3, RefreshCw, Sparkles, Target } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
 import { useProfile, useSupabaseQuery } from "@/supabase/hooks"
-import { useSession, useUser } from "@/supabase/provider"
+import { useSession, useSupabase, useUser } from "@/supabase/provider"
 import type { Task } from "@/supabase/types"
 
 type CalendarEvent = {
@@ -37,6 +38,16 @@ type CalendarFocusViewProps = {
   activeTaskId?: string | null
   onTaskSelect?: (taskId: string | null) => void
   onOpenFocusTab?: () => void
+}
+
+type CalendarSelectionMode = "all" | "none" | "some"
+
+type CalendarOption = {
+  id: string
+  summary: string
+  primary: boolean
+  accessRole: string
+  backgroundColor: string | null
 }
 
 function pad2(value: number): string {
@@ -84,6 +95,17 @@ function formatDueDate(dueDate: string | null): string {
   const parsed = new Date(`${dueDate}T00:00:00`)
   if (Number.isNaN(parsed.getTime())) return "Sin vencimiento"
   return parsed.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })
+}
+
+function normalizeSelectionMode(value: string | null | undefined): CalendarSelectionMode {
+  if (value === "all" || value === "none" || value === "some") return value
+  return "all"
+}
+
+function deriveSelectionMode(total: number, selected: number): CalendarSelectionMode {
+  if (total <= 0 || selected <= 0) return "none"
+  if (selected >= total) return "all"
+  return "some"
 }
 
 function computeFocusSlots(day: Date, events: CalendarEvent[], workMinutes: number): Slot[] {
@@ -156,8 +178,9 @@ function computeFocusSlots(day: Date, events: CalendarEvent[], workMinutes: numb
 export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }: CalendarFocusViewProps) {
   const { session } = useSession()
   const { user } = useUser()
+  const supabase = useSupabase()
   const { toast } = useToast()
-  const { data: profile } = useProfile()
+  const { data: profile, refetch: refetchProfile } = useProfile()
 
   const [weekStart, setWeekStart] = React.useState(() => startOfWeekMonday(new Date()))
   const [selectedDayKey, setSelectedDayKey] = React.useState(() => toDateKey(new Date()))
@@ -165,6 +188,13 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
   const [isLoadingEvents, setIsLoadingEvents] = React.useState(false)
   const [eventsError, setEventsError] = React.useState<string | null>(null)
   const [eventsInfo, setEventsInfo] = React.useState<string | null>(null)
+  const [calendarOptions, setCalendarOptions] = React.useState<CalendarOption[]>([])
+  const [calendarSelectionMode, setCalendarSelectionMode] = React.useState<CalendarSelectionMode>("all")
+  const [selectedCalendarIds, setSelectedCalendarIds] = React.useState<string[]>([])
+  const [isCalendarListOpen, setIsCalendarListOpen] = React.useState(true)
+  const [isLoadingCalendarOptions, setIsLoadingCalendarOptions] = React.useState(false)
+  const [isSavingCalendarSelection, setIsSavingCalendarSelection] = React.useState(false)
+  const [calendarSelectionError, setCalendarSelectionError] = React.useState<string | null>(null)
 
   const weekDates = React.useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart])
   const weekEnd = React.useMemo(() => {
@@ -172,6 +202,28 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
     end.setHours(0, 0, 0, 0)
     return end
   }, [weekStart])
+
+  React.useEffect(() => {
+    if (!profile) return
+    const mode = normalizeSelectionMode(profile.google_calendar_selection_mode)
+    const ids = (profile.google_calendar_selected_ids ?? []).filter(
+      (id): id is string => typeof id === "string" && id.length > 0
+    )
+    setCalendarSelectionMode(mode)
+    setSelectedCalendarIds(Array.from(new Set(ids)))
+  }, [profile?.google_calendar_selected_ids, profile?.google_calendar_selection_mode])
+
+  const allCalendarIds = React.useMemo(() => calendarOptions.map((calendar) => calendar.id), [calendarOptions])
+  const effectiveSelectedCalendarIds = React.useMemo(() => {
+    if (calendarSelectionMode === "all") return allCalendarIds
+    if (calendarSelectionMode === "none") return []
+    const available = new Set(allCalendarIds)
+    return selectedCalendarIds.filter((id) => available.has(id))
+  }, [allCalendarIds, calendarSelectionMode, selectedCalendarIds])
+  const currentSelectionMode = React.useMemo(
+    () => deriveSelectionMode(allCalendarIds.length, effectiveSelectedCalendarIds.length),
+    [allCalendarIds.length, effectiveSelectedCalendarIds.length]
+  )
 
   React.useEffect(() => {
     const key = toDateKey(weekStart)
@@ -196,6 +248,49 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
     [user?.id],
     user ? { table: "tasks", filter: `user_id=eq.${user.id}` } : null
   )
+
+  const loadCalendarOptions = React.useCallback(async () => {
+    if (!session?.access_token || !profile?.google_calendar_sync) {
+      setCalendarOptions([])
+      setCalendarSelectionError(null)
+      return
+    }
+
+    setIsLoadingCalendarOptions(true)
+    setCalendarSelectionError(null)
+    try {
+      const response = await fetch("/api/google/calendar/lists", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        const message = typeof payload?.error === "string" ? payload.error : "No se pudo leer la lista de calendarios."
+        throw new Error(message)
+      }
+
+      const options = Array.isArray(payload?.calendars) ? (payload.calendars as CalendarOption[]) : []
+      setCalendarOptions(options)
+
+      const serverMode = normalizeSelectionMode(payload?.selection?.mode ?? profile?.google_calendar_selection_mode)
+      const serverIds = Array.isArray(payload?.selection?.selected_calendar_ids)
+        ? payload.selection.selected_calendar_ids.filter((id: unknown): id is string => typeof id === "string" && id.length > 0)
+        : (profile?.google_calendar_selected_ids ?? []).filter((id): id is string => typeof id === "string" && id.length > 0)
+
+      setCalendarSelectionMode(serverMode)
+      setSelectedCalendarIds(Array.from(new Set(serverIds)))
+    } catch (error: any) {
+      setCalendarSelectionError(error?.message ?? "No se pudo cargar calendarios.")
+    } finally {
+      setIsLoadingCalendarOptions(false)
+    }
+  }, [profile?.google_calendar_selected_ids, profile?.google_calendar_selection_mode, profile?.google_calendar_sync, session?.access_token])
+
+  React.useEffect(() => {
+    if (!session?.access_token || !profile?.google_calendar_sync) return
+    loadCalendarOptions().catch(() => {})
+  }, [loadCalendarOptions, profile?.google_calendar_sync, session?.access_token])
 
   const loadEvents = React.useCallback(async () => {
     if (!session?.access_token) return
@@ -233,7 +328,7 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
         ? payload.selection.active_calendar_ids.filter((id: unknown): id is string => typeof id === "string" && id.length > 0)
         : []
       if (selectionMode === "none" || activeIds.length === 0) {
-        setEventsInfo("No hay calendarios seleccionados para la agenda. Ajustalo en Centro de Sincronizacion.")
+        setEventsInfo("No hay calendarios seleccionados para la agenda. Ajustalo en Agenda > Mis calendarios.")
       }
     } catch (error: any) {
       const message = error?.message ?? "No se pudo cargar Google Calendar."
@@ -252,6 +347,66 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
   React.useEffect(() => {
     loadEvents().catch(() => {})
   }, [loadEvents])
+
+  const saveCalendarSelection = React.useCallback(
+    async (nextMode: CalendarSelectionMode, nextIds: string[]) => {
+      if (!user) return false
+      setIsSavingCalendarSelection(true)
+      setCalendarSelectionError(null)
+      try {
+        const uniqueIds = Array.from(new Set(nextIds))
+        const payloadIds = nextMode === "some" ? uniqueIds : []
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            google_calendar_selection_mode: nextMode,
+            google_calendar_selected_ids: payloadIds,
+          })
+          .eq("id", user.id)
+
+        if (error) {
+          throw new Error(error.message)
+        }
+
+        setCalendarSelectionMode(nextMode)
+        setSelectedCalendarIds(payloadIds)
+        await refetchProfile()
+        await loadEvents()
+        return true
+      } catch (error: any) {
+        const message = error?.message ?? "No se pudo guardar la seleccion de calendarios."
+        setCalendarSelectionError(message)
+        toast({
+          variant: "destructive",
+          title: "No se pudo actualizar calendarios",
+          description: message,
+        })
+        return false
+      } finally {
+        setIsSavingCalendarSelection(false)
+      }
+    },
+    [loadEvents, refetchProfile, supabase, toast, user]
+  )
+
+  const handleSelectAllCalendars = async () => {
+    await saveCalendarSelection("all", [])
+  }
+
+  const handleSelectNoCalendars = async () => {
+    await saveCalendarSelection("none", [])
+  }
+
+  const handleCalendarChecked = async (calendarId: string, checked: boolean) => {
+    const currentSet = new Set(effectiveSelectedCalendarIds)
+    if (checked) currentSet.add(calendarId)
+    else currentSet.delete(calendarId)
+
+    const nextSelectedIds = Array.from(currentSet)
+    const nextMode = deriveSelectionMode(allCalendarIds.length, nextSelectedIds.length)
+    const nextPayloadIds = nextMode === "some" ? nextSelectedIds : []
+    await saveCalendarSelection(nextMode, nextPayloadIds)
+  }
 
   const selectedDay = fromDateKey(selectedDayKey)
 
@@ -415,6 +570,95 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
             </Card>
 
             <div className="space-y-4">
+              <Card className="rounded-2xl border-slate-100 shadow-none">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base font-black">Mis calendarios</CardTitle>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-lg"
+                      onClick={() => setIsCalendarListOpen((value) => !value)}
+                    >
+                      {isCalendarListOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {effectiveSelectedCalendarIds.length} de {calendarOptions.length} activos (
+                    {currentSelectionMode === "all" ? "Todos" : currentSelectionMode === "none" ? "Ninguno" : "Algunos"}).
+                  </p>
+                </CardHeader>
+                {isCalendarListOpen ? (
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-lg"
+                        onClick={() => handleSelectAllCalendars().catch(() => {})}
+                        disabled={!profile?.google_calendar_sync || isSavingCalendarSelection || calendarOptions.length === 0}
+                      >
+                        Todos
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="rounded-lg"
+                        onClick={() => handleSelectNoCalendars().catch(() => {})}
+                        disabled={!profile?.google_calendar_sync || isSavingCalendarSelection}
+                      >
+                        Ninguno
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-lg"
+                        onClick={() => loadCalendarOptions().catch(() => {})}
+                        disabled={!profile?.google_calendar_sync || isLoadingCalendarOptions}
+                      >
+                        {isLoadingCalendarOptions ? "Actualizando..." : "Actualizar"}
+                      </Button>
+                    </div>
+
+                    {!profile?.google_calendar_sync ? (
+                      <p className="text-xs text-muted-foreground">Activa Google Calendar Sync en Configuracion para elegir calendarios.</p>
+                    ) : calendarSelectionError ? (
+                      <p className="text-xs text-red-600">{calendarSelectionError}</p>
+                    ) : (
+                      <div className="max-h-56 overflow-auto rounded-lg border border-slate-200 bg-white">
+                        {calendarOptions.length === 0 ? (
+                          <p className="px-3 py-4 text-xs text-muted-foreground">No se encontraron calendarios en tu cuenta.</p>
+                        ) : (
+                          calendarOptions.map((calendar) => {
+                            const isChecked = effectiveSelectedCalendarIds.includes(calendar.id)
+                            return (
+                              <label
+                                key={calendar.id}
+                                className="flex items-center gap-3 px-3 py-2 border-b border-slate-100 last:border-b-0 hover:bg-slate-50 cursor-pointer"
+                              >
+                                <Checkbox
+                                  checked={isChecked}
+                                  disabled={isSavingCalendarSelection}
+                                  onCheckedChange={(value) => handleCalendarChecked(calendar.id, value === true)}
+                                />
+                                <span
+                                  className="h-2.5 w-2.5 rounded-full"
+                                  style={{ backgroundColor: calendar.backgroundColor ?? "#94a3b8" }}
+                                />
+                                <span className="text-sm text-slate-700 truncate flex-1">{calendar.summary}</span>
+                                {calendar.primary ? (
+                                  <span className="text-[10px] uppercase tracking-wide text-slate-400">principal</span>
+                                ) : null}
+                              </label>
+                            )
+                          })
+                        )}
+                      </div>
+                    )}
+                  </CardContent>
+                ) : null}
+              </Card>
+
               <Card className="rounded-2xl border-slate-100 shadow-none">
                 <CardHeader>
                   <CardTitle className="text-base font-black flex items-center gap-2">

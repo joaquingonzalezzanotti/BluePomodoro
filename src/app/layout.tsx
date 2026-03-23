@@ -1,4 +1,4 @@
-import type {Metadata} from 'next';
+import type { Metadata, Viewport } from "next";
 import './globals.css';
 import { SupabaseProvider } from "@/supabase";
 import { PwaRegister } from "@/components/pwa-register";
@@ -14,7 +14,6 @@ export const metadata: Metadata = {
   keywords: ['pomodoro', 'IA', 'TDAH', 'productividad', 'gestión de tareas', 'enfoque', 'focus', 'neurodivergente'],
   authors: [{ name: 'BluePomodoro Team' }],
   manifest: "/manifest.json",
-  themeColor: "#2563eb",
   openGraph: {
     title: 'BluePomodoro - Domina tu Tiempo',
     description: 'Gestión de tareas impulsada por IA para mentes extraordinarias.',
@@ -36,6 +35,10 @@ export const metadata: Metadata = {
     shortcut: '/logo.png',
     apple: '/logo.png',
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#2563eb",
 };
 
 export default function RootLayout({
