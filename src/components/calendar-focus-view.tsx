@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { ArrowLeft, ArrowRight, CalendarDays, ChevronDown, ChevronRight, Clock3, RefreshCw, Sparkles, Target } from "lucide-react"
+import { ArrowLeft, ArrowRight, CalendarDays, Clock3, RefreshCw, Sparkles, Target } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -191,7 +191,6 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
   const [calendarOptions, setCalendarOptions] = React.useState<CalendarOption[]>([])
   const [calendarSelectionMode, setCalendarSelectionMode] = React.useState<CalendarSelectionMode>("all")
   const [selectedCalendarIds, setSelectedCalendarIds] = React.useState<string[]>([])
-  const [isCalendarListOpen, setIsCalendarListOpen] = React.useState(true)
   const [isLoadingCalendarOptions, setIsLoadingCalendarOptions] = React.useState(false)
   const [isSavingCalendarSelection, setIsSavingCalendarSelection] = React.useState(false)
   const [calendarSelectionError, setCalendarSelectionError] = React.useState<string | null>(null)
@@ -220,9 +219,18 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
     const available = new Set(allCalendarIds)
     return selectedCalendarIds.filter((id) => available.has(id))
   }, [allCalendarIds, calendarSelectionMode, selectedCalendarIds])
-  const currentSelectionMode = React.useMemo(
-    () => deriveSelectionMode(allCalendarIds.length, effectiveSelectedCalendarIds.length),
-    [allCalendarIds.length, effectiveSelectedCalendarIds.length]
+  const selectedCalendarSet = React.useMemo(() => new Set(effectiveSelectedCalendarIds), [effectiveSelectedCalendarIds])
+  const sortedCalendarOptions = React.useMemo(() => {
+    return [...calendarOptions].sort((a, b) => {
+      const aSelected = selectedCalendarSet.has(a.id) ? 0 : 1
+      const bSelected = selectedCalendarSet.has(b.id) ? 0 : 1
+      if (aSelected !== bSelected) return aSelected - bSelected
+      return a.summary.localeCompare(b.summary, "es")
+    })
+  }, [calendarOptions, selectedCalendarSet])
+  const selectedCalendars = React.useMemo(
+    () => sortedCalendarOptions.filter((calendar) => selectedCalendarSet.has(calendar.id)),
+    [selectedCalendarSet, sortedCalendarOptions]
   )
 
   React.useEffect(() => {
@@ -389,14 +397,6 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
     [loadEvents, refetchProfile, supabase, toast, user]
   )
 
-  const handleSelectAllCalendars = async () => {
-    await saveCalendarSelection("all", [])
-  }
-
-  const handleSelectNoCalendars = async () => {
-    await saveCalendarSelection("none", [])
-  }
-
   const handleCalendarChecked = async (calendarId: string, checked: boolean) => {
     const currentSet = new Set(effectiveSelectedCalendarIds)
     if (checked) currentSet.add(calendarId)
@@ -530,6 +530,86 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
             })}
           </div>
 
+          <Card className="rounded-2xl border-slate-100 shadow-none">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-black">Mis calendarios</CardTitle>
+              <p className="text-xs text-muted-foreground">Elegi que calendarios impactan en esta agenda.</p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {!profile?.google_calendar_sync ? (
+                <p className="text-xs text-muted-foreground">Activa Google Calendar Sync en Configuracion para elegir calendarios.</p>
+              ) : calendarSelectionError ? (
+                <div className="space-y-2">
+                  <p className="text-xs text-red-600">{calendarSelectionError}</p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 rounded-md px-2 text-xs"
+                    onClick={() => loadCalendarOptions().catch(() => {})}
+                    disabled={isLoadingCalendarOptions}
+                  >
+                    {isLoadingCalendarOptions ? "Cargando..." : "Reintentar"}
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {selectedCalendars.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {selectedCalendars.map((calendar) => (
+                        <div
+                          key={`active-${calendar.id}`}
+                          className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700"
+                        >
+                          <span
+                            className="h-2 w-2 rounded-full"
+                            style={{ backgroundColor: calendar.backgroundColor ?? "#94a3b8" }}
+                          />
+                          <span className="truncate max-w-48">{calendar.summary}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No hay calendarios seleccionados.</p>
+                  )}
+
+                  <div className="max-h-52 overflow-auto rounded-lg border border-slate-200 bg-white">
+                    {sortedCalendarOptions.length === 0 ? (
+                      <p className="px-3 py-4 text-xs text-muted-foreground">
+                        {isLoadingCalendarOptions ? "Cargando calendarios..." : "No se encontraron calendarios en tu cuenta."}
+                      </p>
+                    ) : (
+                      sortedCalendarOptions.map((calendar) => {
+                        const isChecked = effectiveSelectedCalendarIds.includes(calendar.id)
+                        return (
+                          <label
+                            key={calendar.id}
+                            className={`flex items-center gap-3 px-3 py-2 border-b border-slate-100 last:border-b-0 cursor-pointer transition-colors ${
+                              isChecked ? "bg-primary/5" : "hover:bg-slate-50"
+                            }`}
+                          >
+                            <Checkbox
+                              checked={isChecked}
+                              disabled={isSavingCalendarSelection}
+                              onCheckedChange={(value) => handleCalendarChecked(calendar.id, value === true)}
+                            />
+                            <span
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: calendar.backgroundColor ?? "#94a3b8" }}
+                            />
+                            <span className="text-sm text-slate-700 truncate flex-1">{calendar.summary}</span>
+                            {calendar.primary ? (
+                              <span className="text-[10px] uppercase tracking-wide text-slate-400">principal</span>
+                            ) : null}
+                          </label>
+                        )
+                      })
+                    )}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 xl:grid-cols-[1.3fr_1fr] gap-6">
             <Card className="rounded-2xl border-slate-100 shadow-none">
               <CardHeader>
@@ -570,95 +650,6 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
             </Card>
 
             <div className="space-y-4">
-              <Card className="rounded-2xl border-slate-100 shadow-none">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base font-black">Mis calendarios</CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-lg"
-                      onClick={() => setIsCalendarListOpen((value) => !value)}
-                    >
-                      {isCalendarListOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {effectiveSelectedCalendarIds.length} de {calendarOptions.length} activos (
-                    {currentSelectionMode === "all" ? "Todos" : currentSelectionMode === "none" ? "Ninguno" : "Algunos"}).
-                  </p>
-                </CardHeader>
-                {isCalendarListOpen ? (
-                  <CardContent className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-lg"
-                        onClick={() => handleSelectAllCalendars().catch(() => {})}
-                        disabled={!profile?.google_calendar_sync || isSavingCalendarSelection || calendarOptions.length === 0}
-                      >
-                        Todos
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="rounded-lg"
-                        onClick={() => handleSelectNoCalendars().catch(() => {})}
-                        disabled={!profile?.google_calendar_sync || isSavingCalendarSelection}
-                      >
-                        Ninguno
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="rounded-lg"
-                        onClick={() => loadCalendarOptions().catch(() => {})}
-                        disabled={!profile?.google_calendar_sync || isLoadingCalendarOptions}
-                      >
-                        {isLoadingCalendarOptions ? "Actualizando..." : "Actualizar"}
-                      </Button>
-                    </div>
-
-                    {!profile?.google_calendar_sync ? (
-                      <p className="text-xs text-muted-foreground">Activa Google Calendar Sync en Configuracion para elegir calendarios.</p>
-                    ) : calendarSelectionError ? (
-                      <p className="text-xs text-red-600">{calendarSelectionError}</p>
-                    ) : (
-                      <div className="max-h-56 overflow-auto rounded-lg border border-slate-200 bg-white">
-                        {calendarOptions.length === 0 ? (
-                          <p className="px-3 py-4 text-xs text-muted-foreground">No se encontraron calendarios en tu cuenta.</p>
-                        ) : (
-                          calendarOptions.map((calendar) => {
-                            const isChecked = effectiveSelectedCalendarIds.includes(calendar.id)
-                            return (
-                              <label
-                                key={calendar.id}
-                                className="flex items-center gap-3 px-3 py-2 border-b border-slate-100 last:border-b-0 hover:bg-slate-50 cursor-pointer"
-                              >
-                                <Checkbox
-                                  checked={isChecked}
-                                  disabled={isSavingCalendarSelection}
-                                  onCheckedChange={(value) => handleCalendarChecked(calendar.id, value === true)}
-                                />
-                                <span
-                                  className="h-2.5 w-2.5 rounded-full"
-                                  style={{ backgroundColor: calendar.backgroundColor ?? "#94a3b8" }}
-                                />
-                                <span className="text-sm text-slate-700 truncate flex-1">{calendar.summary}</span>
-                                {calendar.primary ? (
-                                  <span className="text-[10px] uppercase tracking-wide text-slate-400">principal</span>
-                                ) : null}
-                              </label>
-                            )
-                          })
-                        )}
-                      </div>
-                    )}
-                  </CardContent>
-                ) : null}
-              </Card>
-
               <Card className="rounded-2xl border-slate-100 shadow-none">
                 <CardHeader>
                   <CardTitle className="text-base font-black flex items-center gap-2">
