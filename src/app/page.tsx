@@ -3,6 +3,7 @@
 
 import * as React from "react"
 import Image from "next/image"
+import Link from "next/link"
 import { 
   LogIn, 
   Sparkles,
@@ -124,7 +125,15 @@ export default function RootLandingPage() {
         </section>
       </main>
 
-      <footer className="py-12 border-t border-slate-100 text-center">
+      <footer className="py-12 border-t border-slate-100 text-center space-y-3">
+        <div className="flex items-center justify-center gap-5 text-sm font-semibold text-slate-500">
+          <Link href="/privacy" className="underline-offset-4 hover:underline">
+            Politica de Privacidad
+          </Link>
+          <Link href="/terms" className="underline-offset-4 hover:underline">
+            Terminos de Servicio
+          </Link>
+        </div>
         <p className="text-sm text-slate-400 font-bold">© {new Date().getFullYear()} BluePomodoro. Potenciado por IA para mentes brillantes.</p>
       </footer>
     </div>
