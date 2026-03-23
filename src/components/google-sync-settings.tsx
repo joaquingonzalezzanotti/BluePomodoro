@@ -34,9 +34,10 @@ export function GoogleSyncSettings() {
   const supabase = useSupabase()
   const { toast } = useToast()
   const [isSyncing, setIsSyncing] = React.useState(false)
+  const [isConnecting, setIsConnecting] = React.useState(false)
   const { data: profile, refetch: refetchProfile } = useProfile()
 
-  const hasBridgeToken = Boolean(profile?.google_access_token)
+  const hasSyncGrant = Boolean(profile?.google_refresh_token)
   const hasAnySyncEnabled = Boolean(profile?.google_tasks_sync || profile?.google_calendar_sync)
   const lastSyncText = formatLastSync(profile?.google_last_synced_at)
 
@@ -87,10 +88,15 @@ export function GoogleSyncSettings() {
         const combinedError = [syncResult.errors.auth, syncResult.errors.tasks, syncResult.errors.calendar]
           .filter(Boolean)
           .join(" | ")
+        const needsOAuthReconnect =
+          combinedError.toLowerCase().includes("insufficient authentication scopes") ||
+          combinedError.toLowerCase().includes("google session is not connected")
         toast({
           variant: "destructive",
           title: "Sincronizacion parcial",
-          description: combinedError || "Hubo errores al sincronizar.",
+          description: needsOAuthReconnect
+            ? "Faltan permisos de Google Sync. Usa 'Conectar Google Sync' para autorizar Tasks/Calendar."
+            : combinedError || "Hubo errores al sincronizar.",
         })
         return
       }
@@ -110,30 +116,74 @@ export function GoogleSyncSettings() {
     }
   }
 
+  const handleConnectGoogleSync = async () => {
+    if (!session) {
+      toast({
+        variant: "destructive",
+        title: "Sesion requerida",
+        description: "Inicia sesion para conectar Google Sync.",
+      })
+      return
+    }
+
+    setIsConnecting(true)
+    try {
+      await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/app`,
+          scopes: "https://www.googleapis.com/auth/tasks.readonly https://www.googleapis.com/auth/calendar.readonly",
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+            include_granted_scopes: "true",
+          },
+        },
+      })
+    } catch (error: any) {
+      setIsConnecting(false)
+      toast({
+        variant: "destructive",
+        title: "No se pudo conectar Google Sync",
+        description: error?.message ?? "Error iniciando OAuth para sincronizacion.",
+      })
+    }
+  }
+
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-700">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h2 className="text-3xl font-black tracking-tight text-slate-900">Centro de Sincronizacion</h2>
-          <p className="text-muted-foreground">Backend bridge activo. Re-sync on Focus corre automaticamente.</p>
+          <p className="text-muted-foreground">Login separado de Sync. Re-sync on Focus corre automaticamente.</p>
         </div>
-        <Button
-          variant="default"
-          onClick={handleManualSync}
-          disabled={isSyncing || !session?.access_token || !hasAnySyncEnabled}
-          className="gap-2 rounded-xl shadow-lg shadow-primary/20 h-12 px-6"
-        >
-          <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
-          {isSyncing ? "Sincronizando..." : "Sincronizar ahora"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleConnectGoogleSync}
+            disabled={isConnecting}
+            className="gap-2 rounded-xl h-12 px-5"
+          >
+            {isConnecting ? "Conectando..." : "Conectar Google Sync"}
+          </Button>
+          <Button
+            variant="default"
+            onClick={handleManualSync}
+            disabled={isSyncing || !session?.access_token || !hasAnySyncEnabled}
+            className="gap-2 rounded-xl shadow-lg shadow-primary/20 h-12 px-6"
+          >
+            <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
+            {isSyncing ? "Sincronizando..." : "Sincronizar ahora"}
+          </Button>
+        </div>
       </div>
 
-      {!hasBridgeToken && (
+      {!hasSyncGrant && (
         <Alert variant="destructive" className="rounded-2xl border-none shadow-lg bg-red-50 text-red-700">
           <AlertTriangle className="h-5 w-5" />
-          <AlertTitle className="font-bold">Google no conectado</AlertTitle>
+          <AlertTitle className="font-bold">Google Sync no conectado</AlertTitle>
           <AlertDescription>
-            Cierra sesion e inicia nuevamente con Google para registrar tokens en backend.
+            Para sincronizar Tasks/Calendar, usa "Conectar Google Sync". El login normal ya no pide esos permisos.
           </AlertDescription>
         </Alert>
       )}

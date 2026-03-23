@@ -15,7 +15,8 @@ import {
   UserCircle,
   CheckSquare,
   Target,
-  PanelLeft
+  PanelLeft,
+  CalendarDays
 } from "lucide-react"
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, useSidebar } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
@@ -25,6 +26,7 @@ import { ConfigurationView } from "@/components/configuration-view"
 import { StatsView } from "@/components/stats-view"
 import { ProjectManager } from "@/components/project-manager"
 import { KanbanBoard } from "@/components/kanban-board"
+import { CalendarFocusView } from "@/components/calendar-focus-view"
 import { FocusMusic } from "@/components/focus-music"
 import { SpotifyRealTime } from "@/components/spotify-real-time"
 import { Button } from "@/components/ui/button"
@@ -171,6 +173,7 @@ function DashboardContent({
 
   const tabTitles: Record<string, string> = {
     dashboard: "Tablero de Enfoque",
+    agenda: "Agenda Inteligente",
     foco: "Modo Zen",
     tareas: "Gestión de Tareas",
     proyectos: "Mis Proyectos",
@@ -193,6 +196,7 @@ function DashboardContent({
               <SidebarMenu>
                 {[
                   { id: "dashboard", icon: LayoutDashboard, label: "Tablero" },
+                  { id: "agenda", icon: CalendarDays, label: "Agenda" },
                   { id: "foco", icon: Target, label: "Foco" },
                   { id: "tareas", icon: CheckSquare, label: "Tareas" },
                   { id: "proyectos", icon: FolderKanban, label: "Proyectos" },
@@ -282,6 +286,14 @@ function DashboardContent({
                    <SpotifyRealTime />
                 </div>
               </div>
+            )}
+
+            {activeTab === "agenda" && (
+              <CalendarFocusView
+                activeTaskId={activeTaskId}
+                onTaskSelect={(id) => setActiveTaskId(id)}
+                onOpenFocusTab={() => setActiveTab("foco")}
+              />
             )}
 
             {activeTab === "foco" && (
@@ -525,12 +537,7 @@ export default function AppEntry() {
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/app`,
-        scopes: "https://www.googleapis.com/auth/tasks.readonly https://www.googleapis.com/auth/calendar.readonly",
-        queryParams: {
-          access_type: "offline",
-          prompt: "consent",
-          include_granted_scopes: "true",
-        },
+        scopes: "openid email profile",
       },
     })
   }

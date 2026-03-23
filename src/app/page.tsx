@@ -38,12 +38,7 @@ export default function RootLandingPage() {
         provider: "google",
         options: {
           redirectTo: `${window.location.origin}/app`,
-          scopes: "https://www.googleapis.com/auth/tasks.readonly https://www.googleapis.com/auth/calendar.readonly",
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-            include_granted_scopes: "true",
-          },
+          scopes: "openid email profile",
         },
       })
     } catch (e: any) {

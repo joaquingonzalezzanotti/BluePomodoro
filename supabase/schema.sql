@@ -85,7 +85,7 @@ create table if not exists public.tasks (
 );
 create index if not exists tasks_user_id_idx on public.tasks(user_id);
 create index if not exists tasks_subject_id_idx on public.tasks(subject_id);
-create unique index if not exists tasks_google_task_unique on public.tasks(user_id, google_task_id) where google_task_id is not null;
+create unique index if not exists tasks_google_task_unique on public.tasks(user_id, google_task_id);
 
 -- Pomodoro sessions
 create table if not exists public.pomodoro_sessions (
@@ -125,6 +125,8 @@ alter table public.profiles add column if not exists google_refresh_token text;
 alter table public.profiles add column if not exists google_token_expires_at timestamptz;
 alter table public.profiles add column if not exists google_last_synced_at timestamptz;
 alter table public.profiles add column if not exists google_last_sync_error text;
+drop index if exists tasks_google_task_unique;
+create unique index if not exists tasks_google_task_unique on public.tasks(user_id, google_task_id);
 
 -- Profile auto-create on auth signup
 create or replace function public.handle_new_user()
