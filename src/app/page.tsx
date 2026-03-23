@@ -38,6 +38,11 @@ export default function RootLandingPage() {
         options: {
           redirectTo: `${window.location.origin}/app`,
           scopes: "https://www.googleapis.com/auth/tasks.readonly https://www.googleapis.com/auth/calendar.readonly",
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+            include_granted_scopes: "true",
+          },
         },
       })
     } catch (e: any) {

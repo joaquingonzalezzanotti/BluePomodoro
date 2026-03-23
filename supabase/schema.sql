@@ -31,6 +31,11 @@ create table if not exists public.profiles (
   spotify_access_token text,
   spotify_refresh_token text,
   spotify_token_expires_at timestamptz,
+  google_access_token text,
+  google_refresh_token text,
+  google_token_expires_at timestamptz,
+  google_last_synced_at timestamptz,
+  google_last_sync_error text,
   google_calendar_sync boolean not null default false,
   google_tasks_sync boolean not null default false,
   pomodoro_work_minutes integer not null default 40,
@@ -115,6 +120,11 @@ create index if not exists push_subscriptions_user_id_idx on public.push_subscri
 -- Add missing columns if upgrading an existing database
 alter table public.profiles add column if not exists spotify_refresh_token text;
 alter table public.profiles add column if not exists spotify_token_expires_at timestamptz;
+alter table public.profiles add column if not exists google_access_token text;
+alter table public.profiles add column if not exists google_refresh_token text;
+alter table public.profiles add column if not exists google_token_expires_at timestamptz;
+alter table public.profiles add column if not exists google_last_synced_at timestamptz;
+alter table public.profiles add column if not exists google_last_sync_error text;
 
 -- Profile auto-create on auth signup
 create or replace function public.handle_new_user()

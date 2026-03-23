@@ -37,6 +37,7 @@ import { Switch } from "@/components/ui/switch"
 import { AlertDialog, AlertDialogAction, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
+import { syncGoogleBridge } from "@/lib/google-sync-client"
 import { useRouter } from "next/navigation"
 
 function SidebarToggle() {
@@ -374,6 +375,7 @@ export default function AppEntry() {
   const [activeTab, setActiveTab] = React.useState("dashboard")
   const router = useRouter()
   const audioRef = React.useRef<HTMLAudioElement | null>(null)
+  const focusSyncInFlightRef = React.useRef(false)
 
   React.useEffect(() => {
     setMounted(true)
@@ -384,6 +386,42 @@ export default function AppEntry() {
       syncSettingsFromProfile(profile)
     }
   }, [profile, syncSettingsFromProfile])
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return
+    if (!user || !session?.access_token) return
+    if (!profile?.google_tasks_sync && !profile?.google_calendar_sync) return
+
+    const runFocusSync = async () => {
+      if (focusSyncInFlightRef.current) return
+      focusSyncInFlightRef.current = true
+      try {
+        await syncGoogleBridge({
+          accessToken: session.access_token,
+          reason: "focus",
+        })
+      } catch {
+        // Silent by design. Manual sync in settings surfaces errors to the user.
+      } finally {
+        focusSyncInFlightRef.current = false
+      }
+    }
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        runFocusSync().catch(() => {})
+      }
+    }
+
+    document.addEventListener("visibilitychange", onVisibilityChange)
+    if (document.visibilityState === "visible") {
+      runFocusSync().catch(() => {})
+    }
+
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange)
+    }
+  }, [profile?.google_calendar_sync, profile?.google_tasks_sync, session?.access_token, user])
 
   React.useEffect(() => {
     if (!user || typeof window === "undefined") return
@@ -488,6 +526,11 @@ export default function AppEntry() {
       options: {
         redirectTo: `${window.location.origin}/app`,
         scopes: "https://www.googleapis.com/auth/tasks.readonly https://www.googleapis.com/auth/calendar.readonly",
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
+          include_granted_scopes: "true",
+        },
       },
     })
   }

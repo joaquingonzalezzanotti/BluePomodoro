@@ -28,7 +28,7 @@ export default function PrivacyPolicy() {
         
         <h2 className="text-xl font-semibold text-foreground">2. Uso de los datos</h2>
         <p>
-          Tus datos se almacenan de forma segura en Supabase (PostgreSQL) y no se comparten con terceros con fines comerciales. Los datos de Google Calendar y Tasks se procesan localmente en tu navegador para ayudarte a organizar tus sesiones Pomodoro.
+          Tus datos se almacenan de forma segura en Supabase (PostgreSQL) y no se comparten con terceros con fines comerciales. Los datos de Google Calendar y Google Tasks se consultan desde nuestro backend como puente de integracion para sincronizar tu cuenta de forma segura.
         </p>
         
         <h2 className="text-xl font-semibold text-foreground">3. Control del usuario</h2>

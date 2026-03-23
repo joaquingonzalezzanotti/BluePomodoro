@@ -12,6 +12,11 @@ export type Profile = {
   spotify_access_token: string | null;
   spotify_refresh_token: string | null;
   spotify_token_expires_at: string | null;
+  google_access_token: string | null;
+  google_refresh_token: string | null;
+  google_token_expires_at: string | null;
+  google_last_synced_at: string | null;
+  google_last_sync_error: string | null;
   google_calendar_sync: boolean;
   google_tasks_sync: boolean;
   pomodoro_work_minutes: number;

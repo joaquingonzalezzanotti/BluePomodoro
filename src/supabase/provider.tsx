@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { SupabaseClient, User, Session } from "@supabase/supabase-js";
 import { getSupabaseClient } from "@/supabase/client";
 
@@ -18,6 +18,7 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isUserLoading, setIsUserLoading] = useState<boolean>(true);
+  const lastSyncedProviderTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -50,12 +51,29 @@ export function SupabaseProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const provider = session?.user?.app_metadata?.provider;
-    if (provider === "google" && session?.provider_token) {
-      sessionStorage.setItem("google_access_token", session.provider_token);
-      return;
-    }
-    sessionStorage.removeItem("google_access_token");
-  }, [session?.provider_token, session?.user?.app_metadata?.provider]);
+    const providerToken = session?.provider_token;
+    const appAccessToken = session?.access_token;
+    if (provider !== "google" || !providerToken || !appAccessToken) return;
+    if (lastSyncedProviderTokenRef.current === providerToken) return;
+
+    fetch("/api/google/session", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${appAccessToken}`,
+      },
+      body: JSON.stringify({
+        providerToken,
+        providerRefreshToken: session?.provider_refresh_token ?? null,
+      }),
+    })
+      .then((response) => {
+        if (response.ok) {
+          lastSyncedProviderTokenRef.current = providerToken;
+        }
+      })
+      .catch(() => {});
+  }, [session?.access_token, session?.provider_refresh_token, session?.provider_token, session?.user?.app_metadata?.provider]);
 
   const value: SupabaseContextValue = {
     supabase,

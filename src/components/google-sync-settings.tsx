@@ -1,104 +1,109 @@
-
 "use client"
 
 import * as React from "react"
-import { Calendar as CalendarIcon, CheckSquare, RefreshCw, ExternalLink, Cloud, AlertCircle, AlertTriangle } from "lucide-react"
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import { useSession, useSupabase, useUser } from "@/supabase"
-import { useProfile } from "@/supabase/hooks"
+import { AlertCircle, AlertTriangle, Calendar as CalendarIcon, CheckSquare, RefreshCw } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
+import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch"
 import { useToast } from "@/hooks/use-toast"
+import { syncGoogleBridge } from "@/lib/google-sync-client"
+import { useSession, useSupabase, useUser } from "@/supabase"
+import { useProfile } from "@/supabase/hooks"
+
+function formatLastSync(value: string | null | undefined): string {
+  if (!value) return "No hay sincronizaciones aun."
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return "No hay sincronizaciones aun."
+  const elapsedMs = Date.now() - date.getTime()
+  if (elapsedMs < 60_000) return "Hace menos de 1 minuto."
+  const elapsedMin = Math.floor(elapsedMs / 60_000)
+  if (elapsedMin < 60) return `Hace ${elapsedMin} minuto${elapsedMin === 1 ? "" : "s"}.`
+  const elapsedHours = Math.floor(elapsedMin / 60)
+  if (elapsedHours < 24) return `Hace ${elapsedHours} hora${elapsedHours === 1 ? "" : "s"}.`
+  const elapsedDays = Math.floor(elapsedHours / 24)
+  return `Hace ${elapsedDays} dia${elapsedDays === 1 ? "" : "s"}.`
+}
 
 export function GoogleSyncSettings() {
   const { user } = useUser()
+  const { session } = useSession()
   const supabase = useSupabase()
   const { toast } = useToast()
   const [isSyncing, setIsSyncing] = React.useState(false)
-  const { data: profile } = useProfile()
-  const { session } = useSession()
+  const { data: profile, refetch: refetchProfile } = useProfile()
 
-  const token = session?.provider_token ?? (typeof window !== "undefined" ? sessionStorage.getItem("google_access_token") : null)
-  const hasToken = !!token
+  const hasBridgeToken = Boolean(profile?.google_access_token)
+  const hasAnySyncEnabled = Boolean(profile?.google_tasks_sync || profile?.google_calendar_sync)
+  const lastSyncText = formatLastSync(profile?.google_last_synced_at)
 
-  const handleToggle = (key: "google_calendar_sync" | "google_tasks_sync", value: boolean) => {
+  const handleToggle = async (key: "google_calendar_sync" | "google_tasks_sync", value: boolean) => {
     if (!user) return
-    supabase.from("profiles").update({ [key]: value }).eq("id", user.id)
-  }
-
-  const handleRealSync = async () => {
-    if (!profile?.google_tasks_sync) {
+    const { error } = await supabase.from("profiles").update({ [key]: value }).eq("id", user.id)
+    if (error) {
       toast({
         variant: "destructive",
-        title: "Importacion desactivada",
-        description: "Activa 'Importar Tareas' para sincronizar con Google Tasks."
+        title: "No se pudo guardar el ajuste",
+        description: error.message,
+      })
+      return
+    }
+    await refetchProfile()
+  }
+
+  const handleManualSync = async () => {
+    if (!user || !session?.access_token) {
+      toast({
+        variant: "destructive",
+        title: "Sesion requerida",
+        description: "Inicia sesion para sincronizar Google.",
       })
       return
     }
 
-    if (!token) {
+    if (!hasAnySyncEnabled) {
       toast({
         variant: "destructive",
-        title: "Sesion de Google expirada",
-        description: "Cierra sesion e inicia de nuevo con Google para actualizar los permisos."
-      });
-      return;
+        title: "Sincronizacion desactivada",
+        description: "Activa Google Calendar o Google Tasks para ejecutar la sincronizacion.",
+      })
+      return
     }
 
-    if (!user) return
     setIsSyncing(true)
-
     try {
-      const response = await fetch('https://www.googleapis.com/tasks/v1/lists/@default/tasks', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      const syncResult = await syncGoogleBridge({
+        accessToken: session.access_token,
+        reason: "manual",
+        force: true,
+      })
 
-      if (!response.ok) throw new Error('Error al conectar con Google Tasks');
-      
-      const data = await response.json();
-      const googleTasks = data.items || [];
+      await refetchProfile()
 
-      if (googleTasks.length === 0) {
-        toast({ title: "Sin tareas", description: "No se encontraron tareas en tu cuenta de Google." });
-        setIsSyncing(false);
-        return;
-      }
-
-      let importedCount = 0;
-
-      for (const task of googleTasks) {
-        if (task.title) {
-          await supabase.from("tasks").upsert({
-            user_id: user.id,
-            title: task.title,
-            status: "Pendiente",
-            effort_estimated: 1,
-            pomodoros_completed: 0,
-            subtasks: [],
-            created_at: new Date().toISOString(),
-            imported_from_google: true,
-            google_task_id: task.id
-          }, { onConflict: "user_id,google_task_id" });
-          importedCount++;
-        }
+      if (syncResult.errors.auth || syncResult.errors.tasks || syncResult.errors.calendar) {
+        const combinedError = [syncResult.errors.auth, syncResult.errors.tasks, syncResult.errors.calendar]
+          .filter(Boolean)
+          .join(" | ")
+        toast({
+          variant: "destructive",
+          title: "Sincronizacion parcial",
+          description: combinedError || "Hubo errores al sincronizar.",
+        })
+        return
       }
 
       toast({
-        title: "Sincronización Exitosa",
-        description: `Se han importado ${importedCount} tareas reales desde Google Tasks.`
+        title: "Sincronizacion completa",
+        description: `Tasks: ${syncResult.tasks.upserted} upsert, ${syncResult.tasks.removed} removidas. Calendar: ${syncResult.calendar.events_fetched} eventos leidos.`,
       })
     } catch (error: any) {
-      console.error(error);
       toast({
         variant: "destructive",
-        title: "Error de integración",
-        description: "Asegúrate de haber aceptado los permisos de Google Tasks al iniciar sesión."
+        title: "Error de sincronizacion",
+        description: error?.message ?? "No se pudo sincronizar Google.",
       })
     } finally {
       setIsSyncing(false)
@@ -107,15 +112,15 @@ export function GoogleSyncSettings() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-700">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-black tracking-tight text-slate-900">Centro de Sincronización</h2>
-          <p className="text-muted-foreground">Importa tus tareas reales desde tu cuenta de Google.</p>
+          <h2 className="text-3xl font-black tracking-tight text-slate-900">Centro de Sincronizacion</h2>
+          <p className="text-muted-foreground">Backend bridge activo. Re-sync on Focus corre automaticamente.</p>
         </div>
-        <Button 
-          variant="default" 
-          onClick={handleRealSync} 
-          disabled={isSyncing || !hasToken || !profile?.google_tasks_sync}
+        <Button
+          variant="default"
+          onClick={handleManualSync}
+          disabled={isSyncing || !session?.access_token || !hasAnySyncEnabled}
           className="gap-2 rounded-xl shadow-lg shadow-primary/20 h-12 px-6"
         >
           <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
@@ -123,13 +128,21 @@ export function GoogleSyncSettings() {
         </Button>
       </div>
 
-      {!hasToken && (
+      {!hasBridgeToken && (
         <Alert variant="destructive" className="rounded-2xl border-none shadow-lg bg-red-50 text-red-700">
           <AlertTriangle className="h-5 w-5" />
-          <AlertTitle className="font-bold">Permisos Requeridos</AlertTitle>
+          <AlertTitle className="font-bold">Google no conectado</AlertTitle>
           <AlertDescription>
-            Para usar la sincronización real, inicia sesión con Google y acepta los permisos de lectura.
+            Cierra sesion e inicia nuevamente con Google para registrar tokens en backend.
           </AlertDescription>
+        </Alert>
+      )}
+
+      {profile?.google_last_sync_error && (
+        <Alert variant="destructive" className="rounded-2xl border-none shadow-lg">
+          <AlertCircle className="h-5 w-5" />
+          <AlertTitle className="font-bold">Ultimo error de sincronizacion</AlertTitle>
+          <AlertDescription>{profile.google_last_sync_error}</AlertDescription>
         </Alert>
       )}
 
@@ -137,11 +150,9 @@ export function GoogleSyncSettings() {
         <div className="lg:col-span-2 space-y-6">
           <Alert className="bg-primary/5 border-primary/20 rounded-2xl p-6">
             <AlertCircle className="h-5 w-5 text-primary" />
-            <AlertTitle className="font-bold text-primary">Estado de la Integración</AlertTitle>
+            <AlertTitle className="font-bold text-primary">Estado de Integracion</AlertTitle>
             <AlertDescription className="text-primary/80 text-xs mt-1">
-              {hasToken 
-                ? "Conexión autorizada. Al sincronizar, extraemos tus tareas de Google Tasks para convertirlas en sesiones de enfoque locales."
-                : "Habilita los servicios a la derecha para empezar a importar tus pendientes reales."}
+              Ultima sync: {lastSyncText}
             </AlertDescription>
           </Alert>
 
@@ -157,8 +168,12 @@ export function GoogleSyncSettings() {
                   <p className="text-xs text-muted-foreground italic">Desactivado.</p>
                 ) : (
                   <div className="space-y-4">
-                    <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-none font-black text-[9px]">SISTEMA LISTO</Badge>
-                    <p className="text-xs font-medium text-slate-500">Tus eventos se convertirán en bloques de enfoque.</p>
+                    <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-none font-black text-[9px]">
+                      READ ONLY MVP
+                    </Badge>
+                    <p className="text-xs font-medium text-slate-500">
+                      El backend lee eventos del calendario principal en cada sync.
+                    </p>
                   </div>
                 )}
               </CardContent>
@@ -175,8 +190,12 @@ export function GoogleSyncSettings() {
                   <p className="text-xs text-muted-foreground italic">Desactivado.</p>
                 ) : (
                   <div className="space-y-4">
-                    <Badge variant="secondary" className="bg-green-50 text-green-600 border-none font-black text-[9px]">IMPORTACIÓN ACTIVA</Badge>
-                    <p className="text-xs font-medium text-slate-500">Importaremos tus tareas de la lista principal.</p>
+                    <Badge variant="secondary" className="bg-green-50 text-green-600 border-none font-black text-[9px]">
+                      GOOGLE WINS
+                    </Badge>
+                    <p className="text-xs font-medium text-slate-500">
+                      Importacion desde lista default con upsert y limpieza de tareas removidas.
+                    </p>
                   </div>
                 )}
               </CardContent>
@@ -192,34 +211,30 @@ export function GoogleSyncSettings() {
             <CardContent className="pt-6 space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label className="text-sm font-bold">Importar Calendario</Label>
-                  <p className="text-[10px] text-muted-foreground">Lectura de eventos.</p>
+                  <Label className="text-sm font-bold">Importar Calendar</Label>
+                  <p className="text-[10px] text-muted-foreground">Lectura de eventos (read only).</p>
                 </div>
-                <Switch 
+                <Switch
                   checked={!!profile?.google_calendar_sync}
-                  onCheckedChange={(v) => handleToggle("google_calendar_sync", v)} 
+                  onCheckedChange={(value) => handleToggle("google_calendar_sync", value)}
                 />
               </div>
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label className="text-sm font-bold">Importar Tareas</Label>
-                  <p className="text-[10px] text-muted-foreground">Sincronizar con tareas de BluePomodoro.</p>
+                  <Label className="text-sm font-bold">Importar Tasks</Label>
+                  <p className="text-[10px] text-muted-foreground">Sync de tareas default de Google Tasks.</p>
                 </div>
-                <Switch 
+                <Switch
                   checked={!!profile?.google_tasks_sync}
-                  onCheckedChange={(v) => handleToggle("google_tasks_sync", v)} 
+                  onCheckedChange={(value) => handleToggle("google_tasks_sync", value)}
                 />
               </div>
-              
+
               <Separator />
-              
-              <div className="space-y-3">
-                <h4 className="text-[10px] font-black uppercase text-muted-foreground">Preferencias de IA</h4>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium">Auto-priorización</span>
-                  <Switch checked className="scale-75" />
-                </div>
-              </div>
+
+              <p className="text-[10px] text-muted-foreground font-bold">
+                Re-sync on Focus: silenciosa, sin toast en exito, con toast solo en error manual.
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -227,3 +242,4 @@ export function GoogleSyncSettings() {
     </div>
   )
 }
+
