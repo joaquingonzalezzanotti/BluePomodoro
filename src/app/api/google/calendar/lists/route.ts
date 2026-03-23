@@ -31,21 +31,6 @@ type GoogleCalendarListResponse = {
   nextPageToken?: string;
 };
 
-type GoogleCalendarEventItem = {
-  id?: string;
-  summary?: string;
-  description?: string;
-  location?: string;
-  status?: string;
-  htmlLink?: string;
-  start?: { date?: string; dateTime?: string };
-  end?: { date?: string; dateTime?: string };
-};
-
-type GoogleCalendarEventsResponse = {
-  items?: GoogleCalendarEventItem[];
-};
-
 type CalendarOption = {
   id: string;
   summary: string;
@@ -122,11 +107,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const url = new URL(req.url);
-  const start = url.searchParams.get("start") ?? new Date().toISOString();
-  const end = url.searchParams.get("end") ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-  const maxResults = Math.min(Math.max(Number(url.searchParams.get("max") ?? "150"), 1), 400);
-
   const supabase = getSupabaseClient(authHeader);
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData?.user) {
@@ -144,13 +124,6 @@ export async function GET(req: Request) {
   const typedProfile = (profile ?? null) as ProfileRow | null;
   if (profileError || !typedProfile) {
     return NextResponse.json({ error: profileError?.message ?? "Profile not found." }, { status: 500 });
-  }
-
-  if (!typedProfile.google_calendar_sync) {
-    return NextResponse.json(
-      { error: "Google Calendar sync is disabled.", code: "google_calendar_sync_disabled" },
-      { status: 412 }
-    );
   }
 
   if (!typedProfile.google_access_token) {
@@ -188,13 +161,14 @@ export async function GET(req: Request) {
     return response;
   };
 
-  const calendarList: CalendarOption[] = [];
+  const calendars: CalendarOption[] = [];
   let pageToken: string | undefined;
   do {
     const params = new URLSearchParams({ minAccessRole: "reader", showDeleted: "false", showHidden: "true" });
     if (pageToken) params.set("pageToken", pageToken);
 
     const listResponse = await authorizedGet(`https://www.googleapis.com/calendar/v3/users/me/calendarList?${params.toString()}`);
+
     if (listResponse.status === 401) {
       return NextResponse.json(
         { error: "Google authorization expired. Reconnect Google Sync.", code: "google_sync_expired" },
@@ -210,114 +184,22 @@ export async function GET(req: Request) {
     const payload = (await listResponse.json()) as GoogleCalendarListResponse;
     for (const item of payload.items ?? []) {
       const normalized = normalizeCalendarListItem(item);
-      if (normalized) calendarList.push(normalized);
+      if (normalized) calendars.push(normalized);
     }
     pageToken = payload.nextPageToken;
   } while (pageToken);
 
   const selectionMode = normalizeSelectionMode(typedProfile.google_calendar_selection_mode);
-  const selectedIds = (typedProfile.google_calendar_selected_ids ?? []).filter((id): id is string => typeof id === "string" && id.length > 0);
-  const selectedIdSet = new Set(selectedIds);
-
+  const selectedIds = (typedProfile.google_calendar_selected_ids ?? []).filter(
+    (id): id is string => typeof id === "string" && id.length > 0
+  );
+  const selectedSet = new Set(selectedIds);
   const activeCalendars =
     selectionMode === "none"
       ? []
       : selectionMode === "some"
-      ? calendarList.filter((calendar) => selectedIdSet.has(calendar.id))
-      : calendarList;
-
-  if (activeCalendars.length === 0) {
-    if (tokenWasRefreshed && accessToken) {
-      await supabase
-        .from("profiles")
-        .update({
-          google_access_token: accessToken,
-          google_refresh_token: refreshToken,
-          google_token_expires_at: refreshedTokenExpiresAt,
-        })
-        .eq("id", userData.user.id);
-    }
-
-    return NextResponse.json({
-      events: [],
-      range: { start, end },
-      selection: {
-        mode: selectionMode,
-        selected_calendar_ids: selectedIds,
-        active_calendar_ids: [],
-      },
-    });
-  }
-
-  const perCalendarMax = Math.min(100, Math.max(15, Math.ceil(maxResults / activeCalendars.length) + 10));
-  const aggregatedEvents: Array<{
-    id: string;
-    summary: string;
-    description: string;
-    location: string;
-    status: string;
-    htmlLink: string | null;
-    start: string;
-    end: string;
-    allDay: boolean;
-    calendarId: string;
-    calendarSummary: string;
-    calendarPrimary: boolean;
-    calendarColor: string | null;
-  }> = [];
-
-  for (const calendar of activeCalendars) {
-    const params = new URLSearchParams({
-      timeMin: start,
-      timeMax: end,
-      singleEvents: "true",
-      orderBy: "startTime",
-      maxResults: String(perCalendarMax),
-      showDeleted: "false",
-    });
-
-    const eventsResponse = await authorizedGet(
-      `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendar.id)}/events?${params.toString()}`
-    );
-
-    if (eventsResponse.status === 401) {
-      return NextResponse.json(
-        { error: "Google authorization expired. Reconnect Google Sync.", code: "google_sync_expired" },
-        { status: 412 }
-      );
-    }
-
-    if (!eventsResponse.ok) {
-      // Skip calendars that fail individually (e.g., permissions changed) without failing whole agenda.
-      continue;
-    }
-
-    const payload = (await eventsResponse.json().catch(() => ({}))) as GoogleCalendarEventsResponse;
-    for (const item of payload.items ?? []) {
-      const startValue = item.start?.dateTime ?? item.start?.date ?? null;
-      const endValue = item.end?.dateTime ?? item.end?.date ?? null;
-      if (!startValue || !endValue) continue;
-
-      aggregatedEvents.push({
-        id: `${calendar.id}:${item.id ?? crypto.randomUUID()}`,
-        summary: item.summary ?? "Sin titulo",
-        description: item.description ?? "",
-        location: item.location ?? "",
-        status: item.status ?? "confirmed",
-        htmlLink: item.htmlLink ?? null,
-        start: startValue,
-        end: endValue,
-        allDay: Boolean(item.start?.date && !item.start?.dateTime),
-        calendarId: calendar.id,
-        calendarSummary: calendar.summary,
-        calendarPrimary: calendar.primary,
-        calendarColor: calendar.backgroundColor,
-      });
-    }
-  }
-
-  aggregatedEvents.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
-  const events = aggregatedEvents.slice(0, maxResults);
+      ? calendars.filter((calendar) => selectedSet.has(calendar.id))
+      : calendars;
 
   if (tokenWasRefreshed && accessToken) {
     await supabase
@@ -331,8 +213,8 @@ export async function GET(req: Request) {
   }
 
   return NextResponse.json({
-    events,
-    range: { start, end },
+    sync_enabled: Boolean(typedProfile.google_calendar_sync),
+    calendars,
     selection: {
       mode: selectionMode,
       selected_calendar_ids: selectedIds,
@@ -340,4 +222,3 @@ export async function GET(req: Request) {
     },
   });
 }
-

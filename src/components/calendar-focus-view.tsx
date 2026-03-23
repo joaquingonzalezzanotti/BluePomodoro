@@ -20,6 +20,10 @@ type CalendarEvent = {
   start: string
   end: string
   allDay: boolean
+  calendarId?: string
+  calendarSummary?: string
+  calendarPrimary?: boolean
+  calendarColor?: string | null
 }
 
 type Slot = {
@@ -160,6 +164,7 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
   const [events, setEvents] = React.useState<CalendarEvent[]>([])
   const [isLoadingEvents, setIsLoadingEvents] = React.useState(false)
   const [eventsError, setEventsError] = React.useState<string | null>(null)
+  const [eventsInfo, setEventsInfo] = React.useState<string | null>(null)
 
   const weekDates = React.useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)), [weekStart])
   const weekEnd = React.useMemo(() => {
@@ -197,11 +202,13 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
     if (!profile?.google_calendar_sync) {
       setEvents([])
       setEventsError("Activa Google Calendar Sync para ver tu agenda.")
+      setEventsInfo(null)
       return
     }
 
     setIsLoadingEvents(true)
     setEventsError(null)
+    setEventsInfo(null)
     try {
       const response = await fetch(
         `/api/google/calendar/events?start=${encodeURIComponent(weekStart.toISOString())}&end=${encodeURIComponent(weekEnd.toISOString())}&max=200`,
@@ -217,9 +224,21 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
         throw new Error(message)
       }
       setEvents(Array.isArray(payload?.events) ? (payload.events as CalendarEvent[]) : [])
+
+      const selectionMode =
+        payload?.selection?.mode === "all" || payload?.selection?.mode === "none" || payload?.selection?.mode === "some"
+          ? payload.selection.mode
+          : "all"
+      const activeIds = Array.isArray(payload?.selection?.active_calendar_ids)
+        ? payload.selection.active_calendar_ids.filter((id: unknown): id is string => typeof id === "string" && id.length > 0)
+        : []
+      if (selectionMode === "none" || activeIds.length === 0) {
+        setEventsInfo("No hay calendarios seleccionados para la agenda. Ajustalo en Centro de Sincronizacion.")
+      }
     } catch (error: any) {
       const message = error?.message ?? "No se pudo cargar Google Calendar."
       setEventsError(message)
+      setEventsInfo(null)
       toast({
         variant: "destructive",
         title: "Error de calendario",
@@ -366,6 +385,8 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
               <CardContent className="space-y-3">
                 {eventsError ? (
                   <p className="text-sm text-red-600">{eventsError}</p>
+                ) : eventsInfo ? (
+                  <p className="text-sm text-muted-foreground">{eventsInfo}</p>
                 ) : selectedDayEvents.length === 0 ? (
                   <p className="text-sm text-muted-foreground">Sin eventos en este dia.</p>
                 ) : (
@@ -377,6 +398,15 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
                           ? "Todo el dia"
                           : `${formatHour(new Date(event.start))} - ${formatHour(new Date(event.end))}`}
                       </p>
+                      {event.calendarSummary ? (
+                        <div className="mt-1 flex items-center gap-2">
+                          <span
+                            className="h-2 w-2 rounded-full"
+                            style={{ backgroundColor: event.calendarColor ?? "#94a3b8" }}
+                          />
+                          <p className="text-[11px] text-slate-500 truncate">{event.calendarSummary}</p>
+                        </div>
+                      ) : null}
                       {event.location ? <p className="text-xs text-slate-500">{event.location}</p> : null}
                     </div>
                   ))
@@ -442,7 +472,7 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
                       <div key={task.id} className="rounded-xl border border-slate-100 p-3">
                         <p className="text-sm font-bold text-slate-900">{task.title}</p>
                         <p className="text-xs text-slate-500 mt-1">
-                          Vence: {formatDueDate(task.due_date)} • Estimado: {Math.max(task.effort_estimated ?? 1, 1)} pomodoros
+                          Vence: {formatDueDate(task.due_date)} | Estimado: {Math.max(task.effort_estimated ?? 1, 1)} pomodoros
                         </p>
                         <Button
                           size="sm"
@@ -472,4 +502,3 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
     </div>
   )
 }
-

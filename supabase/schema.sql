@@ -36,6 +36,8 @@ create table if not exists public.profiles (
   google_token_expires_at timestamptz,
   google_last_synced_at timestamptz,
   google_last_sync_error text,
+  google_calendar_selection_mode text not null default 'all',
+  google_calendar_selected_ids text[] not null default '{}'::text[],
   google_calendar_sync boolean not null default false,
   google_tasks_sync boolean not null default false,
   pomodoro_work_minutes integer not null default 40,
@@ -125,6 +127,15 @@ alter table public.profiles add column if not exists google_refresh_token text;
 alter table public.profiles add column if not exists google_token_expires_at timestamptz;
 alter table public.profiles add column if not exists google_last_synced_at timestamptz;
 alter table public.profiles add column if not exists google_last_sync_error text;
+alter table public.profiles add column if not exists google_calendar_selection_mode text not null default 'all';
+alter table public.profiles add column if not exists google_calendar_selected_ids text[] not null default '{}'::text[];
+do $$ begin
+  alter table public.profiles
+    add constraint profiles_google_calendar_selection_mode_check
+    check (google_calendar_selection_mode in ('all', 'none', 'some'));
+exception
+  when duplicate_object then null;
+end $$;
 drop index if exists tasks_google_task_unique;
 create unique index if not exists tasks_google_task_unique on public.tasks(user_id, google_task_id);
 

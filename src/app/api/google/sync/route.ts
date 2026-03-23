@@ -8,6 +8,7 @@ const GOOGLE_OAUTH_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "";
 const FOCUS_SYNC_MIN_INTERVAL_MS = 60_000;
 
 type SyncReason = "manual" | "focus";
+type CalendarSelectionMode = "all" | "none" | "some";
 
 type ProfileRow = {
   id: string;
@@ -17,6 +18,8 @@ type ProfileRow = {
   google_refresh_token: string | null;
   google_token_expires_at: string | null;
   google_last_synced_at: string | null;
+  google_calendar_selection_mode: CalendarSelectionMode | null;
+  google_calendar_selected_ids: string[] | null;
 };
 
 type GoogleTasksResponse = {
@@ -32,6 +35,16 @@ type GoogleTasksResponse = {
 
 type GoogleCalendarResponse = {
   items?: Array<{ id?: string }>;
+};
+
+type GoogleCalendarListItem = {
+  id?: string;
+  deleted?: boolean;
+};
+
+type GoogleCalendarListResponse = {
+  items?: GoogleCalendarListItem[];
+  nextPageToken?: string;
 };
 
 function getSupabaseClient(authHeader: string) {
@@ -53,6 +66,11 @@ function toDateOnly(value?: string): string | null {
 
 function normalizeText(value: string): string {
   return value.trim().toLowerCase();
+}
+
+function normalizeSelectionMode(value: string | null | undefined): CalendarSelectionMode {
+  if (value === "some" || value === "none" || value === "all") return value;
+  return "all";
 }
 
 function findSubjectIdByTitle(
@@ -148,7 +166,7 @@ export async function POST(req: Request) {
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
     .select(
-      "id, google_tasks_sync, google_calendar_sync, google_access_token, google_refresh_token, google_token_expires_at, google_last_synced_at"
+      "id, google_tasks_sync, google_calendar_sync, google_access_token, google_refresh_token, google_token_expires_at, google_last_synced_at, google_calendar_selection_mode, google_calendar_selected_ids"
     )
     .eq("id", userData.user.id)
     .single();
@@ -334,31 +352,89 @@ export async function POST(req: Request) {
     }
   }
 
-  // Google Calendar read-only bridge (MVP): fetch upcoming events for future mapping.
+  // Google Calendar read-only bridge: fetch upcoming events across selected calendars.
   if (typedProfile.google_calendar_sync) {
     try {
-      const params = new URLSearchParams({
-        maxResults: "50",
-        singleEvents: "true",
-        orderBy: "startTime",
-        timeMin: new Date().toISOString(),
-      });
+      const calendarIds: string[] = [];
+      let pageToken: string | undefined;
 
-      const calendarResponse = await authorizedGet(
-        `https://www.googleapis.com/calendar/v3/calendars/primary/events?${params.toString()}`
+      do {
+        const listParams = new URLSearchParams({
+          minAccessRole: "reader",
+          showDeleted: "false",
+          showHidden: "true",
+        });
+        if (pageToken) listParams.set("pageToken", pageToken);
+
+        const calendarListResponse = await authorizedGet(
+          `https://www.googleapis.com/calendar/v3/users/me/calendarList?${listParams.toString()}`
+        );
+
+        if (calendarListResponse.status === 401) {
+          throw new Error("Google authorization expired. Please sign in again.");
+        }
+        if (!calendarListResponse.ok) {
+          throw new Error(await parseGoogleError(calendarListResponse));
+        }
+
+        const calendarListPayload = (await calendarListResponse.json()) as GoogleCalendarListResponse;
+        for (const item of calendarListPayload.items ?? []) {
+          if (!item?.id || item.deleted) continue;
+          calendarIds.push(item.id);
+        }
+        pageToken = calendarListPayload.nextPageToken;
+      } while (pageToken);
+
+      const selectionMode = normalizeSelectionMode(typedProfile.google_calendar_selection_mode);
+      const selectedIds = (typedProfile.google_calendar_selected_ids ?? []).filter(
+        (id): id is string => typeof id === "string" && id.length > 0
       );
+      const selectedSet = new Set(selectedIds);
+      const activeCalendarIds =
+        selectionMode === "none"
+          ? []
+          : selectionMode === "some"
+          ? calendarIds.filter((id) => selectedSet.has(id))
+          : calendarIds;
 
-      if (calendarResponse.status === 401) {
-        throw new Error("Google authorization expired. Please sign in again.");
-      }
-      if (!calendarResponse.ok) {
-        throw new Error(await parseGoogleError(calendarResponse));
-      }
+      if (activeCalendarIds.length === 0) {
+        result.calendar.events_fetched = 0;
+      } else {
+        const totalMax = 50;
+        const perCalendarMax = Math.min(100, Math.max(5, Math.ceil(totalMax / activeCalendarIds.length)));
+        const timeMin = new Date().toISOString();
+        let totalEvents = 0;
 
-      const calendarPayload = (await calendarResponse.json()) as GoogleCalendarResponse;
-      result.calendar.events_fetched = calendarPayload.items?.length ?? 0;
+        for (const calendarId of activeCalendarIds) {
+          const params = new URLSearchParams({
+            maxResults: String(perCalendarMax),
+            singleEvents: "true",
+            orderBy: "startTime",
+            timeMin,
+            showDeleted: "false",
+          });
+
+          const calendarResponse = await authorizedGet(
+            `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params.toString()}`
+          );
+
+          if (calendarResponse.status === 401) {
+            throw new Error("Google authorization expired. Please sign in again.");
+          }
+          if (!calendarResponse.ok) {
+            // Skip calendars that fail individually so one calendar does not break the whole sync.
+            continue;
+          }
+
+          const calendarPayload = (await calendarResponse.json()) as GoogleCalendarResponse;
+          totalEvents += calendarPayload.items?.length ?? 0;
+        }
+
+        result.calendar.events_fetched = totalEvents;
+      }
     } catch (error: any) {
-      result.errors.calendar = error?.message ?? "calendar-sync-failed";
+      const message = error?.message ?? "calendar-sync-failed";
+      result.errors.calendar = message;
     }
   }
 

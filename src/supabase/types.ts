@@ -17,6 +17,8 @@ export type Profile = {
   google_token_expires_at: string | null;
   google_last_synced_at: string | null;
   google_last_sync_error: string | null;
+  google_calendar_selection_mode: "all" | "none" | "some";
+  google_calendar_selected_ids: string[] | null;
   google_calendar_sync: boolean;
   google_tasks_sync: boolean;
   pomodoro_work_minutes: number;
