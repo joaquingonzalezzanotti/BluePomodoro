@@ -281,7 +281,7 @@ export function GoogleSyncSettings() {
               <Separator />
 
               <p className="text-[10px] text-muted-foreground font-bold">
-                Seleccion de calendarios: pestaña Agenda &gt; Mis calendarios.
+                Seleccion de calendarios: pestaÃ±a Agenda &gt; Mis calendarios.
               </p>
               <p className="text-[10px] text-muted-foreground font-bold">
                 Re-sync on Focus: silenciosa, sin toast en exito, con toast solo en error manual.
