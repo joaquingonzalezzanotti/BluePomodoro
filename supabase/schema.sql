@@ -91,7 +91,6 @@ create table if not exists public.tasks (
 );
 create index if not exists tasks_user_id_idx on public.tasks(user_id);
 create index if not exists tasks_subject_id_idx on public.tasks(subject_id);
-create index if not exists tasks_user_completed_at_idx on public.tasks(user_id, completed_at);
 create unique index if not exists tasks_google_task_unique on public.tasks(user_id, google_task_id);
 
 -- Pomodoro sessions
