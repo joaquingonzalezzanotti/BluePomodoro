@@ -8,21 +8,28 @@ import type { RewardSummary } from "@/pomodoro/stats"
 
 type GamifiedProgressProps = {
   rewards: RewardSummary
-  weeklyDeltaPercent: number
+  comparisonDeltaPercent: number
+  periodLabel: string
+  comparisonLabel: string
 }
 
-export function GamifiedProgress({ rewards, weeklyDeltaPercent }: GamifiedProgressProps) {
+export function GamifiedProgress({
+  rewards,
+  comparisonDeltaPercent,
+  periodLabel,
+  comparisonLabel,
+}: GamifiedProgressProps) {
   const progress = rewards.levelProgressPct
-  const deltaSign = weeklyDeltaPercent > 0 ? "+" : ""
+  const deltaSign = comparisonDeltaPercent > 0 ? "+" : ""
 
   return (
     <Card className="w-full bg-card shadow-lg border-none h-full">
       <CardHeader>
         <CardTitle className="text-xl font-bold flex items-center gap-2">
           <Trophy className="h-6 w-6 text-accent" />
-          Mi Progreso
+          Mi Progreso Mensual
         </CardTitle>
-        <CardDescription>Nivel {rewards.level}: Maestro del Enfoque</CardDescription>
+        <CardDescription>{periodLabel} · Nivel {rewards.level}: Maestro del Enfoque</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
@@ -39,8 +46,8 @@ export function GamifiedProgress({ rewards, weeklyDeltaPercent }: GamifiedProgre
               <TrendingUp className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Productividad</p>
-              <p className="text-lg font-bold">{deltaSign}{weeklyDeltaPercent}%</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{comparisonLabel}</p>
+              <p className="text-lg font-bold">{deltaSign}{comparisonDeltaPercent}%</p>
             </div>
           </div>
           <div className="p-3 bg-accent/5 rounded-xl flex items-center gap-3">
@@ -48,7 +55,7 @@ export function GamifiedProgress({ rewards, weeklyDeltaPercent }: GamifiedProgre
               <Flame className="h-5 w-5 text-accent" />
             </div>
             <div>
-              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Racha Diaria</p>
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Racha del mes</p>
               <p className="text-lg font-bold">{rewards.streakDays} dias</p>
             </div>
           </div>
@@ -57,7 +64,7 @@ export function GamifiedProgress({ rewards, weeklyDeltaPercent }: GamifiedProgre
         <div className="space-y-3">
           <h4 className="text-sm font-bold flex items-center gap-2">
             <Medal className="h-4 w-4 text-primary" />
-            Insignias Recientes
+            Insignias del mes
           </h4>
           <div className="flex gap-2 flex-wrap">
             {rewards.badges.map(badge => (

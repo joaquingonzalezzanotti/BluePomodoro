@@ -30,13 +30,53 @@ export type RewardSummary = {
   badges: RewardBadge[];
 };
 
+type BuildPomodoroStatsOptions = {
+  timeZone?: string;
+};
+
+type BuildRewardSummaryOptions = {
+  timeZone?: string;
+  isCurrentPeriod?: boolean;
+};
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function getLocalDateKey(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+function getDateParts(value: Date, timeZone: string) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(value);
+
+  const year = Number(parts.find(part => part.type === "year")?.value ?? "0");
+  const month = Number(parts.find(part => part.type === "month")?.value ?? "1");
+  const day = Number(parts.find(part => part.type === "day")?.value ?? "1");
+
+  return { year, month, day };
+}
+
+function getHourInTimeZone(value: Date, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone,
+    hour: "2-digit",
+    hour12: false,
+  }).formatToParts(value);
+  return Number(parts.find(part => part.type === "hour")?.value ?? "0");
+}
+
+export function getDateKeyInTimeZone(value: Date | string, timeZone: string): string {
+  const parsed = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(parsed.getTime())) return "";
+  const { year, month, day } = getDateParts(parsed, timeZone);
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+export function getMonthKeyInTimeZone(value: Date | string, timeZone: string): string {
+  const parsed = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(parsed.getTime())) return "";
+  const { year, month } = getDateParts(parsed, timeZone);
+  return `${year}-${String(month).padStart(2, "0")}`;
 }
 
 function dateKeyToDate(key: string): Date {
@@ -44,20 +84,21 @@ function dateKeyToDate(key: string): Date {
   return new Date(year, (month ?? 1) - 1, day ?? 1, 12, 0, 0);
 }
 
-function computeStreakDays(workSessions: PomodoroSession[]): number {
+function getCurrentStreakDays(workSessions: PomodoroSession[], timeZone: string): number {
   if (!workSessions.length) return 0;
+
   const dateKeys = new Set<string>();
   for (const session of workSessions) {
-    const completed = session.completed_at ? new Date(session.completed_at) : null;
-    if (!completed) continue;
-    dateKeys.add(getLocalDateKey(completed));
+    if (!session.completed_at) continue;
+    const key = getDateKeyInTimeZone(session.completed_at, timeZone);
+    if (key) dateKeys.add(key);
   }
 
   const uniqueDates = Array.from(dateKeys).sort().reverse();
   if (!uniqueDates.length) return 0;
 
-  const todayKey = getLocalDateKey(new Date());
-  const yesterdayKey = getLocalDateKey(new Date(Date.now() - DAY_MS));
+  const todayKey = getDateKeyInTimeZone(new Date(), timeZone);
+  const yesterdayKey = getDateKeyInTimeZone(new Date(Date.now() - DAY_MS), timeZone);
   const mostRecent = uniqueDates[0];
 
   if (mostRecent !== todayKey && mostRecent !== yesterdayKey) return 0;
@@ -65,7 +106,7 @@ function computeStreakDays(workSessions: PomodoroSession[]): number {
   let streak = 1;
   let cursor = dateKeyToDate(mostRecent);
   for (let i = 1; i < uniqueDates.length; i += 1) {
-    const expected = getLocalDateKey(new Date(cursor.getTime() - DAY_MS));
+    const expected = getDateKeyInTimeZone(new Date(cursor.getTime() - DAY_MS), timeZone);
     if (uniqueDates[i] !== expected) break;
     streak += 1;
     cursor = dateKeyToDate(uniqueDates[i]);
@@ -74,11 +115,43 @@ function computeStreakDays(workSessions: PomodoroSession[]): number {
   return streak;
 }
 
+function getLongestStreakDays(workSessions: PomodoroSession[], timeZone: string): number {
+  if (!workSessions.length) return 0;
+
+  const dateKeys = new Set<string>();
+  for (const session of workSessions) {
+    if (!session.completed_at) continue;
+    const key = getDateKeyInTimeZone(session.completed_at, timeZone);
+    if (key) dateKeys.add(key);
+  }
+  const ordered = Array.from(dateKeys).sort();
+  if (!ordered.length) return 0;
+
+  let longest = 1;
+  let current = 1;
+  for (let i = 1; i < ordered.length; i += 1) {
+    const prevDate = dateKeyToDate(ordered[i - 1]);
+    const expected = getDateKeyInTimeZone(new Date(prevDate.getTime() + DAY_MS), timeZone);
+    if (ordered[i] === expected) {
+      current += 1;
+      if (current > longest) longest = current;
+    } else {
+      current = 1;
+    }
+  }
+
+  return longest;
+}
+
 function isWorkSession(session: PomodoroSession) {
   return session.mode === "work" && !!session.completed_at;
 }
 
-export function buildPomodoroStats(sessions: PomodoroSession[]): PomodoroStats {
+export function buildPomodoroStats(
+  sessions: PomodoroSession[],
+  options: BuildPomodoroStatsOptions = {}
+): PomodoroStats {
+  const timeZone = options.timeZone ?? "UTC";
   const workSessions = sessions.filter(isWorkSession);
   const workSessionsCount = workSessions.length;
 
@@ -87,18 +160,24 @@ export function buildPomodoroStats(sessions: PomodoroSession[]): PomodoroStats {
 
   const breakOvertimeMinutes = Math.round(
     sessions
-      .filter(s => s.mode === "break")
+      .filter(s => s.mode === "break" && !!s.completed_at)
       .reduce((acc, s) => acc + (s.overtime_sec || 0), 0) / 60
   );
 
   const groups: Record<string, number> = {};
   workSessions.forEach(session => {
-    const date = new Date(session.completed_at as string).toLocaleDateString();
-    groups[date] = (groups[date] || 0) + 1;
+    if (!session.completed_at) return;
+    const key = getDateKeyInTimeZone(session.completed_at, timeZone);
+    if (!key) return;
+    groups[key] = (groups[key] || 0) + 1;
   });
+
   const sessionsByDay = Object.entries(groups)
-    .map(([date, count]) => ({ date, count }))
-    .reverse();
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([dateKey, count]) => {
+      const [year, month, day] = dateKey.split("-");
+      return { date: `${day}/${month}`, count };
+    });
 
   const now = Date.now();
   const startCurrent = now - 7 * DAY_MS;
@@ -131,19 +210,24 @@ export function buildPomodoroStats(sessions: PomodoroSession[]): PomodoroStats {
 }
 
 export function buildRewardSummary(
-  _profile: Profile | null,
+  profile: Profile | null,
   sessions: PomodoroSession[],
-  stats: PomodoroStats
+  stats: PomodoroStats,
+  options: BuildRewardSummaryOptions = {}
 ): RewardSummary {
+  const timeZone = options.timeZone ?? profile?.timezone ?? "UTC";
+  const isCurrentPeriod = options.isCurrentPeriod ?? true;
   const workSessions = sessions.filter(isWorkSession);
-  const streakDays = computeStreakDays(workSessions);
+  const streakDays = isCurrentPeriod
+    ? getCurrentStreakDays(workSessions, timeZone)
+    : getLongestStreakDays(workSessions, timeZone);
 
   const focusMinutes = Math.round(
     workSessions.reduce((acc, session) => acc + (session.duration_sec || 0), 0) / 60
   );
   const overtimeMinutes = Math.round(
     sessions
-      .filter(s => s.mode === "break")
+      .filter(s => s.mode === "break" && !!s.completed_at)
       .reduce((acc, s) => acc + (s.overtime_sec || 0), 0) / 60
   );
 
@@ -160,20 +244,20 @@ export function buildRewardSummary(
 
   const sessionsByDate: Record<string, number> = {};
   workSessions.forEach(session => {
-    const completed = session.completed_at ? new Date(session.completed_at) : null;
-    if (!completed) return;
-    const key = getLocalDateKey(completed);
+    if (!session.completed_at) return;
+    const key = getDateKeyInTimeZone(session.completed_at, timeZone);
+    if (!key) return;
     sessionsByDate[key] = (sessionsByDate[key] || 0) + 1;
   });
   const maxSessionsInDay = Object.values(sessionsByDate).reduce((acc, count) => Math.max(acc, count), 0);
 
   const hasEarlySession = workSessions.some(session => {
-    const hour = new Date(session.completed_at as string).getHours();
-    return hour < 9;
+    if (!session.completed_at) return false;
+    return getHourInTimeZone(new Date(session.completed_at), timeZone) < 9;
   });
   const hasNightSession = workSessions.some(session => {
-    const hour = new Date(session.completed_at as string).getHours();
-    return hour >= 22;
+    if (!session.completed_at) return false;
+    return getHourInTimeZone(new Date(session.completed_at), timeZone) >= 22;
   });
   const hasDeepFocus = workSessions.some(session => (session.duration_sec || 0) >= 50 * 60);
   const hasConsistency = streakDays >= 3;
@@ -187,7 +271,7 @@ export function buildRewardSummary(
     {
       id: "first-focus",
       name: "Primer Enfoque",
-      description: "Terminaste tu primera sesion real.",
+      description: "Terminaste tu primera sesion del mes.",
       color: "bg-slate-100 text-slate-700",
       unlocked: hasFirstSession,
     },
@@ -243,7 +327,7 @@ export function buildRewardSummary(
     {
       id: "marathon",
       name: "Maraton",
-      description: "Sumaste 10 horas de foco.",
+      description: "Sumaste 10 horas de foco en el mes.",
       color: "bg-slate-100 text-slate-700",
       unlocked: hasMarathon,
     },

@@ -2,6 +2,7 @@ export type Profile = {
   id: string;
   display_name: string | null;
   email: string | null;
+  timezone: string;
   created_at: string;
   puntos_totales: number;
   streak_days: number;
@@ -40,6 +41,7 @@ export type Task = {
   subject_id: string | null;
   title: string;
   status: TaskStatus;
+  completed_at: string | null;
   effort_estimated: number;
   pomodoros_completed: number;
   subtasks: Array<{ id: string; text: string; completed: boolean }> | null;
