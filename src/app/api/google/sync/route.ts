@@ -30,6 +30,7 @@ type GoogleTasksResponse = {
     id?: string;
     title?: string;
     status?: "needsAction" | "completed";
+    completed?: string;
     due?: string;
     updated?: string;
     notes?: string;
@@ -67,6 +68,13 @@ function toDateOnly(value?: string): string | null {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return null;
   return parsed.toISOString().slice(0, 10);
+}
+
+function toIsoOrNull(value?: string | null): string | null {
+  if (!value) return null;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString();
 }
 
 function normalizeText(value: string): string {
@@ -319,6 +327,7 @@ export async function POST(req: Request) {
         id: string;
         title: string;
         status: "needsAction" | "completed";
+        completed: string | undefined;
         due: string | undefined;
         updated: string | undefined;
       }> = [];
@@ -351,6 +360,7 @@ export async function POST(req: Request) {
             id: item.id,
             title: item.title,
             status: item.status === "completed" ? "completed" : "needsAction",
+            completed: item.completed,
             due: item.due,
             updated: item.updated,
           });
@@ -368,6 +378,7 @@ export async function POST(req: Request) {
         id: string;
         title: string;
         status: "needsAction" | "completed";
+        completed: string | undefined;
         due: string | undefined;
         updated: string | undefined;
       }) => {
@@ -380,7 +391,7 @@ export async function POST(req: Request) {
       if (tasksMode === "bidirectional") {
         const { data: localTasks, error: localTasksError } = await supabase
           .from("tasks")
-          .select("id, title, status, due_date, google_task_id")
+          .select("id, title, status, completed_at, due_date, google_task_id")
           .eq("user_id", userData.user.id);
         if (localTasksError) {
           throw new Error(localTasksError.message);
@@ -396,6 +407,9 @@ export async function POST(req: Request) {
             typeof localTask.due_date === "string" ? localTask.due_date : null
           );
           const localDueDateOnly = typeof localTask.due_date === "string" ? localTask.due_date : null;
+          const localCompletedAtIso = toIsoOrNull(
+            typeof localTask.completed_at === "string" ? localTask.completed_at : null
+          );
           const existingGoogleTaskId =
             typeof localTask.google_task_id === "string" && localTask.google_task_id.length > 0
               ? localTask.google_task_id
@@ -423,6 +437,7 @@ export async function POST(req: Request) {
               id?: string;
               title?: string;
               status?: "needsAction" | "completed";
+              completed?: string;
               due?: string;
               updated?: string;
             };
@@ -441,6 +456,7 @@ export async function POST(req: Request) {
               id: created.id,
               title: created.title ?? localTitle,
               status: created.status === "completed" ? "completed" : localStatus,
+              completed: created.completed,
               due: created.due ?? (localDueIso ?? undefined),
               updated: created.updated,
             });
@@ -469,6 +485,7 @@ export async function POST(req: Request) {
               id?: string;
               title?: string;
               status?: "needsAction" | "completed";
+              completed?: string;
               due?: string;
               updated?: string;
             };
@@ -487,6 +504,7 @@ export async function POST(req: Request) {
               id: recreated.id,
               title: recreated.title ?? localTitle,
               status: recreated.status === "completed" ? "completed" : localStatus,
+              completed: recreated.completed,
               due: recreated.due ?? (localDueIso ?? undefined),
               updated: recreated.updated,
             });
@@ -495,6 +513,30 @@ export async function POST(req: Request) {
 
           const remoteTitle = normalizeText(remoteTask.title ?? "");
           const remoteStatus = remoteTask.status;
+          const remoteCompletedAtIso =
+            toIsoOrNull(remoteTask.completed) ??
+            toIsoOrNull(remoteTask.updated) ??
+            localCompletedAtIso ??
+            new Date().toISOString();
+
+          // In bidirectional mode, completion on either side must converge to completed.
+          // If Google already has it completed and local is still pending, pull completion first.
+          if (remoteStatus === "completed" && localStatus !== "completed") {
+            const { error: localCompleteError } = await supabase
+              .from("tasks")
+              .update({
+                status: "Completada",
+                completed_at: remoteCompletedAtIso,
+                imported_from_google: true,
+              })
+              .eq("id", localTask.id)
+              .eq("user_id", userData.user.id);
+            if (localCompleteError) {
+              throw new Error(localCompleteError.message);
+            }
+            continue;
+          }
+
           const remoteDueDateOnly = toDateOnly(remoteTask.due);
           const needsPatch =
             remoteTitle !== normalizeText(localTitle) ||
@@ -532,6 +574,7 @@ export async function POST(req: Request) {
             id?: string;
             title?: string;
             status?: "needsAction" | "completed";
+            completed?: string;
             due?: string;
             updated?: string;
           };
@@ -543,6 +586,7 @@ export async function POST(req: Request) {
             id: existingGoogleTaskId,
             title: patched.title ?? localTitle,
             status: patched.status === "completed" ? "completed" : localStatus,
+            completed: patched.completed,
             due: patched.due ?? (localDueIso ?? undefined),
             updated: patched.updated,
           });
@@ -555,6 +599,10 @@ export async function POST(req: Request) {
         user_id: userData.user.id,
         title: task.title,
         status: googleStatusToLocalStatus(task.status),
+        completed_at:
+          task.status === "completed"
+            ? toIsoOrNull(task.completed) ?? toIsoOrNull(task.updated)
+            : null,
         due_date: toDateOnly(task.due),
         imported_from_google: true,
         google_task_id: task.id,
