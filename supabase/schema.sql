@@ -36,6 +36,8 @@ create table if not exists public.profiles (
   google_token_expires_at timestamptz,
   google_last_synced_at timestamptz,
   google_last_sync_error text,
+  google_tasks_sync_mode text not null default 'read_only',
+  google_calendar_sync_mode text not null default 'read_only',
   google_calendar_selection_mode text not null default 'all',
   google_calendar_selected_ids text[] not null default '{}'::text[],
   google_calendar_sync boolean not null default false,
@@ -127,8 +129,24 @@ alter table public.profiles add column if not exists google_refresh_token text;
 alter table public.profiles add column if not exists google_token_expires_at timestamptz;
 alter table public.profiles add column if not exists google_last_synced_at timestamptz;
 alter table public.profiles add column if not exists google_last_sync_error text;
+alter table public.profiles add column if not exists google_tasks_sync_mode text not null default 'read_only';
+alter table public.profiles add column if not exists google_calendar_sync_mode text not null default 'read_only';
 alter table public.profiles add column if not exists google_calendar_selection_mode text not null default 'all';
 alter table public.profiles add column if not exists google_calendar_selected_ids text[] not null default '{}'::text[];
+do $$ begin
+  alter table public.profiles
+    add constraint profiles_google_tasks_sync_mode_check
+    check (google_tasks_sync_mode in ('read_only', 'bidirectional'));
+exception
+  when duplicate_object then null;
+end $$;
+do $$ begin
+  alter table public.profiles
+    add constraint profiles_google_calendar_sync_mode_check
+    check (google_calendar_sync_mode in ('read_only', 'bidirectional'));
+exception
+  when duplicate_object then null;
+end $$;
 do $$ begin
   alter table public.profiles
     add constraint profiles_google_calendar_selection_mode_check

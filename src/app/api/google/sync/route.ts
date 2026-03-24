@@ -9,11 +9,14 @@ const FOCUS_SYNC_MIN_INTERVAL_MS = 60_000;
 
 type SyncReason = "manual" | "focus";
 type CalendarSelectionMode = "all" | "none" | "some";
+type SyncMode = "read_only" | "bidirectional";
 
 type ProfileRow = {
   id: string;
   google_tasks_sync: boolean;
   google_calendar_sync: boolean;
+  google_tasks_sync_mode: SyncMode | null;
+  google_calendar_sync_mode: SyncMode | null;
   google_access_token: string | null;
   google_refresh_token: string | null;
   google_token_expires_at: string | null;
@@ -28,6 +31,8 @@ type GoogleTasksResponse = {
     title?: string;
     status?: "needsAction" | "completed";
     due?: string;
+    updated?: string;
+    notes?: string;
     deleted?: boolean;
   }>;
   nextPageToken?: string;
@@ -71,6 +76,25 @@ function normalizeText(value: string): string {
 function normalizeSelectionMode(value: string | null | undefined): CalendarSelectionMode {
   if (value === "some" || value === "none" || value === "all") return value;
   return "all";
+}
+
+function normalizeSyncMode(value: string | null | undefined): SyncMode {
+  return value === "bidirectional" ? "bidirectional" : "read_only";
+}
+
+function localDueDateToGoogleDue(dueDate: string | null | undefined): string | null {
+  if (!dueDate) return null;
+  const parsed = new Date(`${dueDate}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString();
+}
+
+function localStatusToGoogleStatus(status: string): "needsAction" | "completed" {
+  return status === "Completada" ? "completed" : "needsAction";
+}
+
+function googleStatusToLocalStatus(status: "needsAction" | "completed"): "Pendiente" | "Completada" {
+  return status === "completed" ? "Completada" : "Pendiente";
 }
 
 function findSubjectIdByTitle(
@@ -166,12 +190,16 @@ export async function POST(req: Request) {
   let profileQuery = await supabase
     .from("profiles")
     .select(
-      "id, google_tasks_sync, google_calendar_sync, google_access_token, google_refresh_token, google_token_expires_at, google_last_synced_at, google_calendar_selection_mode, google_calendar_selected_ids"
+      "id, google_tasks_sync, google_calendar_sync, google_tasks_sync_mode, google_calendar_sync_mode, google_access_token, google_refresh_token, google_token_expires_at, google_last_synced_at, google_calendar_selection_mode, google_calendar_selected_ids"
     )
     .eq("id", userData.user.id)
     .single();
 
-  if (profileQuery.error?.message?.includes("google_calendar_selection_mode")) {
+  if (
+    profileQuery.error?.message?.includes("google_calendar_selection_mode") ||
+    profileQuery.error?.message?.includes("google_tasks_sync_mode") ||
+    profileQuery.error?.message?.includes("google_calendar_sync_mode")
+  ) {
     profileQuery = await supabase
       .from("profiles")
       .select(
@@ -188,6 +216,8 @@ export async function POST(req: Request) {
         id: String(profile.id),
         google_tasks_sync: Boolean(profile.google_tasks_sync),
         google_calendar_sync: Boolean(profile.google_calendar_sync),
+        google_tasks_sync_mode: normalizeSyncMode(profile.google_tasks_sync_mode),
+        google_calendar_sync_mode: normalizeSyncMode(profile.google_calendar_sync_mode),
         google_access_token: profile.google_access_token ?? null,
         google_refresh_token: profile.google_refresh_token ?? null,
         google_token_expires_at: profile.google_token_expires_at ?? null,
@@ -212,12 +242,17 @@ export async function POST(req: Request) {
     synced_at: null as string | null,
     tasks: {
       enabled: Boolean(typedProfile.google_tasks_sync),
+      mode: normalizeSyncMode(typedProfile.google_tasks_sync_mode),
       total_google: 0,
       upserted: 0,
       removed: 0,
+      pushed_remote: 0,
+      created_remote: 0,
+      updated_remote: 0,
     },
     calendar: {
       enabled: Boolean(typedProfile.google_calendar_sync),
+      mode: normalizeSyncMode(typedProfile.google_calendar_sync_mode),
       events_fetched: 0,
     },
     errors: {} as { auth?: string; tasks?: string; calendar?: string },
@@ -249,10 +284,12 @@ export async function POST(req: Request) {
     );
   }
 
-  const authorizedGet = async (url: string): Promise<Response> => {
+  const authorizedRequest = async (url: string, init?: RequestInit): Promise<Response> => {
     const requestWithToken = async (token: string) =>
       fetch(url, {
+        ...init,
         headers: {
+          ...(init?.headers ?? {}),
           Authorization: `Bearer ${token}`,
         },
       });
@@ -272,14 +309,18 @@ export async function POST(req: Request) {
     return response;
   };
 
-  // Google Tasks sync (Google wins on conflicts).
+  const authorizedGet = (url: string) => authorizedRequest(url, { method: "GET" });
+
+  // Google Tasks sync.
   if (typedProfile.google_tasks_sync) {
     try {
+      const tasksMode = normalizeSyncMode(typedProfile.google_tasks_sync_mode);
       const googleTasks: Array<{
         id: string;
         title: string;
         status: "needsAction" | "completed";
         due: string | undefined;
+        updated: string | undefined;
       }> = [];
 
       let pageToken: string | undefined;
@@ -311,22 +352,209 @@ export async function POST(req: Request) {
             title: item.title,
             status: item.status === "completed" ? "completed" : "needsAction",
             due: item.due,
+            updated: item.updated,
           });
         }
         pageToken = tasksPayload.nextPageToken;
       } while (pageToken);
-
-      result.tasks.total_google = googleTasks.length;
 
       const { data: subjects } = await supabase
         .from("subjects")
         .select("id, name")
         .eq("user_id", userData.user.id);
 
+      const googleTaskById = new Map(googleTasks.map((task) => [task.id, task]));
+      const upsertGoogleTaskCache = (task: {
+        id: string;
+        title: string;
+        status: "needsAction" | "completed";
+        due: string | undefined;
+        updated: string | undefined;
+      }) => {
+        const index = googleTasks.findIndex((row) => row.id === task.id);
+        if (index >= 0) googleTasks[index] = task;
+        else googleTasks.push(task);
+        googleTaskById.set(task.id, task);
+      };
+
+      if (tasksMode === "bidirectional") {
+        const { data: localTasks, error: localTasksError } = await supabase
+          .from("tasks")
+          .select("id, title, status, due_date, google_task_id")
+          .eq("user_id", userData.user.id);
+        if (localTasksError) {
+          throw new Error(localTasksError.message);
+        }
+
+        for (const localTask of localTasks ?? []) {
+          const localTitle =
+            typeof localTask.title === "string" && localTask.title.trim().length > 0
+              ? localTask.title.trim()
+              : "Untitled task";
+          const localStatus = localStatusToGoogleStatus(String(localTask.status ?? "Pendiente"));
+          const localDueIso = localDueDateToGoogleDue(
+            typeof localTask.due_date === "string" ? localTask.due_date : null
+          );
+          const localDueDateOnly = typeof localTask.due_date === "string" ? localTask.due_date : null;
+          const existingGoogleTaskId =
+            typeof localTask.google_task_id === "string" && localTask.google_task_id.length > 0
+              ? localTask.google_task_id
+              : null;
+
+          if (!existingGoogleTaskId) {
+            const createBody: Record<string, string> = { title: localTitle };
+            if (localDueIso) createBody.due = localDueIso;
+            if (localStatus === "completed") createBody.status = "completed";
+
+            const createResponse = await authorizedRequest("https://www.googleapis.com/tasks/v1/lists/@default/tasks", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(createBody),
+            });
+
+            if (createResponse.status === 401) {
+              throw new Error("Google authorization expired. Please sign in again.");
+            }
+            if (!createResponse.ok) {
+              throw new Error(await parseGoogleError(createResponse));
+            }
+
+            const created = (await createResponse.json().catch(() => ({}))) as {
+              id?: string;
+              title?: string;
+              status?: "needsAction" | "completed";
+              due?: string;
+              updated?: string;
+            };
+            if (!created.id) continue;
+
+            result.tasks.pushed_remote += 1;
+            result.tasks.created_remote += 1;
+
+            await supabase
+              .from("tasks")
+              .update({ google_task_id: created.id, imported_from_google: true })
+              .eq("id", localTask.id)
+              .eq("user_id", userData.user.id);
+
+            upsertGoogleTaskCache({
+              id: created.id,
+              title: created.title ?? localTitle,
+              status: created.status === "completed" ? "completed" : localStatus,
+              due: created.due ?? (localDueIso ?? undefined),
+              updated: created.updated,
+            });
+            continue;
+          }
+
+          const remoteTask = googleTaskById.get(existingGoogleTaskId);
+          if (!remoteTask) {
+            const recreateBody: Record<string, string> = { title: localTitle };
+            if (localDueIso) recreateBody.due = localDueIso;
+            if (localStatus === "completed") recreateBody.status = "completed";
+
+            const recreateResponse = await authorizedRequest("https://www.googleapis.com/tasks/v1/lists/@default/tasks", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(recreateBody),
+            });
+            if (recreateResponse.status === 401) {
+              throw new Error("Google authorization expired. Please sign in again.");
+            }
+            if (!recreateResponse.ok) {
+              throw new Error(await parseGoogleError(recreateResponse));
+            }
+
+            const recreated = (await recreateResponse.json().catch(() => ({}))) as {
+              id?: string;
+              title?: string;
+              status?: "needsAction" | "completed";
+              due?: string;
+              updated?: string;
+            };
+            if (!recreated.id) continue;
+
+            result.tasks.pushed_remote += 1;
+            result.tasks.created_remote += 1;
+
+            await supabase
+              .from("tasks")
+              .update({ google_task_id: recreated.id, imported_from_google: true })
+              .eq("id", localTask.id)
+              .eq("user_id", userData.user.id);
+
+            upsertGoogleTaskCache({
+              id: recreated.id,
+              title: recreated.title ?? localTitle,
+              status: recreated.status === "completed" ? "completed" : localStatus,
+              due: recreated.due ?? (localDueIso ?? undefined),
+              updated: recreated.updated,
+            });
+            continue;
+          }
+
+          const remoteTitle = normalizeText(remoteTask.title ?? "");
+          const remoteStatus = remoteTask.status;
+          const remoteDueDateOnly = toDateOnly(remoteTask.due);
+          const needsPatch =
+            remoteTitle !== normalizeText(localTitle) ||
+            remoteStatus !== localStatus ||
+            remoteDueDateOnly !== localDueDateOnly;
+
+          if (!needsPatch) continue;
+
+          const patchBody: Record<string, string | null> = {
+            title: localTitle,
+            status: localStatus,
+            due: localDueIso,
+          };
+          if (localStatus === "needsAction") {
+            patchBody.completed = null;
+          }
+
+          const patchResponse = await authorizedRequest(
+            `https://www.googleapis.com/tasks/v1/lists/@default/tasks/${encodeURIComponent(existingGoogleTaskId)}`,
+            {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(patchBody),
+            }
+          );
+
+          if (patchResponse.status === 401) {
+            throw new Error("Google authorization expired. Please sign in again.");
+          }
+          if (!patchResponse.ok) {
+            throw new Error(await parseGoogleError(patchResponse));
+          }
+
+          const patched = (await patchResponse.json().catch(() => ({}))) as {
+            id?: string;
+            title?: string;
+            status?: "needsAction" | "completed";
+            due?: string;
+            updated?: string;
+          };
+
+          result.tasks.pushed_remote += 1;
+          result.tasks.updated_remote += 1;
+
+          upsertGoogleTaskCache({
+            id: existingGoogleTaskId,
+            title: patched.title ?? localTitle,
+            status: patched.status === "completed" ? "completed" : localStatus,
+            due: patched.due ?? (localDueIso ?? undefined),
+            updated: patched.updated,
+          });
+        }
+      }
+
+      result.tasks.total_google = googleTasks.length;
+
       const payloadRows = googleTasks.map((task) => ({
         user_id: userData.user.id,
         title: task.title,
-        status: task.status === "completed" ? ("Completada" as const) : ("Pendiente" as const),
+        status: googleStatusToLocalStatus(task.status),
         due_date: toDateOnly(task.due),
         imported_from_google: true,
         google_task_id: task.id,

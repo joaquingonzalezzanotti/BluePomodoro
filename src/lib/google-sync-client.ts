@@ -6,12 +6,17 @@ export type GoogleSyncResult = {
   synced_at: string | null;
   tasks: {
     enabled: boolean;
+    mode?: "read_only" | "bidirectional";
     total_google: number;
     upserted: number;
     removed: number;
+    pushed_remote?: number;
+    created_remote?: number;
+    updated_remote?: number;
   };
   calendar: {
     enabled: boolean;
+    mode?: "read_only" | "bidirectional";
     events_fetched: number;
   };
   errors: {

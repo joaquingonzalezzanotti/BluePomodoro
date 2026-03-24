@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { useProfile, useSupabaseQuery } from "@/supabase/hooks"
 import { useSession, useSupabase, useUser } from "@/supabase/provider"
@@ -269,15 +270,6 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
       return label.includes(query) || raw.includes(query)
     })
   }, [calendarSearch, sortedCalendarOptions])
-  const selectedFilteredCalendars = React.useMemo(
-    () => filteredCalendarOptions.filter((calendar) => selectedCalendarSet.has(calendar.id)),
-    [filteredCalendarOptions, selectedCalendarSet]
-  )
-  const unselectedFilteredCalendars = React.useMemo(
-    () => filteredCalendarOptions.filter((calendar) => !selectedCalendarSet.has(calendar.id)),
-    [filteredCalendarOptions, selectedCalendarSet]
-  )
-
   React.useEffect(() => {
     const key = toDateKey(weekStart)
     if (selectedDayKey < key || selectedDayKey > toDateKey(addDays(weekStart, 6))) {
@@ -550,7 +542,21 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-6 space-y-6">
+        <CardContent className="p-6">
+          <Tabs defaultValue="calendar" className="w-full">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Agenda</p>
+              <TabsList className="bg-white p-1 rounded-xl shadow-sm border border-slate-100">
+                <TabsTrigger value="calendar" className="rounded-lg px-5 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
+                  Calendario
+                </TabsTrigger>
+                <TabsTrigger value="focus" className="rounded-lg px-5 font-bold data-[state=active]:bg-primary data-[state=active]:text-white">
+                  Plan de foco
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent value="calendar" className="mt-0 space-y-6">
           <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">
             {weekDates.map((day) => {
               const key = toDateKey(day)
@@ -589,7 +595,7 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <CardTitle className="text-base font-black">Mis calendarios</CardTitle>
-                  <p className="text-xs text-muted-foreground">Marcá qué calendarios impactan en esta agenda.</p>
+                  <p className="text-xs text-muted-foreground">Selecciona que calendarios impactan en esta agenda.</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {calendarSaveMessage ? <span className="text-[11px] text-emerald-600">{calendarSaveMessage}</span> : null}
@@ -635,69 +641,33 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
                           : "No se encontraron calendarios en tu cuenta."}
                       </p>
                     ) : (
-                      <>
-                        {selectedFilteredCalendars.length > 0 ? (
-                          <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 bg-slate-50 border-b border-slate-100">
-                            Seleccionados
-                          </div>
-                        ) : null}
-                        {selectedFilteredCalendars.map((calendar) => {
-                          const isChecked = true
-                          const label = formatCalendarName(calendar.summary)
-                          return (
-                            <label
-                              key={calendar.id}
-                              className="flex items-center gap-3 px-3 py-2 border-b border-slate-100 cursor-pointer bg-primary/5"
-                              title={calendar.summary}
-                            >
-                              <Checkbox
-                                checked={isChecked}
-                                disabled={isSavingCalendarSelection}
-                                onCheckedChange={(value) => handleCalendarChecked(calendar.id, value === true)}
-                              />
-                              <span
-                                className="h-2.5 w-2.5 rounded-full"
-                                style={{ backgroundColor: calendar.backgroundColor ?? "#94a3b8" }}
-                              />
-                              <span className="text-sm text-slate-700 truncate flex-1">{label}</span>
-                              {calendar.primary ? (
-                                <span className="text-[10px] uppercase tracking-wide text-slate-400">principal</span>
-                              ) : null}
-                            </label>
-                          )
-                        })}
-
-                        {unselectedFilteredCalendars.length > 0 ? (
-                          <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-slate-500 bg-slate-50 border-b border-slate-100">
-                            Disponibles
-                          </div>
-                        ) : null}
-                        {unselectedFilteredCalendars.map((calendar, index) => {
-                          const label = formatCalendarName(calendar.summary)
-                          const isLast = index === unselectedFilteredCalendars.length - 1
-                          return (
-                            <label
-                              key={calendar.id}
-                              className={`flex items-center gap-3 px-3 py-2 ${isLast ? "" : "border-b border-slate-100"} cursor-pointer hover:bg-slate-50 transition-colors`}
-                              title={calendar.summary}
-                            >
-                              <Checkbox
-                                checked={false}
-                                disabled={isSavingCalendarSelection}
-                                onCheckedChange={(value) => handleCalendarChecked(calendar.id, value === true)}
-                              />
-                              <span
-                                className="h-2.5 w-2.5 rounded-full"
-                                style={{ backgroundColor: calendar.backgroundColor ?? "#94a3b8" }}
-                              />
-                              <span className="text-sm text-slate-700 truncate flex-1">{label}</span>
-                              {calendar.primary ? (
-                                <span className="text-[10px] uppercase tracking-wide text-slate-400">principal</span>
-                              ) : null}
-                            </label>
-                          )
-                        })}
-                      </>
+                      filteredCalendarOptions.map((calendar, index) => {
+                        const label = formatCalendarName(calendar.summary)
+                        const checked = selectedCalendarSet.has(calendar.id)
+                        return (
+                          <label
+                            key={calendar.id}
+                            className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition-colors ${
+                              index < filteredCalendarOptions.length - 1 ? "border-b border-slate-100" : ""
+                            } ${checked ? "bg-primary/5" : "hover:bg-slate-50"}`}
+                            title={calendar.summary}
+                          >
+                            <Checkbox
+                              checked={checked}
+                              disabled={isSavingCalendarSelection}
+                              onCheckedChange={(value) => handleCalendarChecked(calendar.id, value === true)}
+                            />
+                            <span
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: calendar.backgroundColor ?? "#94a3b8" }}
+                            />
+                            <span className="text-sm text-slate-700 truncate flex-1">{label}</span>
+                            {calendar.primary ? (
+                              <span className="text-[10px] uppercase tracking-wide text-slate-400">principal</span>
+                            ) : null}
+                          </label>
+                        )
+                      })
                     )}
                   </div>
                 </>
@@ -835,6 +805,85 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
               </Card>
             </div>
           </div>
+            </TabsContent>
+
+            <TabsContent value="focus" className="mt-0">
+              <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-6">
+                <Card className="rounded-2xl border-slate-100 shadow-none min-w-0">
+                  <CardHeader className="flex flex-row items-center justify-between gap-3">
+                    <CardTitle className="text-lg font-black">
+                      {selectedDay.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "long" })}
+                    </CardTitle>
+                    <Button size="sm" className="rounded-xl gap-2" onClick={() => onOpenFocusTab?.()}>
+                      <Target className="h-4 w-4" />
+                      Abrir modo foco
+                    </Button>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {selectedDayEvents.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">Sin eventos en este dia.</p>
+                    ) : (
+                      selectedDayEvents.map((event) => (
+                        <div key={event.id} className="rounded-xl border border-slate-100 p-3 bg-white">
+                          <p className="text-sm font-bold text-slate-900 break-words">{event.summary}</p>
+                          <p className="text-xs text-slate-500 mt-1">
+                            {event.allDay ? "Todo el dia" : `${formatHour(new Date(event.start))} - ${formatHour(new Date(event.end))}`}
+                          </p>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+
+                <div className="space-y-4 min-w-0">
+                  <Card className="rounded-2xl border-slate-100 shadow-none min-w-0">
+                    <CardHeader>
+                      <CardTitle className="text-base font-black flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" /> Capacidad de foco
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm">
+                      <p>Pomodoros libres hoy: <strong>{availablePomodoros}</strong></p>
+                      <p>Pendientes estimados: <strong>{pendingPomodoros}</strong></p>
+                      <Badge
+                        className={
+                          capacityDelta >= 0
+                            ? "bg-green-50 text-green-700 border border-green-200"
+                            : "bg-amber-50 text-amber-700 border border-amber-200"
+                        }
+                      >
+                        {capacityDelta >= 0
+                          ? `Capacidad OK (+${capacityDelta})`
+                          : `Sobrecarga (${capacityDelta})`}
+                      </Badge>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="rounded-2xl border-slate-100 shadow-none min-w-0">
+                    <CardHeader>
+                      <CardTitle className="text-base font-black">Slots de enfoque recomendados</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 max-h-64 overflow-auto">
+                      {focusSlots.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No hay bloques libres de al menos {workMinutes} min.</p>
+                      ) : (
+                        focusSlots.map((slot, idx) => (
+                          <div key={`${slot.start.toISOString()}-${idx}`} className="rounded-xl border border-slate-100 p-3">
+                            <p className="text-sm font-bold">
+                              {formatHour(slot.start)} - {formatHour(slot.end)}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {slot.durationMinutes} min ({slot.pomodorosFit} pomodoros)
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>
