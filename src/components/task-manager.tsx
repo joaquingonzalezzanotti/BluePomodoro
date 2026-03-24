@@ -77,6 +77,7 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
   const [editingSubText, setEditingSubText] = React.useState("")
 
   const [expandedTasks, setExpandedTasks] = React.useState<Record<string, boolean>>({})
+  const [completedOpen, setCompletedOpen] = React.useState(false)
   
   const { toast } = useToast()
   const supabase = useSupabase()
@@ -215,9 +216,12 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
     await supabase.from("tasks").update({ status: nextStatus }).eq("id", taskId)
   }
 
-  const filteredTasks = onlyActive && activeTaskId 
-    ? tasks?.filter(t => t.id === activeTaskId) 
-    : tasks
+  const scopedTasks = onlyActive && activeTaskId
+    ? (tasks?.filter(t => t.id === activeTaskId) ?? [])
+    : (tasks ?? [])
+
+  const activeTasks = scopedTasks.filter(task => task.status !== "Completada")
+  const completedTasks = scopedTasks.filter(task => task.status === "Completada")
 
   if (isLoading) return <div className="py-20 text-center animate-pulse text-xs font-black uppercase text-muted-foreground">Cargando tareas...</div>
 
@@ -252,7 +256,7 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
       )}
 
       <div className="space-y-4">
-        {filteredTasks?.map(task => {
+        {activeTasks.map(task => {
           const materia = materias?.find(m => m.id === task.subject_id)
           const rawSubTasks = task.subtasks || []
           const normalizedSubTasks: SubTask[] = rawSubTasks.map((st: any, i: number) => 
@@ -278,7 +282,7 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
 
           return (
             <Collapsible key={task.id} open={isExpanded} onOpenChange={() => toggleExpand(task.id)}>
-              <Card className={cn("border-none shadow-sm transition-all rounded-[2rem] overflow-hidden bg-white", activeTaskId === task.id && "ring-2 ring-primary/40", task.status === "Completada" && "opacity-60")}>
+              <Card className={cn("border-none shadow-sm transition-all rounded-[2rem] overflow-hidden bg-white", activeTaskId === task.id && "ring-2 ring-primary/40")}>
                 <CardContent className="p-6" onClick={handleCardClick}>
                   {/* Layout de 2 Filas obligatorio */}
                   <div className="flex flex-col gap-4">
@@ -324,7 +328,7 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 group min-w-0">
-                            <h4 className={cn("text-lg font-black truncate leading-tight", task.status === "Completada" && "line-through text-slate-400")}>{displayTitle || task.title}</h4>
+                            <h4 className="text-lg font-black truncate leading-tight">{displayTitle || task.title}</h4>
                             <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100 shrink-0" onClick={(e) => { e.stopPropagation(); setEditingTaskId(task.id); setEditingText(task.title); }}><Edit2 className="h-3 w-3" /></Button>
                             {isActiveTask && (
                               <Badge className="bg-primary/10 text-primary border border-primary/20 text-[9px] font-black uppercase tracking-wide">Vinculada</Badge>
@@ -428,6 +432,66 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
             </Collapsible>
           )
         })}
+
+        {!onlyActive && completedTasks.length > 0 && (
+          <Collapsible open={completedOpen} onOpenChange={setCompletedOpen}>
+            <Card className="border-none shadow-sm rounded-[2rem] overflow-hidden bg-white">
+              <CardContent className="p-0">
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <span className="text-sm font-black text-slate-700">Completadas ({completedTasks.length})</span>
+                    </div>
+                    {completedOpen ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="border-t border-slate-100">
+                  <div className="divide-y divide-slate-50">
+                    {completedTasks.map((task) => {
+                      const materia = materias?.find(m => m.id === task.subject_id)
+                      const displayEmoji = getLeadingEmoji(task.title)
+                      const displayTitle = stripLeadingEmoji(task.title)
+                      return (
+                        <div key={task.id} className="flex items-center justify-between gap-3 px-6 py-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-400 line-through truncate">
+                              {displayEmoji} {displayTitle || task.title}
+                            </p>
+                            {materia ? (
+                              <p className="text-[10px] font-black uppercase text-slate-400 mt-1 truncate">{materia.name}</p>
+                            ) : null}
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 rounded-lg text-xs"
+                              onClick={() => toggleComplete(task.id, task.status)}
+                            >
+                              Reabrir
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-slate-300 hover:text-destructive"
+                              onClick={() => deleteTask(task.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </CollapsibleContent>
+              </CardContent>
+            </Card>
+          </Collapsible>
+        )}
       </div>
     </div>
   )
