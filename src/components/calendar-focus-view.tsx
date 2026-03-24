@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Search } from "lucide-react"
+import { CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, RefreshCw, Search, Sparkles, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -20,8 +20,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { useProfile } from "@/supabase/hooks"
+import { useProfile, useSupabaseQuery } from "@/supabase/hooks"
 import { useSession, useSupabase, useUser } from "@/supabase/provider"
+import type { Task } from "@/supabase/types"
 
 type CalendarEvent = {
   id: string
@@ -43,6 +44,13 @@ type CalendarFocusViewProps = {
   activeTaskId?: string | null
   onTaskSelect?: (taskId: string | null) => void
   onOpenFocusTab?: () => void
+}
+
+type Slot = {
+  start: Date
+  end: Date
+  durationMinutes: number
+  pomodorosFit: number
 }
 
 type CalendarSelectionMode = "all" | "none" | "some"
@@ -130,6 +138,17 @@ function overlap(rangeStart: Date, rangeEnd: Date, eventStart: Date, eventEnd: D
   return eventStart < rangeEnd && eventEnd > rangeStart
 }
 
+function formatHour(value: Date): string {
+  return value.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+}
+
+function formatDueDate(dueDate: string | null): string {
+  if (!dueDate) return "Sin vencimiento"
+  const parsed = new Date(`${dueDate}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return "Sin vencimiento"
+  return parsed.toLocaleDateString("es-AR", { day: "2-digit", month: "short" })
+}
+
 function normalizeSelectionMode(value: string | null | undefined): CalendarSelectionMode {
   if (value === "all" || value === "none" || value === "some") return value
   return "all"
@@ -184,7 +203,74 @@ function getNowInTimeZone(timeZone: string): string {
   }).format(new Date())
 }
 
-export function CalendarFocusView(_props: CalendarFocusViewProps) {
+function computeFocusSlots(day: Date, events: CalendarEvent[], workMinutes: number): Slot[] {
+  const windowStart = new Date(day)
+  windowStart.setHours(8, 0, 0, 0)
+  const windowEnd = new Date(day)
+  windowEnd.setHours(22, 0, 0, 0)
+
+  const busyIntervals: Array<{ start: Date; end: Date }> = []
+
+  for (const event of events) {
+    const eventStart = new Date(event.start)
+    const eventEnd = new Date(event.end)
+    if (Number.isNaN(eventStart.getTime()) || Number.isNaN(eventEnd.getTime())) continue
+    if (!overlap(windowStart, windowEnd, eventStart, eventEnd)) continue
+
+    if (event.allDay) {
+      busyIntervals.push({ start: new Date(windowStart), end: new Date(windowEnd) })
+      continue
+    }
+
+    const start = eventStart < windowStart ? new Date(windowStart) : eventStart
+    const end = eventEnd > windowEnd ? new Date(windowEnd) : eventEnd
+    if (end > start) busyIntervals.push({ start, end })
+  }
+
+  busyIntervals.sort((a, b) => a.start.getTime() - b.start.getTime())
+  const merged: Array<{ start: Date; end: Date }> = []
+  for (const interval of busyIntervals) {
+    const last = merged[merged.length - 1]
+    if (!last || interval.start > last.end) {
+      merged.push({ start: new Date(interval.start), end: new Date(interval.end) })
+    } else if (interval.end > last.end) {
+      last.end = new Date(interval.end)
+    }
+  }
+
+  const slots: Slot[] = []
+  let cursor = new Date(windowStart)
+  for (const interval of merged) {
+    if (interval.start > cursor) {
+      const durationMinutes = Math.floor((interval.start.getTime() - cursor.getTime()) / 60000)
+      if (durationMinutes >= workMinutes) {
+        slots.push({
+          start: new Date(cursor),
+          end: new Date(interval.start),
+          durationMinutes,
+          pomodorosFit: Math.floor(durationMinutes / workMinutes),
+        })
+      }
+    }
+    if (interval.end > cursor) cursor = new Date(interval.end)
+  }
+
+  if (windowEnd > cursor) {
+    const durationMinutes = Math.floor((windowEnd.getTime() - cursor.getTime()) / 60000)
+    if (durationMinutes >= workMinutes) {
+      slots.push({
+        start: new Date(cursor),
+        end: new Date(windowEnd),
+        durationMinutes,
+        pomodorosFit: Math.floor(durationMinutes / workMinutes),
+      })
+    }
+  }
+
+  return slots
+}
+
+export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }: CalendarFocusViewProps) {
   const { session } = useSession()
   const { user } = useUser()
   const supabase = useSupabase()
@@ -213,6 +299,7 @@ export function CalendarFocusView(_props: CalendarFocusViewProps) {
   const [calendarSelectionError, setCalendarSelectionError] = React.useState<string | null>(null)
   const [calendarSaveMessage, setCalendarSaveMessage] = React.useState<string | null>(null)
   const [isCalendarModalOpen, setIsCalendarModalOpen] = React.useState(false)
+  const [isPomosModalOpen, setIsPomosModalOpen] = React.useState(false)
 
   const [viewOption, setViewOption] = React.useState<CalendarViewOption>("month")
 
@@ -286,6 +373,23 @@ export function CalendarFocusView(_props: CalendarFocusViewProps) {
       setSelectedDayKey(toDateKey(monthStart))
     }
   }, [selectedDayKey, monthGridEnd, monthGridStart, monthStart])
+
+  const { data: pendingTasks } = useSupabaseQuery<Task[]>(
+    async (client) => {
+      if (!user) return []
+      const { data, error } = await client
+        .from("tasks")
+        .select("*")
+        .eq("user_id", user.id)
+        .neq("status", "Completada")
+        .order("due_date", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: false })
+      if (error) throw error
+      return (data ?? []) as Task[]
+    },
+    [user?.id],
+    user ? { table: "tasks", filter: `user_id=eq.${user.id}` } : null
+  )
 
   const loadCalendarOptions = React.useCallback(async () => {
     if (!session?.access_token || !profile?.google_calendar_sync) {
@@ -482,6 +586,24 @@ export function CalendarFocusView(_props: CalendarFocusViewProps) {
 
   const selectedDayEvents = eventsByDay.get(selectedDayKey) ?? []
   const selectedDay = React.useMemo(() => fromDateKey(selectedDayKey), [selectedDayKey])
+
+  const workMinutes = Math.max(profile?.pomodoro_work_minutes ?? 25, 1)
+  const focusSlots = React.useMemo(() => computeFocusSlots(selectedDay, selectedDayEvents, workMinutes), [selectedDay, selectedDayEvents, workMinutes])
+  const availablePomodoros = React.useMemo(
+    () => focusSlots.reduce((acc, slot) => acc + slot.pomodorosFit, 0),
+    [focusSlots]
+  )
+  const pendingPomodoros = React.useMemo(
+    () => (pendingTasks ?? []).reduce((acc, task) => acc + Math.max(task.effort_estimated ?? 1, 1), 0),
+    [pendingTasks]
+  )
+  const capacityDelta = availablePomodoros - pendingPomodoros
+  const tasksForToday = React.useMemo(() => {
+    const todayKey = toDateKey(selectedDay)
+    const exactDue = (pendingTasks ?? []).filter((task) => task.due_date && toDateKey(new Date(`${task.due_date}T00:00:00`)) === todayKey)
+    if (exactDue.length > 0) return exactDue
+    return (pendingTasks ?? []).slice(0, 8)
+  }, [pendingTasks, selectedDay])
 
   const viewLabel = React.useMemo(() => {
     switch (viewOption) {
@@ -684,6 +806,13 @@ export function CalendarFocusView(_props: CalendarFocusViewProps) {
               >
                 Calendarios
               </Button>
+              <Button
+                type="button"
+                className="h-10 rounded-xl px-4"
+                onClick={() => setIsPomosModalOpen(true)}
+              >
+                Gestion pomos
+              </Button>
             </div>
           </div>
 
@@ -766,6 +895,80 @@ export function CalendarFocusView(_props: CalendarFocusViewProps) {
           </div>
         </section>
       </div>
+
+      <Dialog open={isPomosModalOpen} onOpenChange={setIsPomosModalOpen}>
+        <DialogContent className="max-w-3xl rounded-2xl p-0 overflow-hidden">
+          <DialogHeader className="border-b border-slate-200 px-5 py-4">
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Sparkles className="h-4 w-4 text-blue-600" /> Gestion de pomos
+            </DialogTitle>
+            <DialogDescription>
+              {selectedDay.toLocaleDateString("es-AR", { weekday: "long", day: "2-digit", month: "long" })}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-5 grid gap-4 md:grid-cols-2">
+            <div className="rounded-xl border border-slate-200 p-4 space-y-1 text-sm">
+              <p>Pomodoros libres: <strong>{availablePomodoros}</strong></p>
+              <p>Pendientes estimados: <strong>{pendingPomodoros}</strong></p>
+              <p className={cn("font-semibold", capacityDelta >= 0 ? "text-emerald-700" : "text-amber-700")}>
+                {capacityDelta >= 0 ? `Capacidad OK (+${capacityDelta})` : `Sobrecarga (${capacityDelta})`}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 p-4">
+              <p className="text-sm font-semibold mb-2">Slots recomendados</p>
+              <div className="max-h-44 overflow-auto space-y-2">
+                {focusSlots.length === 0 ? (
+                  <p className="text-sm text-slate-500">No hay bloques libres de al menos {workMinutes} min.</p>
+                ) : (
+                  focusSlots.map((slot, idx) => (
+                    <div key={`${slot.start.toISOString()}-${idx}`} className="rounded-lg border border-slate-100 p-2">
+                      <p className="text-sm font-semibold">{formatHour(slot.start)} - {formatHour(slot.end)}</p>
+                      <p className="text-xs text-slate-500">{slot.durationMinutes} min ({slot.pomodorosFit} pomos)</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 p-4 md:col-span-2">
+              <p className="text-sm font-semibold mb-2">Tareas sugeridas para este bloque</p>
+              <div className="max-h-56 overflow-auto space-y-2">
+                {tasksForToday.length === 0 ? (
+                  <p className="text-sm text-slate-500">No hay tareas pendientes para sugerir.</p>
+                ) : (
+                  tasksForToday.map((task) => (
+                    <div key={task.id} className="rounded-lg border border-slate-100 p-3">
+                      <p className="text-sm font-semibold text-slate-900">{task.title}</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        Vence: {formatDueDate(task.due_date)} | Estimado: {Math.max(task.effort_estimated ?? 1, 1)} pomodoros
+                      </p>
+                      <Button
+                        size="sm"
+                        className="mt-2 rounded-lg gap-2"
+                        variant={activeTaskId === task.id ? "secondary" : "default"}
+                        onClick={() => {
+                          onTaskSelect?.(task.id)
+                          onOpenFocusTab?.()
+                          setIsPomosModalOpen(false)
+                          toast({
+                            title: "Tarea vinculada al temporizador",
+                            description: "Abrimos modo foco con esta tarea.",
+                          })
+                        }}
+                      >
+                        <Target className="h-4 w-4" />
+                        {activeTaskId === task.id ? "Ya vinculada" : "Usar en temporizador"}
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isCalendarModalOpen} onOpenChange={setIsCalendarModalOpen}>
         <DialogContent className="max-w-2xl rounded-2xl p-0 overflow-hidden">
