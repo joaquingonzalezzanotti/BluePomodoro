@@ -158,11 +158,13 @@ export function buildPomodoroStats(
   const totalWorkSec = workSessions.reduce((acc, s) => acc + (s.duration_sec || 0), 0);
   const focusHours = Math.round(totalWorkSec / 3600);
 
-  const breakOvertimeMinutes = Math.round(
+  const rawBreakOvertimeMinutes = Math.round(
     sessions
       .filter(s => s.mode === "break" && !!s.completed_at)
       .reduce((acc, s) => acc + (s.overtime_sec || 0), 0) / 60
   );
+  // Si no hubo sesiones de foco en el periodo, no mostramos castigo de descanso.
+  const breakOvertimeMinutes = workSessionsCount > 0 ? rawBreakOvertimeMinutes : 0;
 
   const groups: Record<string, number> = {};
   workSessions.forEach(session => {

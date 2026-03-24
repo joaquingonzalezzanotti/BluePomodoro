@@ -340,11 +340,18 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
 
                       <Button
                         variant="ghost"
-                        size="icon"
-                        className={cn("h-10 w-10 rounded-full shrink-0 border-2", task.status === "Completada" ? "text-green-500 border-green-500" : "text-slate-200 border-slate-100")}
+                        className={cn(
+                          "h-10 rounded-full shrink-0 border-2 px-3 gap-1.5 text-[11px] font-black uppercase tracking-wide transition-all",
+                          task.status === "Completada"
+                            ? "bg-emerald-500 border-emerald-500 text-white shadow-sm shadow-emerald-200"
+                            : "bg-white border-slate-300 text-slate-500 hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-600"
+                        )}
+                        title={task.status === "Completada" ? "Marcar como pendiente" : "Marcar como completada"}
+                        aria-label={task.status === "Completada" ? "Marcar como pendiente" : "Marcar como completada"}
                         onClick={(e) => { e.stopPropagation(); toggleComplete(task.id, task.status); }}
                       >
-                        <CheckCircle2 className="h-6 w-6" />
+                        <CheckCircle2 className="h-5 w-5" />
+                        <span className="hidden sm:inline">{task.status === "Completada" ? "Hecha" : "Listo"}</span>
                       </Button>
                     </div>
 

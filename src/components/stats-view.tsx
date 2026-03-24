@@ -108,11 +108,12 @@ export function StatsView() {
   )
 
   const comparisonDeltaPercent = React.useMemo(() => {
+    if (stats.workSessionsCount === 0 && rewards.points === 0) return 0
     const prev = previousRewards.points
     const curr = rewards.points
     if (prev <= 0) return curr > 0 ? 100 : 0
     return Math.round(((curr - prev) / prev) * 100)
-  }, [previousRewards.points, rewards.points])
+  }, [previousRewards.points, rewards.points, stats.workSessionsCount])
 
   const hasSessions = stats.workSessionsCount > 0
   const chartData = React.useMemo(() => stats.sessionsByDay, [stats.sessionsByDay])
@@ -201,7 +202,7 @@ export function StatsView() {
         </Card>
         <Card className="border-none shadow-xl bg-orange-500 text-white p-6 rounded-3xl">
           <h4 className="text-[10px] font-black uppercase opacity-60">Descanso Extra Mes</h4>
-          <p className="text-4xl font-black">{stats.breakOvertimeMinutes > 0 ? `-${stats.breakOvertimeMinutes}m` : "0m"}</p>
+          <p className="text-4xl font-black">{stats.breakOvertimeMinutes > 0 ? `${stats.breakOvertimeMinutes}m` : "0m"}</p>
         </Card>
         <Card className="border-none shadow-xl bg-slate-900 text-white p-6 rounded-3xl">
           <h4 className="text-[10px] font-black uppercase opacity-60">Racha del Mes</h4>

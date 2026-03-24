@@ -302,6 +302,7 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
   const [isPomosModalOpen, setIsPomosModalOpen] = React.useState(false)
 
   const [viewOption, setViewOption] = React.useState<CalendarViewOption>("month")
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false)
 
   const monthStart = React.useMemo(() => startOfMonth(currentMonth), [currentMonth])
   const monthEnd = React.useMemo(() => endOfMonth(currentMonth), [currentMonth])
@@ -584,8 +585,69 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
     return map
   }, [events, monthGridDays])
 
-  const selectedDayEvents = eventsByDay.get(selectedDayKey) ?? []
   const selectedDay = React.useMemo(() => fromDateKey(selectedDayKey), [selectedDayKey])
+  const syncDateSelection = React.useCallback((date: Date) => {
+    const normalized = new Date(date)
+    normalized.setHours(0, 0, 0, 0)
+    setSelectedDayKey(toDateKey(normalized))
+    setCurrentMonth(startOfMonth(normalized))
+  }, [])
+
+  const getEventsForDay = React.useCallback(
+    (day: Date): CalendarEvent[] => {
+      const key = toDateKey(day)
+      const cached = eventsByDay.get(key)
+      if (cached) return cached
+
+      const dayStart = new Date(day)
+      dayStart.setHours(0, 0, 0, 0)
+      const dayEnd = addDays(dayStart, 1)
+
+      return events
+        .filter((event) => {
+          const start = new Date(event.start)
+          const end = new Date(event.end)
+          if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false
+          return overlap(dayStart, dayEnd, start, end)
+        })
+        .sort((a, b) => {
+          if (a.allDay && !b.allDay) return -1
+          if (!a.allDay && b.allDay) return 1
+          return new Date(a.start).getTime() - new Date(b.start).getTime()
+        })
+    },
+    [events, eventsByDay]
+  )
+
+  const selectedDayEvents = React.useMemo(() => getEventsForDay(selectedDay), [getEventsForDay, selectedDay])
+  const weekDays = React.useMemo(() => {
+    const weekStart = startOfWeekMonday(selectedDay)
+    return Array.from({ length: 7 }, (_, index) => addDays(weekStart, index))
+  }, [selectedDay])
+  const sevenDayWindow = React.useMemo(
+    () => Array.from({ length: 7 }, (_, index) => addDays(selectedDay, index)),
+    [selectedDay]
+  )
+  const agendaEntries = React.useMemo(() => {
+    return monthGridDays
+      .map((day) => ({ day, events: getEventsForDay(day) }))
+      .filter((entry) => entry.events.length > 0)
+  }, [getEventsForDay, monthGridDays])
+  const monthsInYear = React.useMemo(
+    () => Array.from({ length: 12 }, (_, index) => startOfMonth(new Date(currentMonth.getFullYear(), index, 1))),
+    [currentMonth]
+  )
+  const eventCountByMonth = React.useMemo(() => {
+    const counts = new Map<number, number>()
+    const year = currentMonth.getFullYear()
+    for (const event of events) {
+      const start = new Date(event.start)
+      if (Number.isNaN(start.getTime())) continue
+      if (start.getFullYear() !== year) continue
+      counts.set(start.getMonth(), (counts.get(start.getMonth()) ?? 0) + 1)
+    }
+    return counts
+  }, [currentMonth, events])
 
   const workMinutes = Math.max(profile?.pomodoro_work_minutes ?? 25, 1)
   const focusSlots = React.useMemo(() => computeFocusSlots(selectedDay, selectedDayEvents, workMinutes), [selectedDay, selectedDayEvents, workMinutes])
@@ -624,151 +686,180 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
     }
   }, [viewOption])
 
+  const viewPeriodLabel = React.useMemo(() => {
+    if (viewOption === "day") {
+      return selectedDay.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    }
+    if (viewOption === "week") {
+      const start = weekDays[0]
+      const end = weekDays[6]
+      return `${start.toLocaleDateString("es-AR", { day: "numeric", month: "short" })} - ${end.toLocaleDateString("es-AR", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })}`
+    }
+    if (viewOption === "seven_days") {
+      const start = sevenDayWindow[0]
+      const end = sevenDayWindow[6]
+      return `${start.toLocaleDateString("es-AR", { day: "numeric", month: "short" })} - ${end.toLocaleDateString("es-AR", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })}`
+    }
+    if (viewOption === "year") {
+      return currentMonth.getFullYear().toString()
+    }
+    return formatMonthTitle(currentMonth)
+  }, [currentMonth, selectedDay, sevenDayWindow, viewOption, weekDays])
+
+  const goToToday = React.useCallback(() => {
+    syncDateSelection(new Date())
+  }, [syncDateSelection])
+
+  const shiftView = React.useCallback(
+    (direction: -1 | 1) => {
+      if (viewOption === "day") {
+        syncDateSelection(addDays(selectedDay, direction))
+        return
+      }
+      if (viewOption === "week" || viewOption === "seven_days") {
+        syncDateSelection(addDays(selectedDay, direction * 7))
+        return
+      }
+      if (viewOption === "year") {
+        syncDateSelection(new Date(currentMonth.getFullYear() + direction, currentMonth.getMonth(), 1))
+        return
+      }
+      syncDateSelection(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + direction, 1))
+    },
+    [currentMonth, selectedDay, syncDateSelection, viewOption]
+  )
+
   const localTimeZone = React.useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, [])
 
   return (
     <div className="rounded-[26px] border border-slate-200 bg-white shadow-sm overflow-hidden">
       <div className="flex min-h-[78vh] flex-col lg:flex-row">
-        <aside className="w-full lg:w-[300px] xl:w-[320px] border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50/70 p-4 xl:p-5 space-y-5">
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 w-full justify-center rounded-xl bg-white"
-            onClick={() => {
-              const now = new Date()
-              setCurrentMonth(startOfMonth(now))
-              setSelectedDayKey(toDateKey(now))
-            }}
-          >
-            Hoy
-          </Button>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-3">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-semibold text-slate-800">{formatMonthTitle(currentMonth)}</p>
-            </div>
-            <div className="grid grid-cols-7 gap-y-1 text-center text-[10px] font-semibold text-slate-500 mb-1">
-              {miniWeekdayLabels.map((label) => (
-                <span key={label}>{label}</span>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-y-1 text-center text-[11px]">
-              {miniMonthDays.map((day) => {
-                const key = toDateKey(day)
-                const isCurrentMonth = day.getMonth() === currentMonth.getMonth()
-                const isToday = key === toDateKey(today)
-                const isSelected = key === selectedDayKey
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => {
-                      setSelectedDayKey(key)
-                      if (!isCurrentMonth) setCurrentMonth(startOfMonth(day))
-                    }}
-                    className={cn(
-                      "mx-auto h-6 w-6 rounded-full transition-colors",
-                      isSelected && "bg-blue-600 text-white",
-                      !isSelected && isToday && "bg-blue-100 text-blue-700",
-                      !isCurrentMonth && "text-slate-400",
-                      isCurrentMonth && !isSelected && !isToday && "text-slate-700 hover:bg-slate-100"
-                    )}
-                  >
-                    {day.getDate()}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200 bg-white p-3 space-y-3">
-            <div className="flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-slate-900">Mis calendarios</h3>
-              <span className="text-xs text-slate-500">{effectiveSelectedCalendarIds.length}</span>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="h-9 w-full justify-center rounded-lg"
-              onClick={() => setIsCalendarModalOpen(true)}
-            >
-              Seleccionar calendarios
+        {isSidebarOpen ? (
+          <aside className="w-full lg:w-[300px] xl:w-[320px] border-b lg:border-b-0 lg:border-r border-slate-200 bg-slate-50/70 p-4 xl:p-5 space-y-5">
+            <Button type="button" variant="outline" className="h-11 w-full justify-center rounded-xl bg-white" onClick={goToToday}>
+              Hoy
             </Button>
 
-            {!profile?.google_calendar_sync ? (
-              <p className="text-xs text-slate-500">Activa Google Calendar Sync en Configuracion.</p>
-            ) : selectedCalendarPreview.length === 0 ? (
-              <p className="text-xs text-slate-500">No hay calendarios activos.</p>
-            ) : (
-              <div className="space-y-1.5">
-                {selectedCalendarPreview.map((calendar) => (
-                  <div key={calendar.id} className="flex items-center gap-2 text-xs text-slate-700">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: calendar.backgroundColor ?? "#94a3b8" }} />
-                    <span className="truncate" title={calendar.summary}>
-                      {formatCalendarName(calendar.summary)}
-                    </span>
-                    {calendar.primary ? <span className="text-[10px] text-slate-400">principal</span> : null}
-                  </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-3">
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-800">{formatMonthTitle(currentMonth)}</p>
+              </div>
+              <div className="grid grid-cols-7 gap-y-1 text-center text-[10px] font-semibold text-slate-500 mb-1">
+                {miniWeekdayLabels.map((label) => (
+                  <span key={label}>{label}</span>
                 ))}
               </div>
-            )}
-          </div>
+              <div className="grid grid-cols-7 gap-y-1 text-center text-[11px]">
+                {miniMonthDays.map((day) => {
+                  const key = toDateKey(day)
+                  const isCurrentMonth = day.getMonth() === currentMonth.getMonth()
+                  const isToday = key === toDateKey(today)
+                  const isSelected = key === selectedDayKey
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => syncDateSelection(day)}
+                      className={cn(
+                        "mx-auto h-6 w-6 rounded-full transition-colors",
+                        isSelected && "bg-blue-600 text-white",
+                        !isSelected && isToday && "bg-blue-100 text-blue-700",
+                        !isCurrentMonth && "text-slate-400",
+                        isCurrentMonth && !isSelected && !isToday && "text-slate-700 hover:bg-slate-100"
+                      )}
+                    >
+                      {day.getDate()}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-3 space-y-2 text-xs text-slate-600">
-            <p>
-              <span className="font-semibold text-slate-800">Hora local:</span> {getNowInTimeZone(localTimeZone)}
-            </p>
-            <p>
-              <span className="font-semibold text-slate-800">Hora UTC:</span> {getNowInTimeZone("UTC")}
-            </p>
-            <p>
-              <span className="font-semibold text-slate-800">Dia seleccionado:</span>{" "}
-              {selectedDay.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
-            </p>
-            <p>
-              <span className="font-semibold text-slate-800">Eventos:</span> {selectedDayEvents.length}
-            </p>
-          </div>
-        </aside>
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-slate-900">Mis calendarios</h3>
+                <span className="text-xs text-slate-500">{effectiveSelectedCalendarIds.length}</span>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="h-9 w-full justify-center rounded-lg"
+                onClick={() => setIsCalendarModalOpen(true)}
+              >
+                Seleccionar calendarios
+              </Button>
+
+              {!profile?.google_calendar_sync ? (
+                <p className="text-xs text-slate-500">Activa Google Calendar Sync en Configuracion.</p>
+              ) : selectedCalendarPreview.length === 0 ? (
+                <p className="text-xs text-slate-500">No hay calendarios activos.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {selectedCalendarPreview.map((calendar) => (
+                    <div key={calendar.id} className="flex items-center gap-2 text-xs text-slate-700">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: calendar.backgroundColor ?? "#94a3b8" }} />
+                      <span className="truncate" title={calendar.summary}>
+                        {formatCalendarName(calendar.summary)}
+                      </span>
+                      {calendar.primary ? <span className="text-[10px] text-slate-400">principal</span> : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-3 space-y-2 text-xs text-slate-600">
+              <p>
+                <span className="font-semibold text-slate-800">Hora local:</span> {getNowInTimeZone(localTimeZone)}
+              </p>
+              <p>
+                <span className="font-semibold text-slate-800">Hora UTC:</span> {getNowInTimeZone("UTC")}
+              </p>
+              <p>
+                <span className="font-semibold text-slate-800">Dia seleccionado:</span>{" "}
+                {selectedDay.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
+              </p>
+              <p>
+                <span className="font-semibold text-slate-800">Eventos:</span> {selectedDayEvents.length}
+              </p>
+            </div>
+          </aside>
+        ) : null}
 
         <section className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 xl:px-6 xl:py-4 bg-white">
             <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="h-10 rounded-xl px-5"
-                onClick={() => {
-                  const now = new Date()
-                  setCurrentMonth(startOfMonth(now))
-                  setSelectedDayKey(toDateKey(now))
-                }}
-              >
+              <Button type="button" variant="outline" className="h-10 rounded-xl px-5" onClick={goToToday}>
                 Hoy
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-full"
-                onClick={() => setCurrentMonth((previous) => startOfMonth(new Date(previous.getFullYear(), previous.getMonth() - 1, 1)))}
-              >
+              <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => shiftView(-1)}>
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 rounded-full"
-                onClick={() => setCurrentMonth((previous) => startOfMonth(new Date(previous.getFullYear(), previous.getMonth() + 1, 1)))}
-              >
+              <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full" onClick={() => shiftView(1)}>
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              <h2 className="ml-2 text-2xl font-semibold text-slate-900">{formatMonthTitle(currentMonth)}</h2>
+              <h2 className="ml-2 text-2xl font-semibold text-slate-900">{viewPeriodLabel}</h2>
             </div>
 
             <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 rounded-xl px-4"
+                onClick={() => setIsSidebarOpen((previous) => !previous)}
+              >
+                {isSidebarOpen ? "Ocultar panel" : "Panel"}
+              </Button>
+
               <Button
                 type="button"
                 variant="outline"
@@ -787,14 +878,27 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
-                  <DropdownMenuItem onSelect={() => setViewOption("day")}>Dia</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setViewOption("week")}>Semana</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setViewOption("month")} className="font-semibold text-blue-700">
+                  <DropdownMenuItem onSelect={() => setViewOption("day")} className={cn(viewOption === "day" && "font-semibold text-blue-700")}>
+                    Dia
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setViewOption("week")} className={cn(viewOption === "week" && "font-semibold text-blue-700")}>
+                    Semana
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setViewOption("month")} className={cn(viewOption === "month" && "font-semibold text-blue-700")}>
                     Mes
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setViewOption("year")}>Ano</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setViewOption("agenda")}>Agenda</DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setViewOption("seven_days")}>7 dias</DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setViewOption("year")} className={cn(viewOption === "year" && "font-semibold text-blue-700")}>
+                    Ano
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setViewOption("agenda")} className={cn(viewOption === "agenda" && "font-semibold text-blue-700")}>
+                    Agenda
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => setViewOption("seven_days")}
+                    className={cn(viewOption === "seven_days" && "font-semibold text-blue-700")}
+                  >
+                    7 dias
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 
@@ -823,76 +927,226 @@ export function CalendarFocusView({ activeTaskId, onTaskSelect, onOpenFocusTab }
             <div className="border-b border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-600 xl:px-6">{eventsInfo}</div>
           ) : null}
 
-          <div className="overflow-x-auto">
-            <div className="min-w-[900px]">
-              <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
-                {weekdayLabels.map((label) => (
-                  <div key={label} className="px-3 py-2 text-center text-[11px] font-semibold tracking-wide text-slate-600">
-                    {label}
-                  </div>
-                ))}
+          {viewOption === "month" ? (
+            <div className="overflow-x-auto">
+              <div className="min-w-[900px]">
+                <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
+                  {weekdayLabels.map((label) => (
+                    <div key={label} className="px-3 py-2 text-center text-[11px] font-semibold tracking-wide text-slate-600">
+                      {label}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-7">
+                  {monthGridDays.map((day) => {
+                    const dayKey = toDateKey(day)
+                    const dayEvents = getEventsForDay(day)
+                    const isCurrentMonth = day.getMonth() === currentMonth.getMonth()
+                    const isToday = dayKey === toDateKey(today)
+                    const isSelected = dayKey === selectedDayKey
+                    const visibleEvents = dayEvents.slice(0, 4)
+                    const remaining = Math.max(dayEvents.length - visibleEvents.length, 0)
+
+                    return (
+                      <button
+                        key={dayKey}
+                        type="button"
+                        onClick={() => syncDateSelection(day)}
+                        className={cn(
+                          "relative min-h-[138px] border-b border-r border-slate-200 px-2 py-2 text-left align-top transition-colors",
+                          !isCurrentMonth && "bg-slate-50/80",
+                          isSelected && "bg-blue-50/70",
+                          !isSelected && "hover:bg-slate-50"
+                        )}
+                      >
+                        <div className="mb-1 flex items-center justify-between">
+                          <span
+                            className={cn(
+                              "inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-sm",
+                              isToday && "bg-blue-600 text-white",
+                              !isToday && isCurrentMonth && "text-slate-900",
+                              !isCurrentMonth && "text-slate-400"
+                            )}
+                          >
+                            {day.getDate()}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1">
+                          {visibleEvents.map((event) => (
+                            <div
+                              key={`${dayKey}-${event.id}`}
+                              className="flex items-start gap-1 rounded-md bg-blue-50/40 px-1.5 py-0.5 text-[11px] text-slate-800"
+                              title={event.summary}
+                            >
+                              <span
+                                className="mt-1 h-2 w-2 shrink-0 rounded-full"
+                                style={{ backgroundColor: event.calendarColor ?? "#3b82f6" }}
+                              />
+                              <span className="truncate">{formatEventLine(day, event)}</span>
+                            </div>
+                          ))}
+                          {remaining > 0 ? <p className="px-1.5 text-[11px] font-medium text-slate-500">+{remaining} mas</p> : null}
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
+            </div>
+          ) : null}
 
-              <div className="grid grid-cols-7">
-                {monthGridDays.map((day) => {
-                  const dayKey = toDateKey(day)
-                  const dayEvents = eventsByDay.get(dayKey) ?? []
-                  const isCurrentMonth = day.getMonth() === currentMonth.getMonth()
-                  const isToday = dayKey === toDateKey(today)
-                  const isSelected = dayKey === selectedDayKey
-                  const visibleEvents = dayEvents.slice(0, 4)
-                  const remaining = Math.max(dayEvents.length - visibleEvents.length, 0)
+          {viewOption === "week" || viewOption === "seven_days" ? (
+            <div className="overflow-x-auto">
+              <div className="min-w-[980px]">
+                <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
+                  {(viewOption === "week" ? weekDays : sevenDayWindow).map((day) => {
+                    const dayKey = toDateKey(day)
+                    const isSelected = dayKey === selectedDayKey
+                    return (
+                      <button
+                        key={dayKey}
+                        type="button"
+                        onClick={() => syncDateSelection(day)}
+                        className={cn(
+                          "border-r border-slate-200 px-3 py-2 text-left transition-colors",
+                          isSelected ? "bg-blue-100" : "hover:bg-slate-100"
+                        )}
+                      >
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+                          {day.toLocaleDateString("es-AR", { weekday: "short" })}
+                        </p>
+                        <p className={cn("text-sm font-semibold", isSelected ? "text-blue-700" : "text-slate-800")}>{day.getDate()}</p>
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="grid grid-cols-7">
+                  {(viewOption === "week" ? weekDays : sevenDayWindow).map((day) => {
+                    const dayKey = toDateKey(day)
+                    const dayEvents = getEventsForDay(day)
+                    return (
+                      <div key={dayKey} className="min-h-[480px] border-b border-r border-slate-200 px-2 py-2">
+                        {dayEvents.length === 0 ? (
+                          <p className="text-xs text-slate-400">Sin eventos</p>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {dayEvents.map((event) => (
+                              <div key={`${dayKey}-${event.id}`} className="rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-800">
+                                <div className="flex items-center gap-1">
+                                  <span
+                                    className="h-2 w-2 rounded-full"
+                                    style={{ backgroundColor: event.calendarColor ?? "#3b82f6" }}
+                                  />
+                                  <span className="truncate font-medium">{event.summary}</span>
+                                </div>
+                                <p className="mt-0.5 text-[11px] text-slate-500">{formatEventLine(day, event)}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : null}
 
+          {viewOption === "day" ? (
+            <div className="px-4 py-4 xl:px-6">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <p className="text-sm font-semibold text-slate-900 mb-3">
+                  {selectedDay.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+                </p>
+                {selectedDayEvents.length === 0 ? (
+                  <p className="text-sm text-slate-500">No hay eventos para este dia.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {selectedDayEvents.map((event) => (
+                      <div key={`${selectedDayKey}-${event.id}`} className="rounded-xl border border-slate-200 px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: event.calendarColor ?? "#3b82f6" }} />
+                          <p className="text-sm font-semibold text-slate-900">{event.summary}</p>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-600">{formatEventLine(selectedDay, event)}</p>
+                        {event.calendarSummary ? <p className="mt-1 text-[11px] text-slate-500">{formatCalendarName(event.calendarSummary)}</p> : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          {viewOption === "agenda" ? (
+            <div className="px-4 py-4 xl:px-6">
+              <div className="rounded-2xl border border-slate-200 bg-white">
+                {agendaEntries.length === 0 ? (
+                  <p className="px-4 py-6 text-sm text-slate-500">No hay eventos en este rango.</p>
+                ) : (
+                  <div className="max-h-[70vh] overflow-auto">
+                    {agendaEntries.map((entry, index) => (
+                      <div
+                        key={toDateKey(entry.day)}
+                        className={cn("px-4 py-3", index < agendaEntries.length - 1 && "border-b border-slate-100")}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => syncDateSelection(entry.day)}
+                          className="mb-2 text-sm font-semibold text-slate-900 hover:text-blue-700"
+                        >
+                          {entry.day.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}
+                        </button>
+                        <div className="space-y-1.5">
+                          {entry.events.map((event) => (
+                            <div key={`${toDateKey(entry.day)}-${event.id}`} className="rounded-lg bg-slate-50 px-2 py-1.5 text-xs text-slate-800">
+                              <div className="flex items-center gap-1">
+                                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: event.calendarColor ?? "#3b82f6" }} />
+                                <span className="font-medium">{event.summary}</span>
+                              </div>
+                              <p className="text-[11px] text-slate-500">{formatEventLine(entry.day, event)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          {viewOption === "year" ? (
+            <div className="px-4 py-4 xl:px-6">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
+                {monthsInYear.map((monthDate) => {
+                  const isCurrent = monthDate.getMonth() === currentMonth.getMonth()
+                  const monthCount = eventCountByMonth.get(monthDate.getMonth()) ?? 0
                   return (
                     <button
-                      key={dayKey}
+                      key={monthDate.toISOString()}
                       type="button"
                       onClick={() => {
-                        setSelectedDayKey(dayKey)
-                        if (!isCurrentMonth) setCurrentMonth(startOfMonth(day))
+                        syncDateSelection(monthDate)
+                        setViewOption("month")
                       }}
                       className={cn(
-                        "relative min-h-[138px] border-b border-r border-slate-200 px-2 py-2 text-left align-top transition-colors",
-                        !isCurrentMonth && "bg-slate-50/80",
-                        isSelected && "bg-blue-50/70",
-                        !isSelected && "hover:bg-slate-50"
+                        "rounded-xl border px-4 py-3 text-left transition-colors",
+                        isCurrent ? "border-blue-300 bg-blue-50" : "border-slate-200 bg-white hover:bg-slate-50"
                       )}
                     >
-                      <div className="mb-1 flex items-center justify-between">
-                        <span
-                          className={cn(
-                            "inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1.5 text-sm",
-                            isToday && "bg-blue-600 text-white",
-                            !isToday && isCurrentMonth && "text-slate-900",
-                            !isCurrentMonth && "text-slate-400"
-                          )}
-                        >
-                          {day.getDate()}
-                        </span>
-                      </div>
-
-                      <div className="space-y-1">
-                        {visibleEvents.map((event) => (
-                          <div
-                            key={`${dayKey}-${event.id}`}
-                            className="flex items-start gap-1 rounded-md bg-blue-50/40 px-1.5 py-0.5 text-[11px] text-slate-800"
-                            title={event.summary}
-                          >
-                            <span
-                              className="mt-1 h-2 w-2 shrink-0 rounded-full"
-                              style={{ backgroundColor: event.calendarColor ?? "#3b82f6" }}
-                            />
-                            <span className="truncate">{formatEventLine(day, event)}</span>
-                          </div>
-                        ))}
-                        {remaining > 0 ? <p className="px-1.5 text-[11px] font-medium text-slate-500">+{remaining} mas</p> : null}
-                      </div>
+                      <p className={cn("text-sm font-semibold capitalize", isCurrent ? "text-blue-700" : "text-slate-900")}>
+                        {monthDate.toLocaleDateString("es-AR", { month: "long" })}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">{monthCount} eventos cargados</p>
                     </button>
                   )
                 })}
               </div>
             </div>
-          </div>
+          ) : null}
         </section>
       </div>
 
