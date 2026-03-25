@@ -6,6 +6,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const GOOGLE_OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID ?? process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 const GOOGLE_OAUTH_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "";
 const FOCUS_SYNC_MIN_INTERVAL_MS = 60_000;
+const GOOGLE_SYNC_ENABLE_BIDIRECTIONAL = process.env.GOOGLE_SYNC_ENABLE_BIDIRECTIONAL === "true";
 
 type SyncReason = "manual" | "focus";
 type CalendarSelectionMode = "all" | "none" | "some";
@@ -52,6 +53,8 @@ type GoogleCalendarListResponse = {
   items?: GoogleCalendarListItem[];
   nextPageToken?: string;
 };
+
+type SubjectLite = { id: string; name: string };
 
 function getSupabaseClient(authHeader: string) {
   if (!supabaseUrl || !supabaseAnonKey) {
@@ -105,29 +108,58 @@ function googleStatusToLocalStatus(status: "needsAction" | "completed"): "Pendie
   return status === "completed" ? "Completada" : "Pendiente";
 }
 
-function findSubjectIdByTitle(
+function stripSubjectPrefixSyntax(title: string): string {
+  const trimmed = title.trim();
+  return trimmed
+    .replace(/^\s*\[[^\]]+\]\s*/, "")
+    .replace(/^\s*[^:]{2,80}:\s*/, "")
+    .trim();
+}
+
+function extractSubjectAndCleanTitle(
   title: string,
-  subjects: Array<{ id: string; name: string }> | null
-): string | null {
-  if (!subjects || subjects.length === 0) return null;
-
+  subjects: SubjectLite[] | null
+): { subjectId: string | null; cleanTitle: string } {
   const titleTrimmed = title.trim();
-  const bracketMatch = titleTrimmed.match(/^\s*\[([^\]]+)\]/);
-  const prefixMatch = titleTrimmed.match(/^\s*([^:]{2,80}):/);
-  const candidates = [
-    bracketMatch?.[1] ?? "",
-    prefixMatch?.[1] ?? "",
-  ]
-    .map(normalizeText)
-    .filter(Boolean);
+  const fallbackTitle = titleTrimmed.length > 0 ? titleTrimmed : "Untitled task";
+  if (!subjects || subjects.length === 0) {
+    return { subjectId: null, cleanTitle: fallbackTitle };
+  }
 
-  if (candidates.length === 0) return null;
+  const bracketMatch = titleTrimmed.match(/^\s*\[([^\]]+)\]\s*/);
+  const prefixMatch = titleTrimmed.match(/^\s*([^:]{2,80}):\s*/);
+
+  const candidates: Array<{ raw: string; pattern: "bracket" | "prefix" }> = [];
+  if (bracketMatch?.[1]) candidates.push({ raw: bracketMatch[1], pattern: "bracket" });
+  if (prefixMatch?.[1]) candidates.push({ raw: prefixMatch[1], pattern: "prefix" });
 
   for (const candidate of candidates) {
-    const matched = subjects.find((subject) => normalizeText(subject.name) === candidate);
-    if (matched) return matched.id;
+    const normalizedCandidate = normalizeText(candidate.raw);
+    const matched = subjects.find((subject) => normalizeText(subject.name) === normalizedCandidate);
+    if (!matched) continue;
+
+    let cleanTitle = titleTrimmed;
+    if (candidate.pattern === "bracket" && bracketMatch) {
+      cleanTitle = titleTrimmed.slice(bracketMatch[0].length).trimStart();
+    } else if (candidate.pattern === "prefix" && prefixMatch) {
+      cleanTitle = titleTrimmed.slice(prefixMatch[0].length).trimStart();
+    }
+
+    return {
+      subjectId: matched.id,
+      cleanTitle: cleanTitle.length > 0 ? cleanTitle : fallbackTitle,
+    };
   }
-  return null;
+
+  return { subjectId: null, cleanTitle: fallbackTitle };
+}
+
+function toGoogleTaskTitle(localTitle: string, subjectId: string | null, subjectById: Map<string, string>): string {
+  const baseTitle = stripSubjectPrefixSyntax(localTitle) || "Untitled task";
+  if (!subjectId) return baseTitle;
+  const subjectName = subjectById.get(subjectId);
+  if (!subjectName) return baseTitle;
+  return `[${subjectName}] ${baseTitle}`;
 }
 
 async function refreshGoogleAccessToken(refreshToken: string): Promise<{
@@ -244,13 +276,21 @@ export async function POST(req: Request) {
     );
   }
 
+  const tasksMode: SyncMode = GOOGLE_SYNC_ENABLE_BIDIRECTIONAL
+    ? normalizeSyncMode(typedProfile.google_tasks_sync_mode)
+    : "read_only";
+  const calendarMode: SyncMode = GOOGLE_SYNC_ENABLE_BIDIRECTIONAL
+    ? normalizeSyncMode(typedProfile.google_calendar_sync_mode)
+    : "read_only";
+
   const result = {
     ok: true,
     throttled: false,
     synced_at: null as string | null,
     tasks: {
       enabled: Boolean(typedProfile.google_tasks_sync),
-      mode: normalizeSyncMode(typedProfile.google_tasks_sync_mode),
+      // Sprint safety mode: default read-only until OAuth validation closes.
+      mode: tasksMode,
       total_google: 0,
       upserted: 0,
       removed: 0,
@@ -260,7 +300,7 @@ export async function POST(req: Request) {
     },
     calendar: {
       enabled: Boolean(typedProfile.google_calendar_sync),
-      mode: normalizeSyncMode(typedProfile.google_calendar_sync_mode),
+      mode: calendarMode,
       events_fetched: 0,
     },
     errors: {} as { auth?: string; tasks?: string; calendar?: string },
@@ -322,7 +362,6 @@ export async function POST(req: Request) {
   // Google Tasks sync.
   if (typedProfile.google_tasks_sync) {
     try {
-      const tasksMode = normalizeSyncMode(typedProfile.google_tasks_sync_mode);
       const googleTasks: Array<{
         id: string;
         title: string;
@@ -372,6 +411,8 @@ export async function POST(req: Request) {
         .from("subjects")
         .select("id, name")
         .eq("user_id", userData.user.id);
+      const subjectRows = ((subjects as SubjectLite[] | null) ?? null);
+      const subjectById = new Map((subjectRows ?? []).map((subject) => [subject.id, subject.name]));
 
       const googleTaskById = new Map(googleTasks.map((task) => [task.id, task]));
       const upsertGoogleTaskCache = (task: {
@@ -391,7 +432,7 @@ export async function POST(req: Request) {
       if (tasksMode === "bidirectional") {
         const { data: localTasks, error: localTasksError } = await supabase
           .from("tasks")
-          .select("id, title, status, completed_at, due_date, google_task_id")
+          .select("id, title, status, completed_at, due_date, google_task_id, subject_id")
           .eq("user_id", userData.user.id);
         if (localTasksError) {
           throw new Error(localTasksError.message);
@@ -402,6 +443,8 @@ export async function POST(req: Request) {
             typeof localTask.title === "string" && localTask.title.trim().length > 0
               ? localTask.title.trim()
               : "Untitled task";
+          const localSubjectId = typeof localTask.subject_id === "string" ? localTask.subject_id : null;
+          const localGoogleTitle = toGoogleTaskTitle(localTitle, localSubjectId, subjectById);
           const localStatus = localStatusToGoogleStatus(String(localTask.status ?? "Pendiente"));
           const localDueIso = localDueDateToGoogleDue(
             typeof localTask.due_date === "string" ? localTask.due_date : null
@@ -416,7 +459,7 @@ export async function POST(req: Request) {
               : null;
 
           if (!existingGoogleTaskId) {
-            const createBody: Record<string, string> = { title: localTitle };
+            const createBody: Record<string, string> = { title: localGoogleTitle };
             if (localDueIso) createBody.due = localDueIso;
             if (localStatus === "completed") createBody.status = "completed";
 
@@ -454,7 +497,7 @@ export async function POST(req: Request) {
 
             upsertGoogleTaskCache({
               id: created.id,
-              title: created.title ?? localTitle,
+              title: created.title ?? localGoogleTitle,
               status: created.status === "completed" ? "completed" : localStatus,
               completed: created.completed,
               due: created.due ?? (localDueIso ?? undefined),
@@ -465,7 +508,7 @@ export async function POST(req: Request) {
 
           const remoteTask = googleTaskById.get(existingGoogleTaskId);
           if (!remoteTask) {
-            const recreateBody: Record<string, string> = { title: localTitle };
+            const recreateBody: Record<string, string> = { title: localGoogleTitle };
             if (localDueIso) recreateBody.due = localDueIso;
             if (localStatus === "completed") recreateBody.status = "completed";
 
@@ -502,7 +545,7 @@ export async function POST(req: Request) {
 
             upsertGoogleTaskCache({
               id: recreated.id,
-              title: recreated.title ?? localTitle,
+              title: recreated.title ?? localGoogleTitle,
               status: recreated.status === "completed" ? "completed" : localStatus,
               completed: recreated.completed,
               due: recreated.due ?? (localDueIso ?? undefined),
@@ -539,14 +582,14 @@ export async function POST(req: Request) {
 
           const remoteDueDateOnly = toDateOnly(remoteTask.due);
           const needsPatch =
-            remoteTitle !== normalizeText(localTitle) ||
+            remoteTitle !== normalizeText(localGoogleTitle) ||
             remoteStatus !== localStatus ||
             remoteDueDateOnly !== localDueDateOnly;
 
           if (!needsPatch) continue;
 
           const patchBody: Record<string, string | null> = {
-            title: localTitle,
+            title: localGoogleTitle,
             status: localStatus,
             due: localDueIso,
           };
@@ -584,7 +627,7 @@ export async function POST(req: Request) {
 
           upsertGoogleTaskCache({
             id: existingGoogleTaskId,
-            title: patched.title ?? localTitle,
+            title: patched.title ?? localGoogleTitle,
             status: patched.status === "completed" ? "completed" : localStatus,
             completed: patched.completed,
             due: patched.due ?? (localDueIso ?? undefined),
@@ -619,10 +662,11 @@ export async function POST(req: Request) {
       }
 
       const payloadRows = googleTasks.map((task) => {
-        const inferredSubjectId = findSubjectIdByTitle(
+        const parsedTitle = extractSubjectAndCleanTitle(
           task.title,
-          (subjects as Array<{ id: string; name: string }> | null) ?? null
+          subjectRows
         );
+        const inferredSubjectId = parsedTitle.subjectId;
         const existingSubjectId = existingGoogleTaskSubjects.get(task.id);
         // Prevent pull sync from clearing an already linked local subject.
         const shouldWriteSubjectId =
@@ -632,7 +676,7 @@ export async function POST(req: Request) {
 
         return {
           user_id: userData.user.id,
-          title: task.title,
+          title: parsedTitle.cleanTitle,
           status: googleStatusToLocalStatus(task.status),
           completed_at:
             task.status === "completed"

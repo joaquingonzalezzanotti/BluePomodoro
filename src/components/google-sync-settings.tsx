@@ -43,9 +43,8 @@ export function GoogleSyncSettings() {
   const hasSyncGrant = Boolean(profile?.google_access_token)
   const hasAnySyncEnabled = Boolean(profile?.google_tasks_sync || profile?.google_calendar_sync)
   const lastSyncText = formatLastSync(profile?.google_last_synced_at)
-  const tasksSyncMode: SyncMode = profile?.google_tasks_sync_mode === "bidirectional" ? "bidirectional" : "read_only"
-  const calendarSyncMode: SyncMode =
-    profile?.google_calendar_sync_mode === "bidirectional" ? "bidirectional" : "read_only"
+  const tasksSyncMode: SyncMode = "read_only"
+  const calendarSyncMode: SyncMode = "read_only"
 
   const handleToggle = async (key: "google_calendar_sync" | "google_tasks_sync", value: boolean) => {
     if (!user) return
@@ -151,14 +150,8 @@ export function GoogleSyncSettings() {
 
     setIsConnecting(true)
     try {
-      const taskScope =
-        tasksSyncMode === "bidirectional"
-          ? "https://www.googleapis.com/auth/tasks"
-          : "https://www.googleapis.com/auth/tasks.readonly"
-      const calendarScope =
-        calendarSyncMode === "bidirectional"
-          ? "https://www.googleapis.com/auth/calendar"
-          : "https://www.googleapis.com/auth/calendar.readonly"
+      const taskScope = "https://www.googleapis.com/auth/tasks.readonly"
+      const calendarScope = "https://www.googleapis.com/auth/calendar.readonly"
 
       await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -248,24 +241,12 @@ export function GoogleSyncSettings() {
                   <p className="text-xs text-muted-foreground italic">Desactivado.</p>
                 ) : (
                   <div className="space-y-4">
-                    <Badge
-                      variant="secondary"
-                      className={
-                        calendarSyncMode === "bidirectional"
-                          ? "bg-amber-50 text-amber-700 border-none font-black text-[9px]"
-                          : "bg-blue-50 text-blue-600 border-none font-black text-[9px]"
-                      }
-                    >
-                      {calendarSyncMode === "bidirectional" ? "BIDIRECTIONAL (ROADMAP)" : "READ ONLY"}
+                    <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-none font-black text-[9px]">
+                      READ ONLY
                     </Badge>
                     <p className="text-xs font-medium text-slate-500">
                       La seleccion de calendarios se configura desde Agenda, en "Mis calendarios".
                     </p>
-                    {calendarSyncMode === "bidirectional" ? (
-                      <p className="text-[11px] text-amber-700">
-                        Permisos de escritura listos. Falta capa de eventos locales para push seguro.
-                      </p>
-                    ) : null}
                   </div>
                 )}
               </CardContent>
@@ -282,20 +263,11 @@ export function GoogleSyncSettings() {
                   <p className="text-xs text-muted-foreground italic">Desactivado.</p>
                 ) : (
                   <div className="space-y-4">
-                    <Badge
-                      variant="secondary"
-                      className={
-                        tasksSyncMode === "bidirectional"
-                          ? "bg-emerald-50 text-emerald-700 border-none font-black text-[9px]"
-                          : "bg-green-50 text-green-600 border-none font-black text-[9px]"
-                      }
-                    >
-                      {tasksSyncMode === "bidirectional" ? "PUSH + PULL" : "GOOGLE WINS"}
+                    <Badge variant="secondary" className="bg-green-50 text-green-600 border-none font-black text-[9px]">
+                      GOOGLE WINS
                     </Badge>
                     <p className="text-xs font-medium text-slate-500">
-                      {tasksSyncMode === "bidirectional"
-                        ? "Cambios en BluePomodoro y Google Tasks se reconcilian en ambas direcciones."
-                        : "Importacion desde lista default con upsert y limpieza de tareas removidas."}
+                      Importacion desde lista default con upsert y limpieza de tareas removidas.
                     </p>
                   </div>
                 )}
@@ -325,13 +297,13 @@ export function GoogleSyncSettings() {
                 <Select
                   value={calendarSyncMode}
                   onValueChange={(value) => handleModeChange("google_calendar_sync_mode", value as SyncMode)}
+                  disabled
                 >
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="read_only">Solo lectura (estable)</SelectItem>
-                    <SelectItem value="bidirectional">Bidireccional (roadmap)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -351,13 +323,13 @@ export function GoogleSyncSettings() {
                 <Select
                   value={tasksSyncMode}
                   onValueChange={(value) => handleModeChange("google_tasks_sync_mode", value as SyncMode)}
+                  disabled
                 >
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="read_only">Solo lectura (Google gana)</SelectItem>
-                    <SelectItem value="bidirectional">Bidireccional (push + pull)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -368,8 +340,8 @@ export function GoogleSyncSettings() {
                 Seleccion de calendarios: pestaña Agenda &gt; Mis calendarios.
               </p>
               <p className="text-[10px] text-muted-foreground font-bold">Re-sync on Focus: silenciosa, con throttle de 60s.</p>
-              <p className="text-[10px] text-muted-foreground font-bold">
-                Si cambias el modo a bidireccional, toca "Conectar Google Sync" para renovar scopes.
+              <p className="text-[10px] text-amber-700 font-bold">
+                Durante validacion OAuth de Google, Tasks/Calendar operan en solo lectura.
               </p>
             </CardContent>
           </Card>
