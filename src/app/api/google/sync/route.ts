@@ -595,19 +595,55 @@ export async function POST(req: Request) {
 
       result.tasks.total_google = googleTasks.length;
 
-      const payloadRows = googleTasks.map((task) => ({
-        user_id: userData.user.id,
-        title: task.title,
-        status: googleStatusToLocalStatus(task.status),
-        completed_at:
-          task.status === "completed"
-            ? toIsoOrNull(task.completed) ?? toIsoOrNull(task.updated)
-            : null,
-        due_date: toDateOnly(task.due),
-        imported_from_google: true,
-        google_task_id: task.id,
-        subject_id: findSubjectIdByTitle(task.title, (subjects as Array<{ id: string; name: string }> | null) ?? null),
-      }));
+      const incomingGoogleTaskIds = googleTasks.map((task) => task.id);
+      const existingGoogleTaskSubjects = new Map<string, string | null>();
+
+      if (incomingGoogleTaskIds.length > 0) {
+        const { data: existingGoogleRows, error: existingGoogleRowsError } = await supabase
+          .from("tasks")
+          .select("google_task_id, subject_id")
+          .eq("user_id", userData.user.id)
+          .in("google_task_id", incomingGoogleTaskIds);
+        if (existingGoogleRowsError) {
+          throw new Error(existingGoogleRowsError.message);
+        }
+
+        for (const row of existingGoogleRows ?? []) {
+          const googleTaskId = typeof row.google_task_id === "string" ? row.google_task_id : "";
+          if (!googleTaskId) continue;
+          existingGoogleTaskSubjects.set(
+            googleTaskId,
+            typeof row.subject_id === "string" && row.subject_id.length > 0 ? row.subject_id : null
+          );
+        }
+      }
+
+      const payloadRows = googleTasks.map((task) => {
+        const inferredSubjectId = findSubjectIdByTitle(
+          task.title,
+          (subjects as Array<{ id: string; name: string }> | null) ?? null
+        );
+        const existingSubjectId = existingGoogleTaskSubjects.get(task.id);
+        // Prevent pull sync from clearing an already linked local subject.
+        const shouldWriteSubjectId =
+          existingSubjectId === undefined
+            ? Boolean(inferredSubjectId)
+            : existingSubjectId === null && Boolean(inferredSubjectId);
+
+        return {
+          user_id: userData.user.id,
+          title: task.title,
+          status: googleStatusToLocalStatus(task.status),
+          completed_at:
+            task.status === "completed"
+              ? toIsoOrNull(task.completed) ?? toIsoOrNull(task.updated)
+              : null,
+          due_date: toDateOnly(task.due),
+          imported_from_google: true,
+          google_task_id: task.id,
+          ...(shouldWriteSubjectId ? { subject_id: inferredSubjectId } : {}),
+        };
+      });
 
       if (payloadRows.length > 0) {
         const { error: upsertError } = await supabase

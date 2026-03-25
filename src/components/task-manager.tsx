@@ -7,15 +7,16 @@ import {
   Trash2, 
   Zap,
   CheckCircle2,
+  CheckSquare,
   Sparkles,
-  Layout,
   BookOpen,
   Edit2,
   Check,
   ChevronDown,
   ChevronUp,
   Minus,
-  Target
+  Target,
+  X
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -73,6 +74,7 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
   
   const [editingTaskId, setEditingTaskId] = React.useState<string | null>(null)
   const [editingText, setEditingText] = React.useState("")
+  const [editingMateriaId, setEditingMateriaId] = React.useState<string>("none")
   const [editingSubTaskId, setEditingSubTaskId] = React.useState<{taskId: string, subId: string} | null>(null)
   const [editingSubText, setEditingSubText] = React.useState("")
 
@@ -171,10 +173,35 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
     }
   }
 
-  const updateTaskTitle = async (taskId: string) => {
-    if (!user || !editingText.trim()) return
-    await supabase.from("tasks").update({ title: editingText }).eq("id", taskId)
+  const startEditingTask = (task: Task) => {
+    setEditingTaskId(task.id)
+    setEditingText(task.title)
+    setEditingMateriaId(task.subject_id ?? "none")
+  }
+
+  const cancelEditingTask = () => {
     setEditingTaskId(null)
+    setEditingText("")
+    setEditingMateriaId("none")
+  }
+
+  const updateTaskDetails = async (taskId: string) => {
+    if (!user || !editingText.trim()) return
+    const { error } = await supabase
+      .from("tasks")
+      .update({
+        title: editingText.trim(),
+        subject_id: editingMateriaId === "none" ? null : editingMateriaId,
+      })
+      .eq("id", taskId)
+      .eq("user_id", user.id)
+
+    if (error) {
+      toast({ variant: "destructive", title: "Error", description: "No se pudo actualizar la tarea." })
+      return
+    }
+
+    cancelEditingTask()
   }
 
   const updateTaskEmoji = async (taskId: string, currentTitle: string, emoji: string) => {
@@ -322,14 +349,31 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
 
                       <div className="flex-1 min-w-0 cursor-pointer" onClick={handleSelectTask}>
                         {editingTaskId === task.id ? (
-                          <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                            <Input value={editingText} onChange={(e) => setEditingText(e.target.value)} className="h-8 text-sm font-black" autoFocus />
-                            <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => updateTaskTitle(task.id)}><Check className="h-4 w-4" /></Button>
+                          <div className="flex flex-wrap gap-2" onClick={e => e.stopPropagation()}>
+                            <Input
+                              value={editingText}
+                              onChange={(e) => setEditingText(e.target.value)}
+                              className="h-8 min-w-[220px] flex-1 text-sm font-black"
+                              autoFocus
+                            />
+                            <Select value={editingMateriaId} onValueChange={setEditingMateriaId}>
+                              <SelectTrigger className="h-8 w-[180px] rounded-xl bg-slate-50 border-none text-[11px] font-bold">
+                                <SelectValue placeholder="Materia" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Sin Materia</SelectItem>
+                                {materias?.map(m => (
+                                  <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-green-600" onClick={() => updateTaskDetails(task.id)}><Check className="h-4 w-4" /></Button>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500" onClick={cancelEditingTask}><X className="h-4 w-4" /></Button>
                           </div>
                         ) : (
                           <div className="flex items-center gap-2 group min-w-0">
                             <h4 className="text-lg font-black truncate leading-tight">{displayTitle || task.title}</h4>
-                            <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100 shrink-0" onClick={(e) => { e.stopPropagation(); setEditingTaskId(task.id); setEditingText(task.title); }}><Edit2 className="h-3 w-3" /></Button>
+                            <Button variant="ghost" size="icon" className="h-5 w-5 opacity-0 group-hover:opacity-100 shrink-0" onClick={(e) => { e.stopPropagation(); startEditingTask(task); }}><Edit2 className="h-3 w-3" /></Button>
                             {isActiveTask && (
                               <Badge className="bg-primary/10 text-primary border border-primary/20 text-[9px] font-black uppercase tracking-wide">Vinculada</Badge>
                             )}
@@ -388,7 +432,9 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
                             </Button>
                           </div>
                         </div>
-                        <span className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-lg"><Layout className="h-3.5 w-3.5 text-blue-500" /> {totalCount}</span>
+                        <span className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-lg" title="Subtareas">
+                          <CheckSquare className="h-3.5 w-3.5 text-blue-500" /> {totalCount}
+                        </span>
                       </div>
 
                       <div className="flex items-center gap-1 border-l pl-4 border-slate-100">
