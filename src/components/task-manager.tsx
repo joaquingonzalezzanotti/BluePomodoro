@@ -43,9 +43,13 @@ interface TaskManagerProps {
   onTaskSelect?: (id: string | null) => void
   activeTaskId?: string | null
   onlyActive?: boolean
+  focusBoard?: boolean
+  restDropdownOpen?: boolean
+  onRestDropdownOpenChange?: (open: boolean) => void
 }
 
 const EMOJI_CHOICES = ["✨", "🧠", "📝", "🎯", "🚀", "📚", "💼", "🧹", "✅", "⚡", "🎧", "🧩"]
+const LAST_USED_TASK_STORAGE_KEY = "bluepomodoro:last-used-task-id"
 
 const stripLeadingEmoji = (title: string) => {
   const trimmed = title.trim()
@@ -67,7 +71,14 @@ const getLeadingEmoji = (title: string) => {
   return EMOJI_CHOICES[0]
 }
 
-export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskManagerProps) {
+export function TaskManager({
+  onTaskSelect,
+  activeTaskId,
+  onlyActive,
+  focusBoard,
+  restDropdownOpen,
+  onRestDropdownOpenChange,
+}: TaskManagerProps) {
   const [newTaskText, setNewTaskText] = React.useState("")
   const [selectedMateriaId, setSelectedMateriaId] = React.useState<string>("none")
   const [isAiLoading, setIsAiLoading] = React.useState<string | null>(null)
@@ -80,6 +91,8 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
 
   const [expandedTasks, setExpandedTasks] = React.useState<Record<string, boolean>>({})
   const [completedOpen, setCompletedOpen] = React.useState(false)
+  const [focusBoardRestOpenInternal, setFocusBoardRestOpenInternal] = React.useState(false)
+  const [lastUsedTaskId, setLastUsedTaskId] = React.useState<string | null>(null)
   
   const { toast } = useToast()
   const supabase = useSupabase()
@@ -118,6 +131,18 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
   const toggleExpand = (taskId: string) => {
     setExpandedTasks(prev => ({ ...prev, [taskId]: !prev[taskId] }))
   }
+
+  React.useEffect(() => {
+    if (typeof window === "undefined") return
+    const stored = window.localStorage.getItem(LAST_USED_TASK_STORAGE_KEY)
+    setLastUsedTaskId(stored && stored.length > 0 ? stored : null)
+  }, [])
+
+  const rememberLastUsedTask = React.useCallback((taskId: string) => {
+    setLastUsedTaskId(taskId)
+    if (typeof window === "undefined") return
+    window.localStorage.setItem(LAST_USED_TASK_STORAGE_KEY, taskId)
+  }, [])
 
   const addTask = async () => {
     if (!newTaskText.trim() || !user) return
@@ -243,18 +268,44 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
     await supabase.from("tasks").update({ status: nextStatus }).eq("id", taskId)
   }
 
-  const scopedTasks = onlyActive && activeTaskId
+  const scopedTasks = onlyActive && activeTaskId && !focusBoard
     ? (tasks?.filter(t => t.id === activeTaskId) ?? [])
     : (tasks ?? [])
 
   const activeTasks = scopedTasks.filter(task => task.status !== "Completada")
   const completedTasks = scopedTasks.filter(task => task.status === "Completada")
+  const fallbackTaskId =
+    (activeTaskId && scopedTasks.some((task) => task.id === activeTaskId) ? activeTaskId : null) ??
+    (lastUsedTaskId && scopedTasks.some((task) => task.id === lastUsedTaskId) ? lastUsedTaskId : null) ??
+    scopedTasks[0]?.id ??
+    null
+
+  React.useEffect(() => {
+    if (!focusBoard || !onTaskSelect) return
+    if (activeTaskId) return
+    if (!fallbackTaskId) return
+    onTaskSelect(fallbackTaskId)
+  }, [activeTaskId, fallbackTaskId, focusBoard, onTaskSelect])
+
+  const linkedTaskId = focusBoard ? (activeTaskId ?? fallbackTaskId) : activeTaskId ?? null
+  const orderedActiveTasks = linkedTaskId
+    ? [...activeTasks].sort((a, b) => {
+        if (a.id === linkedTaskId) return -1
+        if (b.id === linkedTaskId) return 1
+        return 0
+      })
+    : activeTasks
+  const primaryFocusTask = focusBoard ? orderedActiveTasks[0] ?? null : null
+  const visibleActiveTasks = focusBoard ? (primaryFocusTask ? [primaryFocusTask] : []) : orderedActiveTasks
+  const remainingFocusTasks = focusBoard ? orderedActiveTasks.slice(primaryFocusTask ? 1 : 0) : []
+  const isRestDropdownOpen = typeof restDropdownOpen === "boolean" ? restDropdownOpen : focusBoardRestOpenInternal
+  const setRestDropdownOpen = onRestDropdownOpenChange ?? setFocusBoardRestOpenInternal
 
   if (isLoading) return <div className="py-20 text-center animate-pulse text-xs font-black uppercase text-muted-foreground">Cargando tareas...</div>
 
   return (
     <div className="space-y-6">
-      {!onlyActive && (
+      {!onlyActive && !focusBoard && (
         <div className="flex flex-col gap-3 p-6 bg-white rounded-[2.5rem] shadow-sm border border-slate-100">
           <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground/60 px-2">Nueva Tarea</h3>
           <div className="flex flex-col gap-3">
@@ -283,7 +334,7 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
       )}
 
       <div className="space-y-4">
-        {activeTasks.map(task => {
+        {visibleActiveTasks.map(task => {
           const materia = materias?.find(m => m.id === task.subject_id)
           const rawSubTasks = task.subtasks || []
           const normalizedSubTasks: SubTask[] = rawSubTasks.map((st: any, i: number) => 
@@ -293,12 +344,15 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
           const completedCount = normalizedSubTasks.filter(st => st.completed).length
           const totalCount = normalizedSubTasks.length
           const progressValue = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
-          const isExpanded = !!expandedTasks[task.id]
+          const isExpanded = !!expandedTasks[task.id] || (focusBoard && linkedTaskId === task.id)
           const esfuerzo = task.effort_estimated || 1
           const displayEmoji = getLeadingEmoji(task.title)
           const displayTitle = stripLeadingEmoji(task.title)
           const isActiveTask = activeTaskId === task.id
           const handleSelectTask = () => {
+            if (!isActiveTask) {
+              rememberLastUsedTask(task.id)
+            }
             onTaskSelect?.(isActiveTask ? null : task.id)
           }
           const handleCardClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -486,7 +540,60 @@ export function TaskManager({ onTaskSelect, activeTaskId, onlyActive }: TaskMana
           )
         })}
 
-        {!onlyActive && completedTasks.length > 0 && (
+        {focusBoard && remainingFocusTasks.length > 0 && (
+          <Collapsible open={isRestDropdownOpen} onOpenChange={setRestDropdownOpen}>
+            <Card className="border-none shadow-sm rounded-[2rem] overflow-hidden bg-white">
+              <CardContent className="p-0">
+                <CollapsibleTrigger asChild>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-slate-50 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Target className="h-4 w-4 text-primary/70" />
+                      <span className="text-sm font-black text-slate-700">Otras tareas ({remainingFocusTasks.length})</span>
+                    </div>
+                    {isRestDropdownOpen ? <ChevronUp className="h-4 w-4 text-slate-400" /> : <ChevronDown className="h-4 w-4 text-slate-400" />}
+                  </button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="border-t border-slate-100">
+                  <div className="divide-y divide-slate-50">
+                    {remainingFocusTasks.map((task) => {
+                      const materia = materias?.find((m) => m.id === task.subject_id)
+                      const displayEmoji = getLeadingEmoji(task.title)
+                      const displayTitle = stripLeadingEmoji(task.title)
+                      return (
+                        <div key={task.id} className="flex items-center justify-between gap-3 px-6 py-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-slate-700 truncate">
+                              {displayEmoji} {displayTitle || task.title}
+                            </p>
+                            <p className="text-[10px] font-black uppercase text-slate-400 mt-1 truncate">
+                              {materia?.name ?? "Sin materia"} | {Math.max(task.effort_estimated ?? 1, 0)} pomos
+                            </p>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 rounded-lg text-xs shrink-0"
+                            onClick={() => {
+                              rememberLastUsedTask(task.id)
+                              onTaskSelect?.(task.id)
+                            }}
+                          >
+                            Usar en foco
+                          </Button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </CollapsibleContent>
+              </CardContent>
+            </Card>
+          </Collapsible>
+        )}
+
+        {!onlyActive && !focusBoard && completedTasks.length > 0 && (
           <Collapsible open={completedOpen} onOpenChange={setCompletedOpen}>
             <Card className="border-none shadow-sm rounded-[2rem] overflow-hidden bg-white">
               <CardContent className="p-0">

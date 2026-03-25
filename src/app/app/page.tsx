@@ -32,7 +32,7 @@ import { SpotifyRealTime } from "@/components/spotify-real-time"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { useSession, useSupabase, useUser } from "@/supabase"
-import { useProfile } from "@/supabase/hooks"
+import { useProfile, useSupabaseQuery } from "@/supabase/hooks"
 import { usePomodoro } from "@/pomodoro/pomodoro-provider"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Switch } from "@/components/ui/switch"
@@ -41,6 +41,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 import { syncGoogleBridge } from "@/lib/google-sync-client"
 import { useRouter } from "next/navigation"
+import { Input } from "@/components/ui/input"
+import type { Task } from "@/supabase/types"
 
 function SidebarToggle() {
   const { toggleSidebar, state } = useSidebar()
@@ -161,6 +163,8 @@ function DashboardContent({
   longBreakThreshold,
   longBreakMinutesHigh,
   longBreakMinutesLow,
+  focusBoardRestOpen,
+  onFocusBoardRestOpenChange,
   signOutAction 
 }: any) {
   const displayName =
@@ -260,7 +264,13 @@ function DashboardContent({
                     <h1 className="text-4xl font-black text-slate-900 tracking-tight">{tabTitles[activeTab]}</h1>
                     <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">{activeTab}</p>
                   </div>
-                  <TaskManager onTaskSelect={(id: string | null) => setActiveTaskId(id)} activeTaskId={activeTaskId} />
+                  <TaskManager
+                    onTaskSelect={(id: string | null) => setActiveTaskId(id)}
+                    activeTaskId={activeTaskId}
+                    focusBoard
+                    restDropdownOpen={focusBoardRestOpen}
+                    onRestDropdownOpenChange={onFocusBoardRestOpenChange}
+                  />
                 </div>
                 <div className="xl:sticky xl:top-24 w-full">
                   <Card className="bg-white rounded-[2.5rem] p-6 xl:p-8 pt-4 xl:pt-6 shadow-xl border border-slate-100 flex flex-col items-center justify-start overflow-hidden min-h-[140px] xl:min-h-0">
@@ -359,10 +369,25 @@ function DashboardContent({
 
 export default function AppEntry() {
   const [mounted, setMounted] = React.useState(false)
+  const [focusBoardRestOpen, setFocusBoardRestOpen] = React.useState(false)
   const { user, isUserLoading } = useUser()
   const { session } = useSession()
   const supabase = useSupabase()
   const { data: profile } = useProfile()
+  const { data: tasks } = useSupabaseQuery<Task[]>(
+    async (client) => {
+      if (!user) return []
+      const { data, error } = await client
+        .from("tasks")
+        .select("id,title,status,effort_estimated,pomodoros_completed,created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+      if (error) throw error
+      return (data ?? []) as Task[]
+    },
+    [supabase, user?.id],
+    user ? { table: "tasks", filter: `user_id=eq.${user.id}` } : null
+  )
   const {
     mode,
     isActive,
@@ -388,15 +413,37 @@ export default function AppEntry() {
   const router = useRouter()
   const audioRef = React.useRef<HTMLAudioElement | null>(null)
   const focusSyncInFlightRef = React.useRef(false)
+  const hasHydratedPomodoroSettingsRef = React.useRef(false)
+  const previousActiveTaskIdRef = React.useRef<string | null>(null)
+  const previousPomodoroCountRef = React.useRef<Record<string, number>>({})
+  const taskStatusUpdateInFlightRef = React.useRef<Set<string>>(new Set())
+  const completionResolveInFlightRef = React.useRef(false)
+  const [pendingCompletionPrompt, setPendingCompletionPrompt] = React.useState<{
+    taskId: string
+    taskTitle: string
+    eventKey: string
+  } | null>(null)
+  const [taskCompletionPrompt, setTaskCompletionPrompt] = React.useState<{
+    taskId: string
+    taskTitle: string
+    eventKey: string
+  } | null>(null)
+  const [remainingPomodorosInput, setRemainingPomodorosInput] = React.useState("1")
 
   React.useEffect(() => {
     setMounted(true)
   }, [])
 
   React.useEffect(() => {
-    if (profile) {
-      syncSettingsFromProfile(profile)
-    }
+    if (typeof window === "undefined") return
+    if (!activeTaskId) return
+    window.localStorage.setItem("bluepomodoro:last-used-task-id", activeTaskId)
+  }, [activeTaskId])
+
+  React.useEffect(() => {
+    if (!profile || hasHydratedPomodoroSettingsRef.current) return
+    syncSettingsFromProfile(profile)
+    hasHydratedPomodoroSettingsRef.current = true
   }, [profile, syncSettingsFromProfile])
 
   React.useEffect(() => {
@@ -472,43 +519,133 @@ export default function AppEntry() {
     exchange()
   }, [user, session?.access_token])
 
+  const updateTaskStatus = React.useCallback(
+    async (taskId: string, status: Task["status"]) => {
+      if (!user) return
+      const lockKey = `${taskId}:${status}`
+      if (taskStatusUpdateInFlightRef.current.has(lockKey)) return
+      taskStatusUpdateInFlightRef.current.add(lockKey)
+      try {
+        await supabase
+          .from("tasks")
+          .update({ status })
+          .eq("id", taskId)
+          .eq("user_id", user.id)
+          .neq("status", status)
+      } finally {
+        taskStatusUpdateInFlightRef.current.delete(lockKey)
+      }
+    },
+    [supabase, user]
+  )
+
+  const resolveTaskCompletion = React.useCallback(
+    async (resolution: "finalize" | "estimate") => {
+      if (!user || !taskCompletionPrompt) return
+      if (completionResolveInFlightRef.current) return
+      completionResolveInFlightRef.current = true
+      const targetTaskId = taskCompletionPrompt.taskId
+      try {
+        if (resolution === "estimate") {
+          const parsed = Number.parseInt(remainingPomodorosInput, 10)
+          const nextEstimated = Number.isFinite(parsed) && parsed > 0 ? parsed : 1
+          await supabase
+            .from("tasks")
+            .update({ effort_estimated: nextEstimated, status: "Pendiente" })
+            .eq("id", targetTaskId)
+            .eq("user_id", user.id)
+        } else {
+          await supabase
+            .from("tasks")
+            .update({ status: "Completada" })
+            .eq("id", targetTaskId)
+            .eq("user_id", user.id)
+        }
+
+        if (activeTaskId === targetTaskId) {
+          setActiveTaskId(null)
+        }
+      } finally {
+        completionResolveInFlightRef.current = false
+        setTaskCompletionPrompt(null)
+        setRemainingPomodorosInput("1")
+      }
+    },
+    [activeTaskId, remainingPomodorosInput, setActiveTaskId, supabase, taskCompletionPrompt, user]
+  )
+
   React.useEffect(() => {
-    if (!user || !profile) return
-    const needsUpdate =
-      profile.pomodoro_work_minutes !== workMinutes ||
-      profile.pomodoro_break_minutes !== breakMinutes ||
-      profile.pomodoro_long_break_after !== longBreakAfter ||
-      profile.pomodoro_long_break_threshold !== longBreakThreshold ||
-      profile.pomodoro_long_break_minutes_high !== longBreakMinutesHigh ||
-      profile.pomodoro_long_break_minutes_low !== longBreakMinutesLow
+    if (!tasks || !user) return
+    const byId = new Map(tasks.map((task) => [task.id, task]))
+    const previousActiveTaskId = previousActiveTaskIdRef.current
 
-    if (!needsUpdate) return
+    if (previousActiveTaskId && previousActiveTaskId !== activeTaskId) {
+      const previousTask = byId.get(previousActiveTaskId)
+      if (
+        previousTask &&
+        previousTask.status !== "Completada" &&
+        Math.max(previousTask.effort_estimated ?? 0, 0) > 0
+      ) {
+        updateTaskStatus(previousTask.id, "Pendiente")
+      }
+    }
 
-    const timeout = setTimeout(() => {
-      supabase
-        .from("profiles")
-        .update({
-          pomodoro_work_minutes: workMinutes,
-          pomodoro_break_minutes: breakMinutes,
-          pomodoro_long_break_after: longBreakAfter,
-          pomodoro_long_break_threshold: longBreakThreshold,
-          pomodoro_long_break_minutes_high: longBreakMinutesHigh,
-          pomodoro_long_break_minutes_low: longBreakMinutesLow,
+    if (activeTaskId) {
+      const currentTask = byId.get(activeTaskId)
+      if (
+        currentTask &&
+        currentTask.status !== "Completada" &&
+        Math.max(currentTask.effort_estimated ?? 0, 0) > 0
+      ) {
+        updateTaskStatus(currentTask.id, "En Proceso")
+      }
+    }
+
+    previousActiveTaskIdRef.current = activeTaskId
+  }, [activeTaskId, tasks, updateTaskStatus, user])
+
+  React.useEffect(() => {
+    if (!tasks) return
+    const nextCounts: Record<string, number> = {}
+    for (const task of tasks) {
+      nextCounts[task.id] = Math.max(task.pomodoros_completed ?? 0, 0)
+    }
+
+    const focusedTask = activeTaskId ? tasks.find((task) => task.id === activeTaskId) ?? null : null
+    if (focusedTask) {
+      const prevCount = previousPomodoroCountRef.current[focusedTask.id] ?? nextCounts[focusedTask.id]
+      const currentCount = nextCounts[focusedTask.id]
+      const remainingPomodoros = Math.max(focusedTask.effort_estimated ?? 0, 0)
+      const eventKey = `${focusedTask.id}:${currentCount}`
+      const alreadyQueued =
+        pendingCompletionPrompt?.eventKey === eventKey || taskCompletionPrompt?.eventKey === eventKey
+
+      if (currentCount > prevCount && remainingPomodoros <= 0 && !alreadyQueued) {
+        setPendingCompletionPrompt({
+          taskId: focusedTask.id,
+          taskTitle: focusedTask.title,
+          eventKey,
         })
-        .eq("id", user.id)
-    }, 500)
-    return () => clearTimeout(timeout)
-  }, [
-    user,
-    profile,
-    supabase,
-    workMinutes,
-    breakMinutes,
-    longBreakAfter,
-    longBreakThreshold,
-    longBreakMinutesHigh,
-    longBreakMinutesLow,
-  ])
+      }
+    }
+
+    previousPomodoroCountRef.current = nextCounts
+  }, [activeTaskId, pendingCompletionPrompt?.eventKey, taskCompletionPrompt?.eventKey, tasks])
+
+  React.useEffect(() => {
+    if (!pendingCompletionPrompt || alarmOpen || taskCompletionPrompt) return
+    setTaskCompletionPrompt(pendingCompletionPrompt)
+    setPendingCompletionPrompt(null)
+    setRemainingPomodorosInput("1")
+  }, [alarmOpen, pendingCompletionPrompt, taskCompletionPrompt])
+
+  React.useEffect(() => {
+    if (!taskCompletionPrompt) return
+    const timeout = window.setTimeout(() => {
+      resolveTaskCompletion("finalize")
+    }, 60_000)
+    return () => window.clearTimeout(timeout)
+  }, [resolveTaskCompletion, taskCompletionPrompt])
 
   React.useEffect(() => {
     if (!alarmOpen) {
@@ -591,6 +728,8 @@ export default function AppEntry() {
         longBreakThreshold={longBreakThreshold}
         longBreakMinutesHigh={longBreakMinutesHigh}
         longBreakMinutesLow={longBreakMinutesLow}
+        focusBoardRestOpen={focusBoardRestOpen}
+        onFocusBoardRestOpenChange={setFocusBoardRestOpen}
         signOutAction={handleSignOut} 
       />
 
@@ -611,6 +750,50 @@ export default function AppEntry() {
               className="w-full h-14 rounded-2xl bg-primary text-white font-black text-lg hover:bg-primary/90"
             >
               {mode === "work" ? "TOMAR DESCANSO" : "VOLVER AL FOCUS"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(taskCompletionPrompt)}
+        onOpenChange={(open) => {
+          if (!open && taskCompletionPrompt) {
+            resolveTaskCompletion("finalize")
+          }
+        }}
+      >
+        <AlertDialogContent className="rounded-[2.5rem] border-none shadow-2xl p-8 max-w-md">
+          <AlertDialogHeader className="space-y-2">
+            <AlertDialogTitle className="text-xl font-black text-slate-900">Pomos completados</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-slate-600">
+              La tarea "{taskCompletionPrompt?.taskTitle ?? "sin titulo"}" se quedo sin pomodoros asignados.
+              Si no respondes en 60 segundos, se marcara como finalizada.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <p className="text-[11px] font-black uppercase tracking-widest text-slate-500">Pomos que faltan (opcional)</p>
+            <Input
+              type="number"
+              min={1}
+              value={remainingPomodorosInput}
+              onChange={(event) => setRemainingPomodorosInput(event.target.value)}
+              className="h-11 rounded-xl"
+            />
+          </div>
+          <AlertDialogFooter className="gap-2 sm:justify-end">
+            <Button
+              variant="outline"
+              className="h-11 rounded-xl"
+              onClick={() => resolveTaskCompletion("estimate")}
+            >
+              Guardar Pendiente
+            </Button>
+            <AlertDialogAction
+              className="h-11 rounded-xl"
+              onClick={() => resolveTaskCompletion("finalize")}
+            >
+              Finalizar Tarea
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

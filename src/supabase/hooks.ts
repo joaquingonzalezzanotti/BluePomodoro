@@ -11,6 +11,10 @@ type QueryState<T> = {
   error: Error | null;
 };
 
+type RefetchOptions = {
+  silent?: boolean;
+};
+
 type RealtimeConfig = {
   table: string;
   filter?: string;
@@ -20,7 +24,7 @@ export function useSupabaseQuery<T>(
   queryFn: (client: SupabaseClient) => Promise<T>,
   deps: unknown[],
   realtime?: RealtimeConfig | null
-): QueryState<T> & { refetch: () => Promise<void> } {
+): QueryState<T> & { refetch: (options?: RefetchOptions) => Promise<void> } {
   const supabase = useSupabase();
   const [state, setState] = useState<QueryState<T>>({
     data: null,
@@ -31,13 +35,17 @@ export function useSupabaseQuery<T>(
   const queryFnRef = useRef(queryFn);
   queryFnRef.current = queryFn;
 
-  const refetch = useCallback(async () => {
-    setState(prev => ({ ...prev, isLoading: true, error: null }));
+  const refetch = useCallback(async (options?: RefetchOptions) => {
+    if (options?.silent) {
+      setState(prev => ({ ...prev, error: null }));
+    } else {
+      setState(prev => ({ ...prev, isLoading: true, error: null }));
+    }
     try {
       const result = await queryFnRef.current(supabase);
-      setState({ data: result, isLoading: false, error: null });
+      setState(prev => ({ ...prev, data: result, isLoading: false, error: null }));
     } catch (error: any) {
-      setState({ data: null, isLoading: false, error });
+      setState(prev => ({ ...prev, isLoading: false, error }));
     }
   }, [supabase]);
 
@@ -58,7 +66,7 @@ export function useSupabaseQuery<T>(
           },
           () => {
             if (!isMounted) return;
-            refetch().catch(() => {});
+            refetch({ silent: true }).catch(() => {});
           }
         )
         .subscribe();
