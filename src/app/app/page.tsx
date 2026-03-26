@@ -651,16 +651,34 @@ export default function AppEntry() {
     if (!alarmOpen) {
       if (audioRef.current) {
         audioRef.current.pause()
+        audioRef.current.currentTime = 0
         audioRef.current = null
       }
       return
     }
 
     if (typeof window !== "undefined") {
-      const audio = new Audio("https://actions.google.com/sounds/v1/alarms/alarm_clock_beeping.ogg")
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.currentTime = 0
+        audioRef.current = null
+      }
+
+      const audio = new Audio("/sounds/pomodoro-alarm.wav")
       audio.loop = true
-      audio.play().catch(() => {})
+      audio.preload = "auto"
+      audio.play().catch((error) => {
+        console.warn("No se pudo reproducir el sonido de alarma:", error)
+      })
       audioRef.current = audio
+
+      return () => {
+        audio.pause()
+        audio.currentTime = 0
+        if (audioRef.current === audio) {
+          audioRef.current = null
+        }
+      }
     }
   }, [alarmOpen])
 

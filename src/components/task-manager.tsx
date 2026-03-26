@@ -128,9 +128,9 @@ export function TaskManager({
     user ? { table: "subjects", filter: `user_id=eq.${user.id}` } : null
   )
 
-  const toggleExpand = (taskId: string) => {
-    setExpandedTasks(prev => ({ ...prev, [taskId]: !prev[taskId] }))
-  }
+  const setTaskExpanded = React.useCallback((taskId: string, open: boolean) => {
+    setExpandedTasks((prev) => ({ ...prev, [taskId]: open }))
+  }, [])
 
   React.useEffect(() => {
     if (typeof window === "undefined") return
@@ -303,8 +303,51 @@ export function TaskManager({
 
   if (isLoading) return <div className="py-20 text-center animate-pulse text-xs font-black uppercase text-muted-foreground">Cargando tareas...</div>
 
+  const handleQuickAddKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== "Enter") return
+    event.preventDefault()
+    void addTask()
+  }
+
   return (
     <div className="space-y-6">
+      {focusBoard && !onlyActive && (
+        <div className="flex flex-col gap-3 p-4 sm:p-5 bg-white rounded-[2rem] shadow-sm border border-slate-100">
+          <h3 className="text-[10px] font-black uppercase tracking-wider text-muted-foreground/70 px-1">
+            Agregado Rapido
+          </h3>
+          <div className="flex flex-col sm:flex-row gap-2.5">
+            <Input
+              placeholder="Agregar tarea al tablero..."
+              value={newTaskText}
+              onChange={(e) => setNewTaskText(e.target.value)}
+              onKeyDown={handleQuickAddKeyDown}
+              className="h-11 rounded-xl bg-slate-50 border-none font-semibold"
+            />
+            <Select value={selectedMateriaId} onValueChange={setSelectedMateriaId}>
+              <SelectTrigger className="h-11 sm:w-[190px] rounded-xl bg-slate-50 border-none text-[11px] font-bold">
+                <SelectValue placeholder="Materia" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin Materia</SelectItem>
+                {materias?.map((m) => (
+                  <SelectItem key={m.id} value={m.id}>
+                    {m.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              onClick={addTask}
+              className="h-11 px-5 rounded-xl font-bold shrink-0 shadow-lg shadow-primary/20"
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              Agregar
+            </Button>
+          </div>
+        </div>
+      )}
+
       {!onlyActive && !focusBoard && (
         <div className="flex flex-col gap-3 p-6 bg-white rounded-[2.5rem] shadow-sm border border-slate-100">
           <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground/60 px-2">Nueva Tarea</h3>
@@ -313,6 +356,7 @@ export function TaskManager({
               placeholder="¿Qué tienes que hacer?" 
               value={newTaskText} 
               onChange={(e) => setNewTaskText(e.target.value)} 
+              onKeyDown={handleQuickAddKeyDown}
               className="h-14 rounded-2xl bg-slate-50 border-none font-bold text-lg"
             />
             <div className="flex gap-3">
@@ -344,14 +388,21 @@ export function TaskManager({
           const completedCount = normalizedSubTasks.filter(st => st.completed).length
           const totalCount = normalizedSubTasks.length
           const progressValue = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
-          const isExpanded = !!expandedTasks[task.id] || (focusBoard && linkedTaskId === task.id)
           const esfuerzo = task.effort_estimated || 1
           const displayEmoji = getLeadingEmoji(task.title)
           const displayTitle = stripLeadingEmoji(task.title)
           const isActiveTask = activeTaskId === task.id
+          const hasManualExpansionState = Object.prototype.hasOwnProperty.call(expandedTasks, task.id)
+          const isExpanded =
+            hasManualExpansionState
+              ? !!expandedTasks[task.id]
+              : (focusBoard && linkedTaskId === task.id)
           const handleSelectTask = () => {
             if (!isActiveTask) {
               rememberLastUsedTask(task.id)
+              if (focusBoard) {
+                setTaskExpanded(task.id, true)
+              }
             }
             onTaskSelect?.(isActiveTask ? null : task.id)
           }
@@ -362,7 +413,7 @@ export function TaskManager({
           }
 
           return (
-            <Collapsible key={task.id} open={isExpanded} onOpenChange={() => toggleExpand(task.id)}>
+            <Collapsible key={task.id} open={isExpanded} onOpenChange={(open) => setTaskExpanded(task.id, open)}>
               <Card className={cn("border-none shadow-sm transition-all rounded-[2rem] overflow-hidden bg-white", activeTaskId === task.id && "ring-2 ring-primary/40")}>
                 <CardContent className="p-6" onClick={handleCardClick}>
                   {/* Layout de 2 Filas obligatorio */}
