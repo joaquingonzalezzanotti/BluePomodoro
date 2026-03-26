@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Play, Pause, RotateCcw, Settings2, Flame } from "lucide-react"
+import { Play, Pause, RotateCcw, Settings2, Flame, SkipForward } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -10,6 +10,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import { getSessionDurationSec, isLongBreakMode, type PomodoroRules } from "@/pomodoro/logic"
+import { useToast } from "@/hooks/use-toast"
 import { useSupabase, useUser } from "@/supabase"
 import { useSupabaseQuery } from "@/supabase/hooks"
 import type { Task } from "@/supabase/types"
@@ -21,6 +22,8 @@ interface PomodoroTimerProps {
   sessionsCompleted: number
   toggleTimer: () => void
   resetTimer: () => void
+  skipToNext: () => void
+  registerManualPomodoro: () => Promise<void>
   workMinutes: number
   setWorkMinutes: (m: number) => void
   breakMinutes: number
@@ -41,6 +44,8 @@ export function PomodoroTimer({
   sessionsCompleted,
   toggleTimer,
   resetTimer,
+  skipToNext,
+  registerManualPomodoro,
   workMinutes,
   setWorkMinutes,
   breakMinutes,
@@ -55,8 +60,10 @@ export function PomodoroTimer({
 }: PomodoroTimerProps) {
   const [localWork, setLocalWork] = React.useState(workMinutes.toString())
   const [localBreak, setLocalBreak] = React.useState(breakMinutes.toString())
+  const [isRegisteringManualPomodoro, setIsRegisteringManualPomodoro] = React.useState(false)
   const supabase = useSupabase()
   const { user } = useUser()
+  const { toast } = useToast()
 
   React.useEffect(() => { setLocalWork(workMinutes.toString()) }, [workMinutes])
   React.useEffect(() => { setLocalBreak(breakMinutes.toString()) }, [breakMinutes])
@@ -98,6 +105,7 @@ export function PomodoroTimer({
       : (longBreakActive ? "text-primary" : "text-accent")
 
   const primaryLabel = isOvertime ? "FIN DESCANSO" : (isActive ? "PAUSA" : "INICIAR")
+  const canSkipToNext = isActive
 
   const { data: tasks } = useSupabaseQuery<Task[]>(
     async (client) => {
@@ -118,6 +126,26 @@ export function PomodoroTimer({
     if (!tasks || !activeTaskId) return null
     return tasks.find(task => task.id === activeTaskId)?.title ?? null
   }, [tasks, activeTaskId])
+
+  const handleRegisterManualPomodoro = async () => {
+    if (isRegisteringManualPomodoro) return
+    setIsRegisteringManualPomodoro(true)
+    try {
+      await registerManualPomodoro()
+      toast({
+        title: "Pomodoro registrado",
+        description: "Se agregó un pomodoro manual al flujo actual.",
+      })
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "No se pudo registrar",
+        description: "Intenta nuevamente en unos segundos.",
+      })
+    } finally {
+      setIsRegisteringManualPomodoro(false)
+    }
+  }
 
   return (
     <div className={cn(
@@ -245,6 +273,21 @@ export function PomodoroTimer({
             >
               <RotateCcw className="h-5 w-5 xl:h-7 xl:w-7 text-slate-400" />
             </Button>
+
+            <Button
+              size="icon"
+              variant="outline"
+              className={cn(
+                "border-2 border-slate-100 hover:bg-slate-50 transition-all",
+                large ? "h-20 w-20 rounded-2xl" : "xl:h-20 xl:w-20 xl:rounded-2xl h-12 w-12 rounded-xl"
+              )}
+              onClick={skipToNext}
+              disabled={!canSkipToNext}
+              title="Pasar a la siguiente instancia"
+              aria-label="Pasar a la siguiente instancia"
+            >
+              <SkipForward className="h-5 w-5 xl:h-7 xl:w-7 text-slate-400" />
+            </Button>
             
             <Popover>
               <PopoverTrigger asChild>
@@ -275,6 +318,14 @@ export function PomodoroTimer({
                       <Input type="number" value={localBreak} onChange={(e) => setLocalBreak(e.target.value)} className="rounded-xl border-none bg-muted/40 h-12 font-bold px-4" />
                     </div>
                   </div>
+                  <Button
+                    onClick={handleRegisterManualPomodoro}
+                    variant="outline"
+                    className="w-full rounded-2xl font-black h-12 border-slate-200"
+                    disabled={isRegisteringManualPomodoro}
+                  >
+                    {isRegisteringManualPomodoro ? "Registrando..." : "+1 POMODORO MANUAL"}
+                  </Button>
                   <Button onClick={handleApplyChanges} className="w-full rounded-2xl font-black h-14 shadow-lg shadow-primary/20">GUARDAR CAMBIOS</Button>
                 </div>
               </PopoverContent>

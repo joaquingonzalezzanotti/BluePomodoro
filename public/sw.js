@@ -10,9 +10,9 @@ self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : {};
   const title = data.title || "BluePomodoro";
   const options = {
-    body: data.body || "Tienes una nueva notificacion.",
-    icon: data.icon || "/icons/icon-192.png",
-    badge: data.badge || "/icons/icon-192.png",
+    body: data.body || "Tienes una nueva notificación.",
+    icon: data.icon || "/icons/app-icon-192.png",
+    badge: data.badge || "/icons/push-badge-96.png",
     data: {
       url: data.url || "/app",
     },

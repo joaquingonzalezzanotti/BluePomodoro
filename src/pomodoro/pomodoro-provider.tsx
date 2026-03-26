@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useSession, useSupabase, useUser } from "@/supabase";
@@ -24,6 +24,7 @@ type PomodoroState = {
   isOvertime: boolean;
   alarmOpen: boolean;
   alarmOpenedAt: number | null;
+  lastFlowActivityAt: number | null;
 };
 
 type PomodoroContextValue = PomodoroState & {
@@ -32,6 +33,8 @@ type PomodoroContextValue = PomodoroState & {
   toggleTimer: () => void;
   resetTimer: () => void;
   stopAlarm: () => void;
+  skipToNext: () => void;
+  registerManualPomodoro: () => Promise<void>;
   setWorkMinutes: (m: number) => void;
   setBreakMinutes: (m: number) => void;
   setActiveTaskId: (id: string | null) => void;
@@ -41,12 +44,25 @@ type PomodoroContextValue = PomodoroState & {
 const PomodoroContext = createContext<PomodoroContextValue | undefined>(undefined);
 
 const STORAGE_KEY = "bluepomodoro:pomo-state:v1";
+const FLOW_IDLE_EXTRA_BUFFER_SEC = 60;
 
 function safeParseState(raw: string | null): PomodoroState | null {
   if (!raw) return null;
   try {
-    const parsed = JSON.parse(raw) as PomodoroState;
-    return parsed;
+    const parsed = JSON.parse(raw) as Partial<PomodoroState>;
+    const merged: PomodoroState = {
+      ...defaultState(),
+      ...parsed,
+    };
+
+    // Backward compatibility: old snapshots had no flow marker and could keep stale streak forever.
+    if (parsed.lastFlowActivityAt == null && !merged.isActive && !merged.alarmOpen) {
+      merged.sessionsCompleted = 0;
+      merged.mode = "work";
+      merged.pausedRemainingSec = merged.workMinutes * 60;
+    }
+
+    return merged;
   } catch {
     return null;
   }
@@ -72,7 +88,25 @@ function defaultState(): PomodoroState {
     isOvertime: false,
     alarmOpen: false,
     alarmOpenedAt: null,
+    lastFlowActivityAt: null,
   };
+}
+
+function rulesFromState(state: PomodoroState): PomodoroRules {
+  return {
+    workMinutes: state.workMinutes,
+    breakMinutes: state.breakMinutes,
+    longBreakAfter: state.longBreakAfter,
+    longBreakThreshold: state.longBreakThreshold,
+    longBreakMinutesHigh: state.longBreakMinutesHigh,
+    longBreakMinutesLow: state.longBreakMinutesLow,
+  };
+}
+
+function getFlowIdleResetMs(state: PomodoroState): number {
+  const longestBreakMinutes = Math.max(state.breakMinutes, state.longBreakMinutesHigh, state.longBreakMinutesLow, 1);
+  const graceSec = Math.max(state.overtimeGraceSeconds, 0);
+  return (longestBreakMinutes * 60 + graceSec + FLOW_IDLE_EXTRA_BUFFER_SEC) * 1000;
 }
 
 export function PomodoroProvider({ children }: { children: React.ReactNode }) {
@@ -147,7 +181,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     if (remainingMs <= 0) {
       notifyOnce(`overtime:${state.currentSessionId ?? state.targetEndAt ?? "break"}`, {
         title: "Descanso excedido",
-        body: "El descanso se pasÃ³ del tiempo. Es hora de volver al foco.",
+        body: "El descanso se pasó del tiempo. Es hora de volver al foco.",
         tag: "break-overtime",
         url: "/app",
       });
@@ -167,7 +201,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     alarmTimerRef.current = setTimeout(() => {
       notifyOnce(`overtime:${state.currentSessionId ?? state.targetEndAt ?? "break"}`, {
         title: "Descanso excedido",
-        body: "El descanso se pasÃ³ del tiempo. Es hora de volver al foco.",
+        body: "El descanso se pasó del tiempo. Es hora de volver al foco.",
         tag: "break-overtime",
         url: "/app",
       });
@@ -253,6 +287,26 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
 
+  useEffect(() => {
+    setState(prev => {
+      if (prev.isActive || prev.alarmOpen) return prev;
+      if (prev.sessionsCompleted <= 0) return prev;
+      if (!prev.lastFlowActivityAt) return prev;
+      if (Date.now() - prev.lastFlowActivityAt <= getFlowIdleResetMs(prev)) return prev;
+
+      return {
+        ...prev,
+        mode: "work",
+        sessionsCompleted: 0,
+        isOvertime: false,
+        targetEndAt: null,
+        pausedRemainingSec: prev.workMinutes * 60,
+        currentSessionId: null,
+        currentSessionStartedAt: null,
+      };
+    });
+  }, []);
+
   const recordSession = useCallback(
     async (params: {
       mode: PomodoroMode;
@@ -287,6 +341,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
       alarmOpen: true,
       alarmOpenedAt: Date.now(),
       isActive: false,
+      lastFlowActivityAt: Date.now(),
     }));
   }, [state.overtimeGraceSeconds]);
 
@@ -300,7 +355,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
       notifyOnce(`work:${state.currentSessionId ?? state.targetEndAt ?? nextSessions}`, {
         title: "Pomodoro completado",
         body: longBreakNext
-          ? "Descanso largo disponible. Recupera energias."
+          ? "Descanso largo disponible. Recupera energías."
           : "Hora de descansar unos minutos.",
         tag: longBreakNext ? "long-break" : "work-complete",
         url: "/app",
@@ -310,6 +365,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
         isActive: false,
         alarmOpen: true,
         alarmOpenedAt: Date.now(),
+        lastFlowActivityAt: Date.now(),
       }));
 
       if (state.currentSessionId && state.currentSessionStartedAt) {
@@ -331,6 +387,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
         currentSessionStartedAt: null,
         targetEndAt: null,
         pausedRemainingSec: null,
+        lastFlowActivityAt: Date.now(),
       }));
       return;
     }
@@ -392,6 +449,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
       pausedRemainingSec: nextDuration,
       currentSessionId: null,
       currentSessionStartedAt: null,
+      lastFlowActivityAt: Date.now(),
     }));
   }, [
     state.mode,
@@ -403,6 +461,12 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     recordSession,
     notifyOnce,
   ]);
+
+  const shouldResetFlowCounter = useCallback((snapshot: PomodoroState, nowTs: number) => {
+    if (snapshot.sessionsCompleted <= 0) return false;
+    if (!snapshot.lastFlowActivityAt) return false;
+    return nowTs - snapshot.lastFlowActivityAt > getFlowIdleResetMs(snapshot);
+  }, []);
 
   const toggleTimer = useCallback(() => {
     if (state.mode === "break" && state.isOvertime && state.isActive) {
@@ -418,49 +482,116 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
         isActive: false,
         pausedRemainingSec: remaining,
         targetEndAt: null,
+        lastFlowActivityAt: Date.now(),
       }));
       return;
     }
+
+    const nowTs = Date.now();
 
     // Resume or start a new session
     if (state.pausedRemainingSec !== null) {
-      const startedAt = state.currentSessionStartedAt ?? Date.now();
-      const sessionId = state.currentSessionId ?? crypto.randomUUID();
-      setState(prev => ({
-        ...prev,
-        isActive: true,
-        isOvertime: false,
-        currentSessionId: sessionId,
-        currentSessionStartedAt: startedAt,
-        targetEndAt: Date.now() + prev.pausedRemainingSec! * 1000,
-        pausedRemainingSec: null,
-      }));
+      setState(prev => {
+        const resetFlow = shouldResetFlowCounter(prev, nowTs);
+        const nextSessionsCompleted = resetFlow && prev.mode === "work" ? 0 : prev.sessionsCompleted;
+        const nextRules = rulesFromState(prev);
+        const durationByRules = getSessionDurationSec(prev.mode, nextRules, nextSessionsCompleted);
+        const remainingSec = resetFlow && prev.mode === "work"
+          ? durationByRules
+          : (prev.pausedRemainingSec ?? durationByRules);
+        const startedAt = prev.currentSessionStartedAt ?? nowTs;
+        const sessionId = prev.currentSessionId ?? crypto.randomUUID();
+
+        return {
+          ...prev,
+          sessionsCompleted: nextSessionsCompleted,
+          isActive: true,
+          isOvertime: false,
+          currentSessionId: sessionId,
+          currentSessionStartedAt: startedAt,
+          targetEndAt: nowTs + remainingSec * 1000,
+          pausedRemainingSec: null,
+          lastFlowActivityAt: nowTs,
+        };
+      });
       return;
     }
 
-    const sessionId = crypto.randomUUID();
-    const startedAt = Date.now();
-    const duration = sessionDurationSec;
-    setState(prev => ({
-      ...prev,
-      isActive: true,
-      isOvertime: false,
-      currentSessionId: sessionId,
-      currentSessionStartedAt: startedAt,
-      targetEndAt: startedAt + duration * 1000,
-      pausedRemainingSec: null,
-    }));
+    setState(prev => {
+      const resetFlow = shouldResetFlowCounter(prev, nowTs);
+      const nextSessionsCompleted = resetFlow && prev.mode === "work" ? 0 : prev.sessionsCompleted;
+      const nextRules = rulesFromState(prev);
+      const duration = getSessionDurationSec(prev.mode, nextRules, nextSessionsCompleted);
+      const sessionId = crypto.randomUUID();
+
+      return {
+        ...prev,
+        sessionsCompleted: nextSessionsCompleted,
+        isActive: true,
+        isOvertime: false,
+        currentSessionId: sessionId,
+        currentSessionStartedAt: nowTs,
+        targetEndAt: nowTs + duration * 1000,
+        pausedRemainingSec: null,
+        lastFlowActivityAt: nowTs,
+      };
+    });
   }, [
     state.isActive,
     state.targetEndAt,
     state.pausedRemainingSec,
     state.mode,
     state.isOvertime,
-    state.currentSessionId,
-    state.currentSessionStartedAt,
-    sessionDurationSec,
     stopAlarm,
+    shouldResetFlowCounter,
   ]);
+
+  const skipToNext = useCallback(() => {
+    if (alarmTimerRef.current) {
+      clearTimeout(alarmTimerRef.current);
+      alarmTimerRef.current = null;
+    }
+
+    setState(prev => {
+      const nextMode: PomodoroMode = prev.mode === "work" ? "break" : "work";
+      const nextDuration = getSessionDurationSec(nextMode, rulesFromState(prev), prev.sessionsCompleted);
+
+      return {
+        ...prev,
+        mode: nextMode,
+        isActive: false,
+        alarmOpen: false,
+        alarmOpenedAt: null,
+        isOvertime: false,
+        targetEndAt: null,
+        pausedRemainingSec: nextDuration,
+        currentSessionId: null,
+        currentSessionStartedAt: null,
+        lastFlowActivityAt: Date.now(),
+      };
+    });
+  }, []);
+
+  const registerManualPomodoro = useCallback(async () => {
+    const nowTs = Date.now();
+    const durationSec = Math.max(1, state.workMinutes * 60);
+    const startedAt = nowTs - durationSec * 1000;
+
+    await recordSession({
+      mode: "work",
+      startedAt,
+      completedAt: nowTs,
+      durationSec,
+      taskId: state.activeTaskId,
+      clientSessionId: crypto.randomUUID(),
+    });
+
+    setState(prev => ({
+      ...prev,
+      sessionsCompleted: prev.sessionsCompleted + 1,
+      lastFlowActivityAt: nowTs,
+    }));
+  }, [recordSession, state.workMinutes, state.activeTaskId]);
 
   const resetTimer = useCallback(() => {
     const duration = sessionDurationSec;
@@ -472,6 +603,7 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
       isOvertime: false,
       currentSessionId: null,
       currentSessionStartedAt: null,
+      lastFlowActivityAt: Date.now(),
     }));
   }, [sessionDurationSec]);
 
@@ -513,6 +645,8 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     toggleTimer,
     resetTimer,
     stopAlarm,
+    skipToNext,
+    registerManualPomodoro,
     setWorkMinutes,
     setBreakMinutes,
     setActiveTaskId,
@@ -529,3 +663,4 @@ export function usePomodoro() {
   }
   return ctx;
 }
+

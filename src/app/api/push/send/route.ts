@@ -31,9 +31,11 @@ export async function POST(req: Request) {
   const body = await req.json();
   const payload = {
     title: body?.title ?? "BluePomodoro",
-    body: body?.body ?? "Tienes una nueva notificacion.",
+    body: body?.body ?? "Tienes una nueva notificación.",
     tag: body?.tag ?? "bluepomodoro",
     url: body?.url ?? "/app",
+    icon: body?.icon ?? "/icons/app-icon-192.png",
+    badge: body?.badge ?? "/icons/push-badge-96.png",
   };
 
   webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);

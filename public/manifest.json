@@ -2,6 +2,7 @@
   "name": "BluePomodoro",
   "short_name": "BluePomodoro",
   "description": "Pomodoro gamificado y productividad para mentes neurodivergentes.",
+  "id": "/app",
   "start_url": "/app",
   "scope": "/",
   "display": "standalone",
@@ -9,14 +10,16 @@
   "theme_color": "#2563eb",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "/icons/app-icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "/icons/app-icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

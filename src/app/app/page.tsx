@@ -155,6 +155,8 @@ function DashboardContent({
   sessionsCompleted, 
   toggleTimer, 
   resetTimer, 
+  skipToNext,
+  registerManualPomodoro,
   workMinutes, 
   setWorkMinutes, 
   breakMinutes, 
@@ -281,6 +283,8 @@ function DashboardContent({
                       sessionsCompleted={sessionsCompleted}
                       toggleTimer={toggleTimer}
                       resetTimer={resetTimer}
+                      skipToNext={skipToNext}
+                      registerManualPomodoro={registerManualPomodoro}
                       activeTaskId={activeTaskId}
                       setActiveTaskId={setActiveTaskId}
                       workMinutes={workMinutes}
@@ -316,6 +320,8 @@ function DashboardContent({
                       sessionsCompleted={sessionsCompleted}
                       toggleTimer={toggleTimer}
                       resetTimer={resetTimer}
+                      skipToNext={skipToNext}
+                      registerManualPomodoro={registerManualPomodoro}
                       activeTaskId={activeTaskId}
                       setActiveTaskId={setActiveTaskId}
                       workMinutes={workMinutes}
@@ -395,6 +401,8 @@ export default function AppEntry() {
     sessionsCompleted,
     toggleTimer,
     resetTimer,
+    skipToNext,
+    registerManualPomodoro,
     workMinutes,
     setWorkMinutes,
     breakMinutes,
@@ -738,6 +746,8 @@ export default function AppEntry() {
         sessionsCompleted={sessionsCompleted} 
         toggleTimer={toggleTimer} 
         resetTimer={resetTimer} 
+        skipToNext={skipToNext}
+        registerManualPomodoro={registerManualPomodoro}
         workMinutes={workMinutes} 
         setWorkMinutes={setWorkMinutes} 
         breakMinutes={breakMinutes} 

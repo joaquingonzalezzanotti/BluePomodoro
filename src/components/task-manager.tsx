@@ -392,17 +392,10 @@ export function TaskManager({
           const displayEmoji = getLeadingEmoji(task.title)
           const displayTitle = stripLeadingEmoji(task.title)
           const isActiveTask = activeTaskId === task.id
-          const hasManualExpansionState = Object.prototype.hasOwnProperty.call(expandedTasks, task.id)
-          const isExpanded =
-            hasManualExpansionState
-              ? !!expandedTasks[task.id]
-              : (focusBoard && linkedTaskId === task.id)
+          const isExpanded = !!expandedTasks[task.id]
           const handleSelectTask = () => {
             if (!isActiveTask) {
               rememberLastUsedTask(task.id)
-              if (focusBoard) {
-                setTaskExpanded(task.id, true)
-              }
             }
             onTaskSelect?.(isActiveTask ? null : task.id)
           }
