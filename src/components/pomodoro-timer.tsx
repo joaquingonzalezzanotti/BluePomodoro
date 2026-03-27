@@ -98,6 +98,7 @@ export function PomodoroTimer({
   }
 
   const isOvertime = mode === "break" && timeLeft < 0
+  const compactPrimaryWhileActive = isActive && !isOvertime
   const colorClass = isOvertime
     ? "text-red-500"
     : mode === "work" 
@@ -253,11 +254,17 @@ export function PomodoroTimer({
             onClick={toggleTimer}
             className={cn(
               "font-black shadow-xl transition-all hover:scale-105 active:scale-95",
-              large ? "h-20 w-40 text-xl rounded-3xl" : "xl:h-20 xl:w-40 xl:text-xl xl:rounded-3xl h-12 px-6 rounded-2xl text-sm"
+              compactPrimaryWhileActive
+                ? (large ? "h-20 w-20 rounded-3xl" : "h-12 w-12 xl:h-20 xl:w-20 rounded-2xl xl:rounded-3xl px-0")
+                : (large ? "h-20 w-40 text-xl rounded-3xl" : "xl:h-20 xl:w-40 xl:text-xl xl:rounded-3xl h-12 px-6 rounded-2xl text-sm")
             )}
           >
-            {isActive ? <Pause className="h-5 w-5 xl:h-8 xl:w-8 mr-2" /> : <Play className="h-5 w-5 xl:h-8 xl:w-8 mr-2 fill-current" />}
-            {primaryLabel}
+            {isActive ? (
+              <Pause className={cn("h-5 w-5 xl:h-8 xl:w-8", !compactPrimaryWhileActive && "mr-2")} />
+            ) : (
+              <Play className="h-5 w-5 xl:h-8 xl:w-8 mr-2 fill-current" />
+            )}
+            {!compactPrimaryWhileActive && primaryLabel}
           </Button>
           
           <div className="flex gap-2 xl:gap-3">
@@ -289,47 +296,49 @@ export function PomodoroTimer({
               </Button>
             )}
             
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
-                  className={cn(
-                    "border-2 border-slate-100 hover:bg-slate-50 transition-all",
-                    large ? "h-20 w-20 rounded-2xl" : "xl:h-20 xl:w-20 xl:rounded-2xl h-12 w-12 rounded-xl"
-                  )}
-                >
-                  <Settings2 className="h-5 w-5 xl:h-7 xl:w-7 text-slate-400" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 rounded-[2.5rem] p-8 shadow-2xl border-none" align="end">
-                <div className="space-y-6">
-                  <div>
-                    <h4 className="font-black text-[10px] uppercase tracking-widest text-primary mb-1">Ajustes rapidos</h4>
-                    <p className="text-[10px] text-muted-foreground font-medium">Personaliza tus intervalos.</p>
-                  </div>
-                  <div className="grid gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase opacity-60">Enfoque (min)</Label>
-                      <Input type="number" value={localWork} onChange={(e) => setLocalWork(e.target.value)} className="rounded-xl border-none bg-muted/40 h-12 font-bold px-4" />
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[9px] font-black uppercase opacity-60">Descanso corto (min)</Label>
-                      <Input type="number" value={localBreak} onChange={(e) => setLocalBreak(e.target.value)} className="rounded-xl border-none bg-muted/40 h-12 font-bold px-4" />
-                    </div>
-                  </div>
-                  <Button
-                    onClick={handleRegisterManualPomodoro}
-                    variant="outline"
-                    className="w-full rounded-2xl font-black h-12 border-slate-200"
-                    disabled={isRegisteringManualPomodoro}
+            {!isActive && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="icon" 
+                    className={cn(
+                      "border-2 border-slate-100 hover:bg-slate-50 transition-all",
+                      large ? "h-20 w-20 rounded-2xl" : "xl:h-20 xl:w-20 xl:rounded-2xl h-12 w-12 rounded-xl"
+                    )}
                   >
-                    {isRegisteringManualPomodoro ? "Registrando..." : "+1 POMODORO MANUAL"}
+                    <Settings2 className="h-5 w-5 xl:h-7 xl:w-7 text-slate-400" />
                   </Button>
-                  <Button onClick={handleApplyChanges} className="w-full rounded-2xl font-black h-14 shadow-lg shadow-primary/20">GUARDAR CAMBIOS</Button>
-                </div>
-              </PopoverContent>
-            </Popover>
+                </PopoverTrigger>
+                <PopoverContent className="w-72 rounded-[2.5rem] p-8 shadow-2xl border-none" align="end">
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="font-black text-[10px] uppercase tracking-widest text-primary mb-1">Ajustes rapidos</h4>
+                      <p className="text-[10px] text-muted-foreground font-medium">Personaliza tus intervalos.</p>
+                    </div>
+                    <div className="grid gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase opacity-60">Enfoque (min)</Label>
+                        <Input type="number" value={localWork} onChange={(e) => setLocalWork(e.target.value)} className="rounded-xl border-none bg-muted/40 h-12 font-bold px-4" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-[9px] font-black uppercase opacity-60">Descanso corto (min)</Label>
+                        <Input type="number" value={localBreak} onChange={(e) => setLocalBreak(e.target.value)} className="rounded-xl border-none bg-muted/40 h-12 font-bold px-4" />
+                      </div>
+                    </div>
+                    <Button
+                      onClick={handleRegisterManualPomodoro}
+                      variant="outline"
+                      className="w-full rounded-2xl font-black h-12 border-slate-200"
+                      disabled={isRegisteringManualPomodoro}
+                    >
+                      {isRegisteringManualPomodoro ? "Registrando..." : "+1 POMODORO MANUAL"}
+                    </Button>
+                    <Button onClick={handleApplyChanges} className="w-full rounded-2xl font-black h-14 shadow-lg shadow-primary/20">GUARDAR CAMBIOS</Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
         </div>
 
