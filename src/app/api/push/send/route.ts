@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     body: body?.body ?? "Tienes una nueva notificación.",
     tag: body?.tag ?? "bluepomodoro",
     url: body?.url ?? "/app",
-    icon: body?.icon ?? "/icons/app-icon-192.png",
+    icon: body?.icon ?? "/icons/icon-192.png",
     badge: body?.badge ?? "/icons/push-badge-96.png",
   };
 
