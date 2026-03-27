@@ -50,3 +50,18 @@ Notas:
 - IA (Gemini): Free tier.
 - Supabase: Plan Free.
 - Spotify: Gratis (Embed y API estandar).
+
+## Push backend jobs (nuevo)
+
+El envio push real ya no se hace desde cliente. Ahora usa jobs backend + cron.
+
+Variables adicionales requeridas:
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `PUSH_DISPATCH_SECRET`
+
+Migración principal:
+- `supabase/migrations/20260327_push_jobs_installations.sql`
+
+Documentación:
+- `docs/push-architecture.md`
+- `docs/push-manual-checklist.md`

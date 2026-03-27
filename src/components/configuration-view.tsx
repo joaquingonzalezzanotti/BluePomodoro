@@ -13,6 +13,7 @@ import { DistractionBlocker } from "@/components/distraction-blocker"
 import { GoogleSyncSettings } from "@/components/google-sync-settings"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
+import { getOrCreateInstallationId } from "@/push/installation"
 
 function base64UrlEncode(bytes: Uint8Array) {
   const binary = String.fromCharCode(...bytes)
@@ -134,7 +135,7 @@ export function ConfigurationView() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ subscription }),
+        body: JSON.stringify({ installation_id: getOrCreateInstallationId(), subscription }),
       })
       if (!subscribeRes.ok) {
         throw new Error("push-subscribe-failed")
@@ -163,7 +164,7 @@ export function ConfigurationView() {
             "Content-Type": "application/json",
             Authorization: `Bearer ${session.access_token}`,
           },
-          body: JSON.stringify({ endpoint: subscription.endpoint }),
+          body: JSON.stringify({ installation_id: getOrCreateInstallationId() }),
         })
         if (!unsubscribeRes.ok) {
           throw new Error("push-unsubscribe-failed")

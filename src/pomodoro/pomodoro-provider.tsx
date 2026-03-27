@@ -4,6 +4,8 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { useSession, useSupabase, useUser } from "@/supabase";
 import type { Profile } from "@/supabase/types";
 import { getSessionDurationSec, isLongBreakMode, type PomodoroMode, type PomodoroRules } from "@/pomodoro/logic";
+import { getOrCreateInstallationId } from "@/push/installation";
+import { getEventTypeForMode } from "@/push/timer-transitions";
 
 type PomodoroState = {
   mode: PomodoroMode;
@@ -119,35 +121,57 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
   });
   const [now, setNow] = useState<number>(() => Date.now());
   const alarmTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const pushSentRef = useRef<Set<string>>(new Set());
 
-  const sendPush = useCallback(
-    async (payload: { title: string; body: string; tag?: string; url?: string }) => {
-      if (!session?.access_token) return;
-      try {
-        await fetch("/api/push/send", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-      } catch {
-        // ignore push errors
-      }
-    },
-    [session?.access_token]
-  );
 
-  const notifyOnce = useCallback(
-    (key: string, payload: { title: string; body: string; tag?: string; url?: string }) => {
-      if (pushSentRef.current.has(key)) return;
-      pushSentRef.current.add(key);
-      sendPush(payload);
-    },
-    [sendPush]
-  );
+  const syncPushJob = useCallback(async (params: {
+    action: "schedule" | "cancel";
+    sessionId: string;
+    mode: PomodoroMode;
+    fireAt?: number;
+  }) => {
+    if (!session?.access_token) return;
+
+    const payload = params.action === "schedule"
+      ? {
+          title: params.mode === "work" ? "Pomodoro completado" : "Descanso terminado",
+          body: params.mode === "work" ? "Hora de descansar unos minutos." : "Hora de volver al foco.",
+          tag: params.mode === "work" ? "work-complete" : "break-complete",
+          url: "/app",
+          icon: "/icons/icon-192.png",
+          badge: "/icons/push-badge-96.png",
+          event_type: getEventTypeForMode(params.mode),
+          session_id: params.sessionId,
+        }
+      : undefined;
+
+    const requestBody = params.action === "schedule"
+      ? {
+          action: "schedule",
+          sessionId: params.sessionId,
+          eventType: getEventTypeForMode(params.mode),
+          installationId: getOrCreateInstallationId(),
+          fireAt: new Date(params.fireAt ?? Date.now()).toISOString(),
+          payload,
+        }
+      : {
+          action: "cancel",
+          sessionId: params.sessionId,
+          eventType: getEventTypeForMode(params.mode),
+        };
+
+    try {
+      await fetch("/api/push/job", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+    } catch {
+      // We keep timer UX resilient even if scheduling fails.
+    }
+  }, [session?.access_token]);
 
   useEffect(() => {
     return () => {
@@ -157,9 +181,6 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  useEffect(() => {
-    pushSentRef.current.clear();
-  }, [state.currentSessionId, user?.id]);
 
   useEffect(() => {
     if (!state.alarmOpen || state.mode !== "break" || !state.alarmOpenedAt) {
@@ -179,12 +200,6 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     const remainingMs = state.overtimeGraceSeconds * 1000 - elapsedMs;
 
     if (remainingMs <= 0) {
-      notifyOnce(`overtime:${state.currentSessionId ?? state.targetEndAt ?? "break"}`, {
-        title: "Descanso excedido",
-        body: "El descanso se pasó del tiempo. Es hora de volver al foco.",
-        tag: "break-overtime",
-        url: "/app",
-      });
       setState(prev => {
         if (!prev.alarmOpen || prev.mode !== "break") return prev;
         return {
@@ -199,12 +214,6 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     }
 
     alarmTimerRef.current = setTimeout(() => {
-      notifyOnce(`overtime:${state.currentSessionId ?? state.targetEndAt ?? "break"}`, {
-        title: "Descanso excedido",
-        body: "El descanso se pasó del tiempo. Es hora de volver al foco.",
-        tag: "break-overtime",
-        url: "/app",
-      });
       setState(prev => {
         if (!prev.alarmOpen || prev.mode !== "break") return prev;
         return {
@@ -228,9 +237,6 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     state.mode,
     state.alarmOpenedAt,
     state.overtimeGraceSeconds,
-    state.currentSessionId,
-    state.targetEndAt,
-    notifyOnce,
   ]);
 
   const rules = useMemo<PomodoroRules>(() => ({
@@ -351,15 +357,6 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
 
     if (state.mode === "work") {
       const nextSessions = state.sessionsCompleted + 1;
-      const longBreakNext = isLongBreakMode("break", nextSessions, state.longBreakAfter);
-      notifyOnce(`work:${state.currentSessionId ?? state.targetEndAt ?? nextSessions}`, {
-        title: "Pomodoro completado",
-        body: longBreakNext
-          ? "Descanso largo disponible. Recupera energías."
-          : "Hora de descansar unos minutos.",
-        tag: longBreakNext ? "long-break" : "work-complete",
-        url: "/app",
-      });
       setState(prev => ({
         ...prev,
         isActive: false,
@@ -407,7 +404,6 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     sessionDurationSec,
     recordSession,
     openAlarmWithGrace,
-    notifyOnce,
   ]);
 
   const stopAlarm = useCallback(() => {
@@ -423,15 +419,6 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
         overtimeSec,
         taskId: state.activeTaskId,
         clientSessionId: state.currentSessionId,
-      });
-    }
-
-    if (state.mode === "break") {
-      notifyOnce(`break:${state.currentSessionId ?? state.targetEndAt ?? "break-end"}`, {
-        title: "Descanso terminado",
-        body: "Hora de volver al foco.",
-        tag: "break-complete",
-        url: "/app",
       });
     }
 
@@ -459,7 +446,6 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
     state.workMinutes,
     sessionDurationSec,
     recordSession,
-    notifyOnce,
   ]);
 
   const shouldResetFlowCounter = useCallback((snapshot: PomodoroState, nowTs: number) => {
@@ -477,6 +463,8 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
 
     if (state.isActive) {
       const remaining = state.targetEndAt ? Math.max(0, Math.round((state.targetEndAt - Date.now()) / 1000)) : 0;
+      const currentSessionId = state.currentSessionId;
+      const currentMode = state.mode;
       setState(prev => ({
         ...prev,
         isActive: false,
@@ -484,6 +472,14 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
         targetEndAt: null,
         lastFlowActivityAt: Date.now(),
       }));
+
+      if (currentSessionId) {
+        void syncPushJob({
+          action: "cancel",
+          sessionId: currentSessionId,
+          mode: currentMode,
+        });
+      }
       return;
     }
 
@@ -491,59 +487,68 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
 
     // Resume or start a new session
     if (state.pausedRemainingSec !== null) {
-      setState(prev => {
-        const resetFlow = shouldResetFlowCounter(prev, nowTs);
-        const nextSessionsCompleted = resetFlow && prev.mode === "work" ? 0 : prev.sessionsCompleted;
-        const nextRules = rulesFromState(prev);
-        const durationByRules = getSessionDurationSec(prev.mode, nextRules, nextSessionsCompleted);
-        const remainingSec = resetFlow && prev.mode === "work"
-          ? durationByRules
-          : (prev.pausedRemainingSec ?? durationByRules);
-        const startedAt = prev.currentSessionStartedAt ?? nowTs;
-        const sessionId = prev.currentSessionId ?? crypto.randomUUID();
+      const resetFlow = shouldResetFlowCounter(state, nowTs);
+      const nextSessionsCompleted = resetFlow && state.mode === "work" ? 0 : state.sessionsCompleted;
+      const nextRules = rulesFromState(state);
+      const durationByRules = getSessionDurationSec(state.mode, nextRules, nextSessionsCompleted);
+      const remainingSec = resetFlow && state.mode === "work"
+        ? durationByRules
+        : (state.pausedRemainingSec ?? durationByRules);
+      const startedAt = state.currentSessionStartedAt ?? nowTs;
+      const sessionId = state.currentSessionId ?? crypto.randomUUID();
+      const targetEndAt = nowTs + remainingSec * 1000;
 
-        return {
-          ...prev,
-          sessionsCompleted: nextSessionsCompleted,
-          isActive: true,
-          isOvertime: false,
-          currentSessionId: sessionId,
-          currentSessionStartedAt: startedAt,
-          targetEndAt: nowTs + remainingSec * 1000,
-          pausedRemainingSec: null,
-          lastFlowActivityAt: nowTs,
-        };
-      });
-      return;
-    }
-
-    setState(prev => {
-      const resetFlow = shouldResetFlowCounter(prev, nowTs);
-      const nextSessionsCompleted = resetFlow && prev.mode === "work" ? 0 : prev.sessionsCompleted;
-      const nextRules = rulesFromState(prev);
-      const duration = getSessionDurationSec(prev.mode, nextRules, nextSessionsCompleted);
-      const sessionId = crypto.randomUUID();
-
-      return {
+      setState(prev => ({
         ...prev,
         sessionsCompleted: nextSessionsCompleted,
         isActive: true,
         isOvertime: false,
         currentSessionId: sessionId,
-        currentSessionStartedAt: nowTs,
-        targetEndAt: nowTs + duration * 1000,
+        currentSessionStartedAt: startedAt,
+        targetEndAt,
         pausedRemainingSec: null,
         lastFlowActivityAt: nowTs,
-      };
+      }));
+
+      void syncPushJob({
+        action: "schedule",
+        sessionId,
+        mode: state.mode,
+        fireAt: targetEndAt,
+      });
+      return;
+    }
+
+    const resetFlow = shouldResetFlowCounter(state, nowTs);
+    const nextSessionsCompleted = resetFlow && state.mode === "work" ? 0 : state.sessionsCompleted;
+    const nextRules = rulesFromState(state);
+    const duration = getSessionDurationSec(state.mode, nextRules, nextSessionsCompleted);
+    const sessionId = crypto.randomUUID();
+    const targetEndAt = nowTs + duration * 1000;
+
+    setState(prev => ({
+      ...prev,
+      sessionsCompleted: nextSessionsCompleted,
+      isActive: true,
+      isOvertime: false,
+      currentSessionId: sessionId,
+      currentSessionStartedAt: nowTs,
+      targetEndAt,
+      pausedRemainingSec: null,
+      lastFlowActivityAt: nowTs,
+    }));
+
+    void syncPushJob({
+      action: "schedule",
+      sessionId,
+      mode: state.mode,
+      fireAt: targetEndAt,
     });
   }, [
-    state.isActive,
-    state.targetEndAt,
-    state.pausedRemainingSec,
-    state.mode,
-    state.isOvertime,
+    state,
     stopAlarm,
     shouldResetFlowCounter,
+    syncPushJob,
   ]);
 
   const skipToNext = useCallback(() => {
@@ -551,6 +556,9 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(alarmTimerRef.current);
       alarmTimerRef.current = null;
     }
+
+    const currentSessionId = state.currentSessionId;
+    const currentMode = state.mode;
 
     setState(prev => {
       const nextMode: PomodoroMode = prev.mode === "work" ? "break" : "work";
@@ -570,7 +578,15 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
         lastFlowActivityAt: Date.now(),
       };
     });
-  }, []);
+
+    if (currentSessionId) {
+      void syncPushJob({
+        action: "cancel",
+        sessionId: currentSessionId,
+        mode: currentMode,
+      });
+    }
+  }, [state.currentSessionId, state.mode, syncPushJob]);
 
   const registerManualPomodoro = useCallback(async () => {
     const nowTs = Date.now();
@@ -595,6 +611,9 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
 
   const resetTimer = useCallback(() => {
     const duration = sessionDurationSec;
+    const currentSessionId = state.currentSessionId;
+    const currentMode = state.mode;
+
     setState(prev => ({
       ...prev,
       isActive: false,
@@ -605,7 +624,15 @@ export function PomodoroProvider({ children }: { children: React.ReactNode }) {
       currentSessionStartedAt: null,
       lastFlowActivityAt: Date.now(),
     }));
-  }, [sessionDurationSec]);
+
+    if (currentSessionId) {
+      void syncPushJob({
+        action: "cancel",
+        sessionId: currentSessionId,
+        mode: currentMode,
+      });
+    }
+  }, [sessionDurationSec, state.currentSessionId, state.mode, syncPushJob]);
 
   const setWorkMinutes = useCallback((m: number) => {
     setState(prev => ({
