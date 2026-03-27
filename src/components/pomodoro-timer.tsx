@@ -61,6 +61,7 @@ export function PomodoroTimer({
   const [localWork, setLocalWork] = React.useState(workMinutes.toString())
   const [localBreak, setLocalBreak] = React.useState(breakMinutes.toString())
   const [isRegisteringManualPomodoro, setIsRegisteringManualPomodoro] = React.useState(false)
+  const [isQuickSettingsOpen, setIsQuickSettingsOpen] = React.useState(false)
   const supabase = useSupabase()
   const { user } = useUser()
   const { toast } = useToast()
@@ -92,9 +93,17 @@ export function PomodoroTimer({
   }
 
   const handleApplyChanges = () => {
-    const w = parseInt(localWork); const b = parseInt(localBreak)
+    const w = parseInt(localWork, 10); const b = parseInt(localBreak, 10)
     if (!isNaN(w) && w > 0) setWorkMinutes(w)
     if (!isNaN(b) && b > 0) setBreakMinutes(b)
+    setIsQuickSettingsOpen(false)
+  }
+
+  const handleQuickSettingsKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault()
+      handleApplyChanges()
+    }
   }
 
   const isOvertime = mode === "break" && timeLeft < 0
@@ -297,7 +306,7 @@ export function PomodoroTimer({
             )}
             
             {!isActive && (
-              <Popover>
+              <Popover open={isQuickSettingsOpen} onOpenChange={setIsQuickSettingsOpen}>
                 <PopoverTrigger asChild>
                   <Button 
                     variant="outline" 
@@ -319,11 +328,23 @@ export function PomodoroTimer({
                     <div className="grid gap-4">
                       <div className="space-y-2">
                         <Label className="text-[9px] font-black uppercase opacity-60">Enfoque (min)</Label>
-                        <Input type="number" value={localWork} onChange={(e) => setLocalWork(e.target.value)} className="rounded-xl border-none bg-muted/40 h-12 font-bold px-4" />
+                        <Input
+                          type="number"
+                          value={localWork}
+                          onChange={(e) => setLocalWork(e.target.value)}
+                          onKeyDown={handleQuickSettingsKeyDown}
+                          className="rounded-xl border-none bg-muted/40 h-12 font-bold px-4"
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label className="text-[9px] font-black uppercase opacity-60">Descanso corto (min)</Label>
-                        <Input type="number" value={localBreak} onChange={(e) => setLocalBreak(e.target.value)} className="rounded-xl border-none bg-muted/40 h-12 font-bold px-4" />
+                        <Input
+                          type="number"
+                          value={localBreak}
+                          onChange={(e) => setLocalBreak(e.target.value)}
+                          onKeyDown={handleQuickSettingsKeyDown}
+                          className="rounded-xl border-none bg-muted/40 h-12 font-bold px-4"
+                        />
                       </div>
                     </div>
                     <Button

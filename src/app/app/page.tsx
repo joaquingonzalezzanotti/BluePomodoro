@@ -673,7 +673,7 @@ export default function AppEntry() {
       }
 
       const audio = new Audio("/sounds/pomodoro-alarm.wav")
-      audio.loop = true
+      audio.loop = false
       audio.preload = "auto"
       audio.play().catch((error) => {
         console.warn("No se pudo reproducir el sonido de alarma:", error)
