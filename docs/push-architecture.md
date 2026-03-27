@@ -9,12 +9,13 @@
 - **Backend (Next.js API)**
   - `/api/push/subscribe`: upsert seguro en `push_installations`.
   - `/api/push/unsubscribe`: revoca instalación (soft revoke).
-  - `/api/push/job`: schedule/cancel de jobs por `user_id + installation_id`.
+  - `/api/push/job`: schedule/cancel de jobs por `user_id + installation_id` con validación de ownership activo.
   - `/api/push/dispatch`: claim transaccional de jobs vencidos + envío web push + updates de estado.
 - **Supabase (Postgres)**
   - `push_installations`: dispositivos activos/revocados.
   - `push_jobs`: jobs persistentes con estados.
   - `claim_due_push_jobs()` con `FOR UPDATE SKIP LOCKED` para evitar doble procesamiento.
+  - También reclama jobs `processing` con `claimed_at` vencido (>5 min) para recuperar caídas del dispatcher.
 
 ## Flujo de datos
 
@@ -122,6 +123,7 @@ npm run test:push
 - Scheduling/cancelación se centraliza en backend (`/api/push/job`).
 - Dispatch idempotente con claim SQL transaccional.
 - Limpieza de instalaciones inválidas en 404/410.
+- `push_subscriptions` queda explícitamente deprecada para evitar uso accidental.
 
 ## Limitaciones/riesgos conocidos
 

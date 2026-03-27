@@ -110,7 +110,7 @@ create table if not exists public.pomodoro_sessions (
 create index if not exists pomodoro_sessions_user_id_idx on public.pomodoro_sessions(user_id);
 create index if not exists pomodoro_sessions_completed_at_idx on public.pomodoro_sessions(completed_at);
 
--- Push subscriptions (PWA notifications)
+-- Push subscriptions (PWA notifications, deprecated: replaced by push_installations + push_jobs)
 create table if not exists public.push_subscriptions (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -122,6 +122,8 @@ create table if not exists public.push_subscriptions (
 );
 create unique index if not exists push_subscriptions_user_endpoint_unique on public.push_subscriptions(user_id, endpoint);
 create index if not exists push_subscriptions_user_id_idx on public.push_subscriptions(user_id);
+comment on table public.push_subscriptions is
+  'DEPRECATED: replaced by push_installations + push_jobs. Kept only for backwards compatibility.';
 
 -- Aggregated daily stats (per user, local date)
 create table if not exists public.user_daily_stats (
@@ -979,8 +981,15 @@ begin
   with due as (
     select pj.id
     from public.push_jobs pj
-    where pj.status = 'scheduled'
+    where (
+      pj.status = 'scheduled'
       and pj.fire_at <= now()
+    )
+    or (
+      pj.status = 'processing'
+      and pj.claimed_at is not null
+      and pj.claimed_at <= now() - interval '5 minutes'
+    )
     order by pj.fire_at asc
     limit greatest(coalesce(p_limit, 100), 1)
     for update skip locked

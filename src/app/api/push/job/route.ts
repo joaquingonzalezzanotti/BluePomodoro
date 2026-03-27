@@ -72,6 +72,25 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing schedule payload" }, { status: 400 });
     }
 
+    const { data: installation, error: installationError } = await serviceClient
+      .from("push_installations")
+      .select("id")
+      .eq("user_id", userData.user.id)
+      .eq("installation_id", body.installationId)
+      .is("revoked_at", null)
+      .maybeSingle();
+
+    if (installationError) {
+      return NextResponse.json({ error: installationError.message }, { status: 500 });
+    }
+
+    if (!installation) {
+      return NextResponse.json(
+        { error: "Installation not found, not owned, or revoked" },
+        { status: 403 },
+      );
+    }
+
     await schedulePushJob(serviceClient, {
       userId: userData.user.id,
       sessionId: body.sessionId,

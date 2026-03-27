@@ -170,6 +170,8 @@ Por que no SQL puro para Web Push:
 - Estado de job transaccional + locks para evitar doble envio.
 - `max_attempts` + backoff para errores transitorios.
 - Job cleanup periodico (ej. borrar `sent/canceled` > 30 dias).
+- Reclaim de jobs `processing` con `claimed_at` vencido para tolerar caidas del dispatcher.
+- `push_subscriptions` debe tratarse como legacy/deprecada (no usar para nuevos flujos).
 
 ## 9) Plan de implementacion (para manana)
 
