@@ -105,7 +105,6 @@ export function PomodoroTimer({
       : (longBreakActive ? "text-primary" : "text-accent")
 
   const primaryLabel = isOvertime ? "FIN DESCANSO" : (isActive ? "PAUSA" : "INICIAR")
-  const canSkipToNext = isActive
 
   const { data: tasks } = useSupabaseQuery<Task[]>(
     async (client) => {
@@ -187,7 +186,7 @@ export function PomodoroTimer({
       {/* Contenedor Adaptativo Principal */}
       <div className={cn(
         "flex w-full items-center",
-        large ? "flex-col items-center gap-8" : "flex-col xl:flex-col lg:flex-row md:flex-row flex-row gap-4 xl:gap-0"
+        large ? "flex-col items-center gap-8" : "flex-col gap-4 md:flex-row lg:flex-row xl:flex-col xl:gap-6"
       )}>
         
         {/* Visualización del Tiempo (Reloj) */}
@@ -246,8 +245,8 @@ export function PomodoroTimer({
 
         {/* Controles del Temporizador */}
         <div className={cn(
-          "flex items-center gap-3 transition-all flex-1 justify-center",
-          large ? "gap-6 w-full" : "xl:gap-6 lg:gap-3 gap-2"
+          "flex items-center justify-center gap-3 transition-all",
+          large ? "gap-6 w-full" : "gap-2 lg:gap-3 xl:gap-6 md:flex-1 lg:flex-1 xl:flex-none"
         )}>
           <Button
             size="lg"
@@ -274,20 +273,21 @@ export function PomodoroTimer({
               <RotateCcw className="h-5 w-5 xl:h-7 xl:w-7 text-slate-400" />
             </Button>
 
-            <Button
-              size="icon"
-              variant="outline"
-              className={cn(
-                "border-2 border-slate-100 hover:bg-slate-50 transition-all",
-                large ? "h-20 w-20 rounded-2xl" : "xl:h-20 xl:w-20 xl:rounded-2xl h-12 w-12 rounded-xl"
-              )}
-              onClick={skipToNext}
-              disabled={!canSkipToNext}
-              title="Pasar a la siguiente instancia"
-              aria-label="Pasar a la siguiente instancia"
-            >
-              <SkipForward className="h-5 w-5 xl:h-7 xl:w-7 text-slate-400" />
-            </Button>
+            {isActive && (
+              <Button
+                size="icon"
+                variant="outline"
+                className={cn(
+                  "border-2 border-slate-100 hover:bg-slate-50 transition-all",
+                  large ? "h-20 w-20 rounded-2xl" : "xl:h-20 xl:w-20 xl:rounded-2xl h-12 w-12 rounded-xl"
+                )}
+                onClick={skipToNext}
+                title="Pasar a la siguiente instancia"
+                aria-label="Pasar a la siguiente instancia"
+              >
+                <SkipForward className="h-5 w-5 xl:h-7 xl:w-7 text-slate-400" />
+              </Button>
+            )}
             
             <Popover>
               <PopoverTrigger asChild>
@@ -336,7 +336,7 @@ export function PomodoroTimer({
         {/* Resumen de Sesiones / Estadísticas */}
         <div className={cn(
           "flex items-center justify-center transition-all",
-          large ? "mt-4 gap-8" : "xl:mt-6 xl:gap-12 lg:gap-6 gap-4 xl:w-full lg:w-auto mt-0 ml-auto hidden md:flex"
+          large ? "mt-4 gap-8" : "hidden gap-4 lg:gap-6 xl:mt-6 xl:w-full xl:gap-12 md:flex md:ml-auto xl:ml-0"
         )}>
           <div className="flex flex-col items-center">
             <div className="flex items-center gap-1.5 font-black text-xl xl:text-3xl text-slate-900 leading-none">
