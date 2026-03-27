@@ -9,7 +9,9 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test tests/**/*.test.ts",
+    "test:push": "node --import tsx --test tests/installation.test.ts tests/timer-transitions.test.ts tests/dispatch.test.ts"
   },
   "dependencies": {
     "@cfworker/json-schema": "^2.0.1",
