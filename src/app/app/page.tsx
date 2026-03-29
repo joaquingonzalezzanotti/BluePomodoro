@@ -186,10 +186,17 @@ function DashboardContent({
     stats: "Estadísticas",
     config: "Configuración"
   }
+  const isZenMode = activeTab === "foco"
 
   return (
     <SidebarProvider defaultOpen={true} style={{ "--sidebar-width": "16rem", "--sidebar-width-icon": "5rem" } as React.CSSProperties}>
-      <div className="flex min-h-screen w-full bg-slate-50/50 pb-24">
+      <div
+        className={cn(
+          "flex w-full bg-slate-50/50",
+          isZenMode ? "h-screen overflow-hidden" : "min-h-screen pb-24"
+        )}
+        style={isZenMode ? { height: "100dvh" } : undefined}
+      >
         <MobileSidebarHotZone />
         <Sidebar collapsible="icon" className="border-r border-primary/5 bg-white/80 backdrop-blur-xl transition-all duration-300">
           <SidebarHeader className="p-4 flex items-center justify-center">
@@ -232,7 +239,7 @@ function DashboardContent({
           </SidebarFooter>
         </Sidebar>
 
-        <main className="flex-1 min-w-0 overflow-auto flex flex-col">
+        <main className={cn("flex-1 min-w-0 flex flex-col", isZenMode ? "overflow-hidden" : "overflow-auto")}>
           <header className="h-16 border-b border-primary/5 bg-white/70 backdrop-blur-md sticky top-0 z-20 px-8 flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-3 shrink-0">
@@ -251,8 +258,15 @@ function DashboardContent({
             </div>
           </header>
 
-          <div className="flex-1 p-8 w-full max-w-[1600px] mx-auto space-y-8">
-            {activeTab !== "dashboard" && (
+          <div
+            className={cn(
+              "flex-1 w-full mx-auto",
+              isZenMode
+                ? "max-w-[1700px] px-4 py-3 md:px-6 md:py-4 flex flex-col overflow-hidden"
+                : "max-w-[1600px] p-8 space-y-8"
+            )}
+          >
+            {activeTab !== "dashboard" && !isZenMode && (
               <div className="space-y-1">
                 <h1 className="text-4xl font-black text-slate-900 tracking-tight">{tabTitles[activeTab]}</h1>
                 <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">{activeTab}</p>
@@ -311,8 +325,9 @@ function DashboardContent({
             )}
 
             {activeTab === "foco" && (
-              <div className="flex flex-col items-center justify-center gap-12 min-h-[70vh] animate-in zoom-in-95 duration-700">
-                <div className="bg-white rounded-[4rem] p-8 lg:p-16 shadow-2xl border border-slate-100 flex flex-col items-center justify-center w-full max-w-6xl">
+              <div className="flex flex-1 min-h-0 flex-col items-center gap-4 lg:gap-6 animate-in zoom-in-95 duration-700">
+                <div className="w-full max-w-6xl flex-1 min-h-0">
+                  <div className="h-full min-h-0 bg-white rounded-[2.5rem] lg:rounded-[3.5rem] px-4 py-4 md:px-6 md:py-6 shadow-2xl border border-slate-100 flex items-center justify-center overflow-hidden">
                     <PomodoroTimer 
                       timeLeft={timeLeft}
                       isActive={isActive}
@@ -333,9 +348,11 @@ function DashboardContent({
                     longBreakMinutesHigh={longBreakMinutesHigh}
                     longBreakMinutesLow={longBreakMinutesLow}
                     large
+                    viewportFit
                   />
+                  </div>
                 </div>
-                <div className="max-w-2xl w-full">
+                <div className="w-full max-w-3xl flex-none min-h-[10rem] max-h-[30vh] overflow-auto rounded-[2rem] border border-slate-100 bg-white/90 p-3 md:p-4 shadow-xl">
                    <TaskManager onTaskSelect={(id: string | null) => setActiveTaskId(id)} activeTaskId={activeTaskId} onlyActive />
                 </div>
               </div>
@@ -366,7 +383,7 @@ function DashboardContent({
             {activeTab === "stats" && <StatsView />}
           </div>
 
-          <FocusMusic layout="dock" />
+          {!isZenMode && <FocusMusic layout="dock" />}
         </main>
       </div>
     </SidebarProvider>

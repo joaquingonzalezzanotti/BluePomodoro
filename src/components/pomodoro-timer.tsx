@@ -33,6 +33,7 @@ interface PomodoroTimerProps {
   longBreakMinutesHigh?: number
   longBreakMinutesLow?: number
   large?: boolean
+  viewportFit?: boolean
   activeTaskId?: string | null
   setActiveTaskId?: (id: string | null) => void
 }
@@ -55,6 +56,7 @@ export function PomodoroTimer({
   longBreakMinutesHigh = 20,
   longBreakMinutesLow = 15,
   large = false,
+  viewportFit = false,
   activeTaskId = null,
   setActiveTaskId
 }: PomodoroTimerProps) {
@@ -159,20 +161,32 @@ export function PomodoroTimer({
   return (
     <div className={cn(
       "w-full transition-all duration-700",
-      large ? "flex flex-col items-center py-8 w-full" : "flex flex-col xl:items-center"
+      large
+        ? (viewportFit ? "flex h-full flex-col items-center py-1 md:py-2 w-full" : "flex flex-col items-center py-8 w-full")
+        : "flex flex-col xl:items-center"
     )}>
       {setActiveTaskId && (
         <div className={cn(
-          "w-full flex items-center justify-center mb-6",
-          large ? "max-w-6xl" : "xl:mb-4"
+          "w-full flex items-center justify-center",
+          large
+            ? (viewportFit ? "mb-3 md:mb-4 max-w-5xl" : "mb-6 max-w-6xl")
+            : "mb-6 xl:mb-4"
         )}>
           <div className={cn(
             "flex items-center gap-3 rounded-2xl border border-slate-100 bg-white/80 px-4 py-2 shadow-sm",
-            large ? "w-full max-w-2xl justify-center" : "w-full max-w-md"
+            large && viewportFit && "flex-wrap justify-center",
+            large
+              ? (viewportFit ? "w-full max-w-xl justify-center" : "w-full max-w-2xl justify-center")
+              : "w-full max-w-md"
           )}>
             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Tarea activa</span>
             <Select value={activeTaskId ?? "none"} onValueChange={(value) => setActiveTaskId(value === "none" ? null : value)}>
-              <SelectTrigger className="h-9 w-[220px] rounded-xl bg-white border-slate-100 text-xs font-bold">
+              <SelectTrigger
+                className={cn(
+                  "h-9 rounded-xl bg-white border-slate-100 text-xs font-bold",
+                  large && viewportFit ? "w-[180px] sm:w-[220px]" : "w-[220px]"
+                )}
+              >
                 <SelectValue placeholder="Sin tarea" />
               </SelectTrigger>
               <SelectContent className="max-h-64">
@@ -196,13 +210,17 @@ export function PomodoroTimer({
       {/* Contenedor Adaptativo Principal */}
       <div className={cn(
         "flex w-full items-center",
-        large ? "flex-col items-center gap-8" : "flex-col gap-4 md:flex-row lg:flex-row xl:flex-col xl:gap-6"
+        large
+          ? (viewportFit ? "flex-col items-center gap-4 lg:gap-5 flex-1 min-h-0" : "flex-col items-center gap-8")
+          : "flex-col gap-4 md:flex-row lg:flex-row xl:flex-col xl:gap-6"
       )}>
         
         {/* Visualización del Tiempo (Reloj) */}
         <div className={cn(
           "relative flex items-center justify-center transition-all duration-500 shrink-0",
-          large ? "w-72 h-72 sm:w-80 sm:h-80 lg:w-96 lg:h-96 mb-8 lg:mb-0" : "xl:w-80 xl:h-80 xl:mb-6 w-32 h-32 lg:w-40 lg:h-40 xl:scale-100"
+          large
+            ? (viewportFit ? "w-[clamp(11rem,34vh,24rem)] h-[clamp(11rem,34vh,24rem)] mb-2 lg:mb-0" : "w-72 h-72 sm:w-80 sm:h-80 lg:w-96 lg:h-96 mb-8 lg:mb-0")
+            : "xl:w-80 xl:h-80 xl:mb-6 w-32 h-32 lg:w-40 lg:h-40 xl:scale-100"
         )}>
           {/* Glow Effect */}
           <div className={cn(
@@ -236,7 +254,9 @@ export function PomodoroTimer({
           <div className="flex flex-col items-center z-10">
             <div className={cn(
               "font-black font-mono tracking-tighter transition-all duration-500 leading-none",
-              large ? "text-8xl md:text-9xl" : "xl:text-7xl lg:text-4xl text-3xl",
+              large
+                ? (viewportFit ? "text-[clamp(2.3rem,8vh,5.7rem)]" : "text-8xl md:text-9xl")
+                : "xl:text-7xl lg:text-4xl text-3xl",
               colorClass
             )}>
               {formatTime(timeLeft)}
@@ -256,7 +276,9 @@ export function PomodoroTimer({
         {/* Controles del Temporizador */}
         <div className={cn(
           "flex items-center justify-center gap-3 transition-all",
-          large ? "gap-6 w-full" : "gap-2 lg:gap-3 xl:gap-6 md:flex-1 lg:flex-1 xl:flex-none"
+          large
+            ? (viewportFit ? "gap-3 md:gap-4 w-full flex-wrap" : "gap-6 w-full")
+            : "gap-2 lg:gap-3 xl:gap-6 md:flex-1 lg:flex-1 xl:flex-none"
         )}>
           <Button
             size="lg"
@@ -264,8 +286,8 @@ export function PomodoroTimer({
             className={cn(
               "font-black shadow-xl transition-all hover:scale-105 active:scale-95",
               compactPrimaryWhileActive
-                ? (large ? "h-20 w-20 rounded-3xl" : "h-12 w-12 xl:h-20 xl:w-20 rounded-2xl xl:rounded-3xl px-0")
-                : (large ? "h-20 w-40 text-xl rounded-3xl" : "xl:h-20 xl:w-40 xl:text-xl xl:rounded-3xl h-12 px-6 rounded-2xl text-sm")
+                ? (large ? (viewportFit ? "h-14 w-14 md:h-16 md:w-16 rounded-2xl md:rounded-3xl" : "h-20 w-20 rounded-3xl") : "h-12 w-12 xl:h-20 xl:w-20 rounded-2xl xl:rounded-3xl px-0")
+                : (large ? (viewportFit ? "h-14 w-32 md:h-16 md:w-36 text-base md:text-lg rounded-2xl md:rounded-3xl" : "h-20 w-40 text-xl rounded-3xl") : "xl:h-20 xl:w-40 xl:text-xl xl:rounded-3xl h-12 px-6 rounded-2xl text-sm")
             )}
           >
             {isActive ? (
@@ -276,13 +298,13 @@ export function PomodoroTimer({
             {!compactPrimaryWhileActive && primaryLabel}
           </Button>
           
-          <div className="flex gap-2 xl:gap-3">
+          <div className={cn("flex", large && viewportFit ? "gap-2 md:gap-3" : "gap-2 xl:gap-3")}>
             <Button 
               size="icon" 
               variant="outline" 
               className={cn(
                 "border-2 border-slate-100 hover:bg-slate-50 transition-all",
-                large ? "h-20 w-20 rounded-2xl" : "xl:h-20 xl:w-20 xl:rounded-2xl h-12 w-12 rounded-xl"
+                large ? (viewportFit ? "h-14 w-14 md:h-16 md:w-16 rounded-xl md:rounded-2xl" : "h-20 w-20 rounded-2xl") : "xl:h-20 xl:w-20 xl:rounded-2xl h-12 w-12 rounded-xl"
               )} 
               onClick={resetTimer}
             >
@@ -295,7 +317,7 @@ export function PomodoroTimer({
                 variant="outline"
                 className={cn(
                   "border-2 border-slate-100 hover:bg-slate-50 transition-all",
-                  large ? "h-20 w-20 rounded-2xl" : "xl:h-20 xl:w-20 xl:rounded-2xl h-12 w-12 rounded-xl"
+                  large ? (viewportFit ? "h-14 w-14 md:h-16 md:w-16 rounded-xl md:rounded-2xl" : "h-20 w-20 rounded-2xl") : "xl:h-20 xl:w-20 xl:rounded-2xl h-12 w-12 rounded-xl"
                 )}
                 onClick={skipToNext}
                 title="Pasar a la siguiente instancia"
@@ -313,7 +335,7 @@ export function PomodoroTimer({
                     size="icon" 
                     className={cn(
                       "border-2 border-slate-100 hover:bg-slate-50 transition-all",
-                      large ? "h-20 w-20 rounded-2xl" : "xl:h-20 xl:w-20 xl:rounded-2xl h-12 w-12 rounded-xl"
+                      large ? (viewportFit ? "h-14 w-14 md:h-16 md:w-16 rounded-xl md:rounded-2xl" : "h-20 w-20 rounded-2xl") : "xl:h-20 xl:w-20 xl:rounded-2xl h-12 w-12 rounded-xl"
                     )}
                   >
                     <Settings2 className="h-5 w-5 xl:h-7 xl:w-7 text-slate-400" />
@@ -366,7 +388,9 @@ export function PomodoroTimer({
         {/* Resumen de Sesiones / Estadísticas */}
         <div className={cn(
           "flex items-center justify-center transition-all",
-          large ? "mt-4 gap-8" : "hidden gap-4 lg:gap-6 xl:mt-6 xl:w-full xl:gap-12 md:flex md:ml-auto xl:ml-0"
+          large
+            ? (viewportFit ? "mt-1 md:mt-2 gap-4 md:gap-6" : "mt-4 gap-8")
+            : "hidden gap-4 lg:gap-6 xl:mt-6 xl:w-full xl:gap-12 md:flex md:ml-auto xl:ml-0"
         )}>
           <div className="flex flex-col items-center">
             <div className="flex items-center gap-1.5 font-black text-xl xl:text-3xl text-slate-900 leading-none">
