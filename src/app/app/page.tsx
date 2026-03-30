@@ -21,6 +21,7 @@ import {
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarFooter, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarGroup, useSidebar } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/toaster"
 import { PomodoroTimer } from "@/components/pomodoro-timer"
+import { ZenTimer } from "@/components/zen-timer"
 import { TaskManager } from "@/components/task-manager"
 import { ConfigurationView } from "@/components/configuration-view"
 import { StatsView } from "@/components/stats-view"
@@ -325,35 +326,14 @@ function DashboardContent({
             )}
 
             {activeTab === "foco" && (
-              <div className="flex flex-1 min-h-0 flex-col items-center gap-4 lg:gap-6 animate-in zoom-in-95 duration-700">
-                <div className="w-full max-w-6xl flex-1 min-h-0">
-                  <div className="h-full min-h-0 bg-white rounded-[2.5rem] lg:rounded-[3.5rem] px-4 py-4 md:px-6 md:py-6 shadow-2xl border border-slate-100 flex items-center justify-center overflow-hidden">
-                    <PomodoroTimer 
-                      timeLeft={timeLeft}
-                      isActive={isActive}
-                      mode={mode}
-                      sessionsCompleted={sessionsCompleted}
-                      toggleTimer={toggleTimer}
-                      resetTimer={resetTimer}
-                      skipToNext={skipToNext}
-                      registerManualPomodoro={registerManualPomodoro}
-                      activeTaskId={activeTaskId}
-                      setActiveTaskId={setActiveTaskId}
-                      workMinutes={workMinutes}
-                      setWorkMinutes={setWorkMinutes}
-                      breakMinutes={breakMinutes}
-                    setBreakMinutes={setBreakMinutes}
-                    longBreakAfter={longBreakAfter}
-                    longBreakThreshold={longBreakThreshold}
-                    longBreakMinutesHigh={longBreakMinutesHigh}
-                    longBreakMinutesLow={longBreakMinutesLow}
-                    large
-                    viewportFit
+              <div className="flex flex-1 min-h-0 flex-col items-center justify-center animate-in zoom-in-95 duration-700 w-full h-full relative z-0">
+                <div className="w-full h-full flex items-center justify-center">
+                  <ZenTimer 
+                    timeLeft={timeLeft}
+                    isActive={isActive}
+                    mode={mode}
+                    toggleTimer={toggleTimer}
                   />
-                  </div>
-                </div>
-                <div className="w-full max-w-3xl flex-none min-h-[10rem] max-h-[30vh] overflow-auto rounded-[2rem] border border-slate-100 bg-white/90 p-3 md:p-4 shadow-xl">
-                   <TaskManager onTaskSelect={(id: string | null) => setActiveTaskId(id)} activeTaskId={activeTaskId} onlyActive />
                 </div>
               </div>
             )}

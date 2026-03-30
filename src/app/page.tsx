@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -59,14 +58,17 @@ export default function RootLandingPage() {
   if (!mounted || isUserLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
-        <CloudLightning className="h-12 w-12 text-primary animate-pulse" />
+        <div className="relative flex items-center justify-center">
+          <div className="absolute animate-ping w-16 h-16 rounded-full bg-primary/20"></div>
+          <CloudLightning className="h-12 w-12 text-primary animate-pulse relative z-10" />
+        </div>
       </div>
     )
   }
 
   return (
     <div className="min-h-screen bg-white text-slate-900 overflow-x-hidden font-sans">
-      <nav className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-md border-b border-slate-100 h-20 flex items-center px-6 md:px-12 justify-between">
+      <nav className="fixed top-0 w-full z-50 bg-white/60 backdrop-blur-xl border-b border-white/20 shadow-sm h-20 flex items-center px-6 md:px-12 justify-between">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 relative">
              <Image src="/logo.png" alt="Logo BluePomodoro" width={40} height={40} className="rounded-xl object-contain" />
@@ -74,31 +76,32 @@ export default function RootLandingPage() {
           <span className="font-black text-xl tracking-tighter text-primary">BluePomodoro</span>
         </div>
         <div className="flex items-center gap-4">
-          <Button variant="ghost" className="hidden md:flex font-bold" onClick={handleGuestSignIn}>Demo Gratis</Button>
-          <Button onClick={handleGoogleSignIn} className="rounded-full px-6 font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-transform">
+          <Button variant="ghost" className="hidden md:flex font-bold hover:bg-primary/5" onClick={handleGuestSignIn}>Demo Gratis</Button>
+          <Button onClick={handleGoogleSignIn} className="rounded-full px-6 font-bold shadow-lg shadow-primary/20 hover:scale-105 hover:shadow-primary/30 transition-all duration-300">
             Empezar ahora
           </Button>
         </div>
       </nav>
 
-      <main className="pt-40 pb-20 px-6 max-w-7xl mx-auto text-center">
+      <main className="pt-40 pb-20 px-6 max-w-7xl mx-auto text-center relative z-0">
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl -z-10 pointer-events-none" />
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/5 text-primary text-xs font-black uppercase tracking-widest mb-8 border border-primary/10">
             <Sparkles className="h-3.5 w-3.5" /> La Productividad del Futuro
           </div>
-          <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.95] mb-8 text-slate-900">
+          <h1 className="text-5xl md:text-7xl font-black tracking-tight leading-[0.95] mb-8 text-slate-900 relative z-10">
             Domina tu tiempo, <br />
-            <span className="text-primary italic">con claridad mental.</span>
+            <span className="bg-clip-text text-transparent bg-gradient-to-r from-primary via-blue-400 to-cyan-400 italic">con claridad mental.</span>
           </h1>
           <p className="max-w-2xl mx-auto text-lg md:text-xl text-slate-500 font-medium mb-10 leading-relaxed">
             Diseñado específicamente para el cerebro moderno. Desglose de tareas con IA, 
             temporizadores visuales para TDAH y gamificación real.
           </p>
-          <div className="flex flex-col md:flex-row items-center justify-center gap-4">
-            <Button size="lg" onClick={handleGoogleSignIn} className="h-16 px-10 rounded-2xl text-lg font-bold gap-3 shadow-xl shadow-primary/25 w-full md:w-auto hover:bg-primary/90 transition-all">
+          <div className="flex flex-col md:flex-row items-center justify-center gap-4 relative z-10">
+            <Button size="lg" onClick={handleGoogleSignIn} className="h-16 px-10 rounded-2xl text-lg font-bold gap-3 shadow-xl shadow-primary/25 w-full md:w-auto hover:bg-primary hover:scale-[1.02] hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300">
               <LogIn className="h-5 w-5" /> Iniciar con Google
             </Button>
-            <Button size="lg" variant="outline" onClick={handleGuestSignIn} className="h-16 px-10 rounded-2xl text-lg font-bold border-2 w-full md:w-auto hover:bg-slate-50">
+            <Button size="lg" variant="outline" onClick={handleGuestSignIn} className="h-16 px-10 rounded-2xl text-lg font-bold border-2 w-full md:w-auto hover:bg-slate-50 hover:scale-[1.02] transition-all duration-300">
                Acceso Invitado
             </Button>
           </div>
