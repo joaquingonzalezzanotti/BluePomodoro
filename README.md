@@ -24,6 +24,7 @@ Auth en Supabase:
 
 Opcional:
 - `NEXT_PUBLIC_SITE_URL` (para metadataBase en Open Graph).
+- `GOOGLE_SYNC_ENABLE_BIDIRECTIONAL` (default activo; usa `false` para forzar modo solo lectura en backend).
 
 ### 3) Spotify
 - `NEXT_PUBLIC_SPOTIFY_CLIENT_ID`

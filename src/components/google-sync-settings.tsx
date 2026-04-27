@@ -72,6 +72,12 @@ export function GoogleSyncSettings() {
       })
       return
     }
+    if (value === "bidirectional") {
+      toast({
+        title: "Modo bidireccional activado",
+        description: "Si venias con permisos antiguos, usa 'Conectar Google Sync' para renovar scopes.",
+      })
+    }
     await refetchProfile()
   }
 

@@ -275,44 +275,54 @@ function DashboardContent({
             )}
 
             {activeTab === "dashboard" && (
-              <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-8 items-start">
-                <div className="min-w-0 space-y-8">
-                  <div className="space-y-1">
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight">{tabTitles[activeTab]}</h1>
-                    <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">{activeTab}</p>
-                  </div>
-                  <TaskManager
-                    onTaskSelect={(id: string | null) => setActiveTaskId(id)}
-                    activeTaskId={activeTaskId}
-                    focusBoard
-                    restDropdownOpen={focusBoardRestOpen}
-                    onRestDropdownOpenChange={onFocusBoardRestOpenChange}
-                  />
+              <div className="space-y-8">
+                <div className="space-y-1">
+                  <h1 className="text-4xl font-black text-slate-900 tracking-tight">{tabTitles[activeTab]}</h1>
+                  <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">{activeTab}</p>
                 </div>
-                <div className="xl:sticky xl:top-24 w-full">
-                  <Card className="bg-white rounded-[2.5rem] p-6 xl:p-8 pt-4 xl:pt-6 shadow-xl border border-slate-100 flex flex-col items-center justify-start overflow-hidden min-h-[140px] xl:min-h-0">
-                    <PomodoroTimer 
-                      timeLeft={timeLeft}
-                      isActive={isActive}
-                      mode={mode}
-                      sessionsCompleted={sessionsCompleted}
-                      toggleTimer={toggleTimer}
-                      resetTimer={resetTimer}
-                      skipToNext={skipToNext}
-                      registerManualPomodoro={registerManualPomodoro}
+
+                <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_400px] gap-8 items-start">
+                  <aside
+                    className="w-full space-y-4 xl:col-start-2 xl:row-start-1 xl:sticky xl:top-24"
+                    aria-label="Panel de foco prioritario"
+                  >
+                    <Card className="bg-white rounded-[2.5rem] p-6 xl:p-8 pt-4 xl:pt-6 shadow-xl border border-slate-100 flex flex-col items-center justify-start overflow-hidden min-h-[140px] xl:min-h-0">
+                      <PomodoroTimer 
+                        timeLeft={timeLeft}
+                        isActive={isActive}
+                        mode={mode}
+                        sessionsCompleted={sessionsCompleted}
+                        toggleTimer={toggleTimer}
+                        resetTimer={resetTimer}
+                        skipToNext={skipToNext}
+                        registerManualPomodoro={registerManualPomodoro}
+                        activeTaskId={activeTaskId}
+                        setActiveTaskId={setActiveTaskId}
+                        workMinutes={workMinutes}
+                        setWorkMinutes={setWorkMinutes}
+                        breakMinutes={breakMinutes}
+                        setBreakMinutes={setBreakMinutes}
+                        longBreakAfter={longBreakAfter}
+                        longBreakThreshold={longBreakThreshold}
+                        longBreakMinutesHigh={longBreakMinutesHigh}
+                        longBreakMinutesLow={longBreakMinutesLow}
+                      />
+                    </Card>
+                    <SpotifyRealTime />
+                  </aside>
+
+                  <section
+                    className="min-w-0 xl:col-start-1 xl:row-start-1"
+                    aria-label="Panel de tareas"
+                  >
+                    <TaskManager
+                      onTaskSelect={(id: string | null) => setActiveTaskId(id)}
                       activeTaskId={activeTaskId}
-                      setActiveTaskId={setActiveTaskId}
-                      workMinutes={workMinutes}
-                      setWorkMinutes={setWorkMinutes}
-                      breakMinutes={breakMinutes}
-                      setBreakMinutes={setBreakMinutes}
-                      longBreakAfter={longBreakAfter}
-                      longBreakThreshold={longBreakThreshold}
-                      longBreakMinutesHigh={longBreakMinutesHigh}
-                      longBreakMinutesLow={longBreakMinutesLow}
+                      focusBoard
+                      restDropdownOpen={focusBoardRestOpen}
+                      onRestDropdownOpenChange={onFocusBoardRestOpenChange}
                     />
-                  </Card>
-                   <SpotifyRealTime />
+                  </section>
                 </div>
               </div>
             )}
