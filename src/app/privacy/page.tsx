@@ -23,8 +23,8 @@ export default function PrivacyPolicy() {
 
         <h2 className="text-xl font-semibold text-foreground">1. Datos que recolectamos</h2>
         <p>
-          Accedemos a nombre, correo y foto de perfil para crear tu cuenta. Si activas sincronizacion, leemos eventos
-          de Google Calendar y tareas de Google Tasks con permisos de solo lectura.
+          Accedemos a nombre, correo y foto de perfil para crear tu cuenta. Si activas sincronizacion, accedemos a
+          eventos de Google Calendar y tareas de Google Tasks segun el modo elegido (solo lectura o bidireccional).
         </p>
 
         <h2 className="text-xl font-semibold text-foreground">2. Uso de los datos</h2>

@@ -43,8 +43,9 @@ export function GoogleSyncSettings() {
   const hasSyncGrant = Boolean(profile?.google_access_token)
   const hasAnySyncEnabled = Boolean(profile?.google_tasks_sync || profile?.google_calendar_sync)
   const lastSyncText = formatLastSync(profile?.google_last_synced_at)
-  const tasksSyncMode: SyncMode = "read_only"
-  const calendarSyncMode: SyncMode = "read_only"
+  const tasksSyncMode: SyncMode = profile?.google_tasks_sync_mode === "bidirectional" ? "bidirectional" : "read_only"
+  const calendarSyncMode: SyncMode =
+    profile?.google_calendar_sync_mode === "bidirectional" ? "bidirectional" : "read_only"
 
   const handleToggle = async (key: "google_calendar_sync" | "google_tasks_sync", value: boolean) => {
     if (!user) return
@@ -150,8 +151,8 @@ export function GoogleSyncSettings() {
 
     setIsConnecting(true)
     try {
-      const taskScope = "https://www.googleapis.com/auth/tasks.readonly"
-      const calendarScope = "https://www.googleapis.com/auth/calendar.readonly"
+      const taskScope = "https://www.googleapis.com/auth/tasks"
+      const calendarScope = "https://www.googleapis.com/auth/calendar"
 
       await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -242,7 +243,7 @@ export function GoogleSyncSettings() {
                 ) : (
                   <div className="space-y-4">
                     <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-none font-black text-[9px]">
-                      READ ONLY
+                      {calendarSyncMode === "bidirectional" ? "BIDIRECTIONAL" : "READ ONLY"}
                     </Badge>
                     <p className="text-xs font-medium text-slate-500">
                       La seleccion de calendarios se configura desde Agenda, en "Mis calendarios".
@@ -264,10 +265,12 @@ export function GoogleSyncSettings() {
                 ) : (
                   <div className="space-y-4">
                     <Badge variant="secondary" className="bg-green-50 text-green-600 border-none font-black text-[9px]">
-                      GOOGLE WINS
+                      {tasksSyncMode === "bidirectional" ? "BIDIRECTIONAL" : "GOOGLE WINS"}
                     </Badge>
                     <p className="text-xs font-medium text-slate-500">
-                      Importacion desde lista default con upsert y limpieza de tareas removidas.
+                      {tasksSyncMode === "bidirectional"
+                        ? "Sincronizacion en ambos sentidos con la lista default de Google Tasks."
+                        : "Importacion desde lista default con upsert y limpieza de tareas removidas."}
                     </p>
                   </div>
                 )}
@@ -284,8 +287,8 @@ export function GoogleSyncSettings() {
             <CardContent className="pt-6 space-y-6">
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label className="text-sm font-bold">Importar Calendar</Label>
-                  <p className="text-[10px] text-muted-foreground">Lectura de eventos de Google Calendar.</p>
+                  <Label className="text-sm font-bold">Sincronizar Calendar</Label>
+                  <p className="text-[10px] text-muted-foreground">Google Calendar con selector de modo.</p>
                 </div>
                 <Switch
                   checked={!!profile?.google_calendar_sync}
@@ -297,21 +300,21 @@ export function GoogleSyncSettings() {
                 <Select
                   value={calendarSyncMode}
                   onValueChange={(value) => handleModeChange("google_calendar_sync_mode", value as SyncMode)}
-                  disabled
                 >
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="read_only">Solo lectura (estable)</SelectItem>
+                    <SelectItem value="bidirectional">Bidireccional</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
-                  <Label className="text-sm font-bold">Importar Tasks</Label>
-                  <p className="text-[10px] text-muted-foreground">Sync de lista default de Google Tasks.</p>
+                  <Label className="text-sm font-bold">Sincronizar Tasks</Label>
+                  <p className="text-[10px] text-muted-foreground">Google Tasks con selector de modo.</p>
                 </div>
                 <Switch
                   checked={!!profile?.google_tasks_sync}
@@ -323,13 +326,13 @@ export function GoogleSyncSettings() {
                 <Select
                   value={tasksSyncMode}
                   onValueChange={(value) => handleModeChange("google_tasks_sync_mode", value as SyncMode)}
-                  disabled
                 >
                   <SelectTrigger className="h-9 text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="read_only">Solo lectura (Google gana)</SelectItem>
+                    <SelectItem value="bidirectional">Bidireccional</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -340,8 +343,8 @@ export function GoogleSyncSettings() {
                 Seleccion de calendarios: pestaña Agenda &gt; Mis calendarios.
               </p>
               <p className="text-[10px] text-muted-foreground font-bold">Re-sync on Focus: silenciosa, con throttle de 60s.</p>
-              <p className="text-[10px] text-amber-700 font-bold">
-                Durante validacion OAuth de Google, Tasks/Calendar operan en solo lectura.
+              <p className="text-[10px] text-muted-foreground font-bold">
+                Si cambias a modo bidireccional, usa "Conectar Google Sync" para renovar permisos OAuth.
               </p>
             </CardContent>
           </Card>

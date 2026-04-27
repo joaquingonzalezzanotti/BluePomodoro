@@ -6,7 +6,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const GOOGLE_OAUTH_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID ?? process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ?? "";
 const GOOGLE_OAUTH_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET ?? "";
 const FOCUS_SYNC_MIN_INTERVAL_MS = 60_000;
-const GOOGLE_SYNC_ENABLE_BIDIRECTIONAL = process.env.GOOGLE_SYNC_ENABLE_BIDIRECTIONAL === "true";
+const GOOGLE_SYNC_ENABLE_BIDIRECTIONAL = process.env.GOOGLE_SYNC_ENABLE_BIDIRECTIONAL !== "false";
 
 type SyncReason = "manual" | "focus";
 type CalendarSelectionMode = "all" | "none" | "some";
@@ -289,7 +289,6 @@ export async function POST(req: Request) {
     synced_at: null as string | null,
     tasks: {
       enabled: Boolean(typedProfile.google_tasks_sync),
-      // Sprint safety mode: default read-only until OAuth validation closes.
       mode: tasksMode,
       total_google: 0,
       upserted: 0,
@@ -734,7 +733,7 @@ export async function POST(req: Request) {
     }
   }
 
-  // Google Calendar read-only bridge: fetch upcoming events across selected calendars.
+  // Google Calendar sync: fetch upcoming events across selected calendars.
   if (typedProfile.google_calendar_sync) {
     try {
       const calendarIds: string[] = [];
