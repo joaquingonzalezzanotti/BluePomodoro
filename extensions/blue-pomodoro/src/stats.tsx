@@ -40,7 +40,7 @@ export default function Command() {
 
     const streak = profile.streak_days;
     const points = profile.puntos_totales.toLocaleString();
-    const displayName = profile.display_name;
+    const displayName = profile.display_name || profile.email || "Guest";
     const focusMin = profile.stats.focus_minutes;
 
     const svg = `
