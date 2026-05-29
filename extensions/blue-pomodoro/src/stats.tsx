@@ -111,10 +111,13 @@ export default function Command() {
           <Detail.Metadata>
             <Detail.Metadata.Label
               title="User"
-              text={profile.display_name}
+              text={profile.display_name || "Guest"}
               icon={Icon.Person}
             />
-            <Detail.Metadata.Label title="Email" text={profile.email} />
+            <Detail.Metadata.Label
+              title="Email"
+              text={profile.email || "Anonymous"}
+            />
             <Detail.Metadata.Separator />
             <Detail.Metadata.Label
               title="Focus Time"

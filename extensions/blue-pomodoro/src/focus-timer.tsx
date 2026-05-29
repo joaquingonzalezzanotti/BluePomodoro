@@ -455,19 +455,22 @@ export default function Command() {
   }, [state, remainingSec, timerDuration, profile]);
 
   const markdown = useMemo(() => {
+    const isWork = state.mode === "work";
+    const statusGif = isWork ? "focus.gif" : "break.gif";
+
+    const statusTitle = isWork
+      ? "🚀 Deep Focus Session in Progress..."
+      : "☕ Time to Recharge & Relax...";
+
     return `![Focus Timer](${svgUri})
 
-### ⌨️ Keyboard Shortcuts
+---
 
-| Action | Shortcut |
-| :--- | :--- |
-| **Start / Pause Timer** | \`Enter\` |
-| **Skip to Next Block** | \`⌥ ⌘ S\` |
-| **Reset Current Block** | \`⌥ ⌘ R\` |
-| **Log Manual Pomodoro** | \`⌥ ⌘ M\` |
-| **Open in Web App** | \`⌘ O\` |
+### ${statusTitle}
+
+![Session Status](${statusGif})
 `;
-  }, [svgUri]);
+  }, [svgUri, state.mode]);
 
   return (
     <Detail
