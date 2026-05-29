@@ -404,7 +404,7 @@ export default function Command() {
     const taskName = state.activeTaskTitle || "General Focus";
 
     const svg = `
-<svg width="560" height="240" viewBox="0 0 560 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="100%" viewBox="0 0 560 240" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="${isWork ? "#0b0f19" : "#061f17"}" />
@@ -455,7 +455,18 @@ export default function Command() {
   }, [state, remainingSec, timerDuration, profile]);
 
   const markdown = useMemo(() => {
-    return `![Focus Timer](${svgUri})`;
+    return `![Focus Timer](${svgUri})
+
+### ⌨️ Keyboard Shortcuts
+
+| Action | Shortcut |
+| :--- | :--- |
+| **Start / Pause Timer** | \`Enter\` |
+| **Skip to Next Block** | \`⌥ ⌘ S\` |
+| **Reset Current Block** | \`⌥ ⌘ R\` |
+| **Log Manual Pomodoro** | \`⌥ ⌘ M\` |
+| **Open in Web App** | \`⌘ O\` |
+`;
   }, [svgUri]);
 
   return (

@@ -44,7 +44,7 @@ export default function Command() {
     const focusMin = profile.stats.focus_minutes;
 
     const svg = `
-<svg width="560" height="240" viewBox="0 0 560 240" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="100%" viewBox="0 0 560 240" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#0f172a" />
@@ -91,7 +91,15 @@ export default function Command() {
 
   const markdown = useMemo(() => {
     if (!profile) return "# Loading statistics...";
-    return `![Statistics Dashboard](${svgUri})`;
+    return `![Statistics Dashboard](${svgUri})
+
+### 📊 Performance Breakdown
+
+* **Streak:** Active for **${profile.streak_days}** consecutive days.
+* **Productivity Score:** Total points accumulated: **${profile.puntos_totales.toLocaleString()}** pts.
+* **Focus Time:** You have focused for **${profile.stats.focus_minutes}** minutes today.
+* **Work Sessions:** **${profile.stats.work_sessions}** sessions recorded today.
+`;
   }, [profile, svgUri]);
 
   return (
