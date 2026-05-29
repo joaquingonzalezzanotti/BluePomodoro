@@ -31,6 +31,7 @@ export type Profile = {
   pomodoro_long_break_minutes_high: number;
   pomodoro_long_break_minutes_low: number;
   pomodoro_overtime_grace_seconds: number;
+  api_token?: string | null;
 };
 
 export type TaskStatus = "Pendiente" | "En Proceso" | "Completada";
