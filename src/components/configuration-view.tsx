@@ -54,6 +54,17 @@ export function ConfigurationView() {
   const [overtimeGraceInput, setOvertimeGraceInput] = React.useState("10")
 
   const { data: profile } = useProfile()
+  const [showToken, setShowToken] = React.useState(false)
+
+  const handleCopyToken = () => {
+    if (profile?.api_token) {
+      navigator.clipboard.writeText(profile.api_token)
+      toast({
+        title: "¡Token Copiado!",
+        description: "El token de integración de Raycast se copió a tu portapapeles.",
+      })
+    }
+  }
 
   React.useEffect(() => {
     if (profile?.spotify_playlist_url) {
@@ -266,6 +277,40 @@ export function ConfigurationView() {
 
         <TabsContent value="integraciones" className="space-y-8">
           <GoogleSyncSettings />
+
+          <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden">
+            <CardHeader className="bg-primary/5">
+              <CardTitle className="flex items-center gap-2 text-primary">
+                <Shield className="h-5 w-5" /> Integración con Raycast
+              </CardTitle>
+              <CardDescription>
+                Copia tu token de acceso personal para configurar la extensión oficial de Raycast y sincronizar tus pomodoros, tareas y estadísticas.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 pt-6">
+              <div className="flex gap-2">
+                <Input
+                  type={showToken ? "text" : "password"}
+                  value={profile?.api_token || ""}
+                  readOnly
+                  className="rounded-xl bg-muted/30 border-none h-12 font-mono text-sm"
+                />
+                <Button
+                  onClick={() => setShowToken(!showToken)}
+                  variant="outline"
+                  className="h-12 px-4 rounded-xl font-bold"
+                >
+                  {showToken ? "Ocultar" : "Mostrar"}
+                </Button>
+                <Button
+                  onClick={handleCopyToken}
+                  className="h-12 px-6 rounded-xl font-bold bg-primary hover:bg-primary/95 text-white"
+                >
+                  Copiar
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <Card className="border-none shadow-xl bg-white rounded-3xl overflow-hidden">

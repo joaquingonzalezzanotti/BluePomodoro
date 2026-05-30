@@ -466,69 +466,29 @@ export default function Command() {
       }
     }
 
-    const statusTitle = isWork
-      ? "🚀 Deep Focus Session in Progress..."
-      : "☕ Time to Recharge & Relax...";
+    return `
+| | |
+| :---: | :---: |
+| <img src="${svgUri}" width="480" /> | <img src="${statusGif}" width="120" /> |
 
-    return `![Focus Timer](${svgUri})
-
----
-
-### ${statusTitle}
-
-<img src="${statusGif}" width="130" />
+| | | |
+| :--- | :--- | :--- |
+| 👤 **User:** ${profile?.display_name || "Guest"} | ⚡ **Streak:** ${profile?.streak_days || 0} days | ✅ **Completed:** ${state.sessionsCompleted} blocks |
+| ✉️ **Email:** ${profile?.email ? profile.email.replace("@", "&#64;") : "Anonymous"} | ⭐ **Points:** ${profile?.puntos_totales || 0} pts | 🕐 **Rules:** ${profile?.pomodoro.work_minutes || 40}m / ${profile?.pomodoro.break_minutes || 10}m |
 `;
-  }, [svgUri, state.mode, remainingSec, timerDuration]);
+  }, [
+    svgUri,
+    state.mode,
+    remainingSec,
+    timerDuration,
+    profile,
+    state.sessionsCompleted,
+  ]);
 
   return (
     <Detail
       isLoading={loading}
       markdown={markdown}
-      metadata={
-        <Detail.Metadata>
-          <Detail.Metadata.Label
-            title="User"
-            text={loading ? "Loading..." : profile?.display_name || "Guest"}
-            icon={Icon.Person}
-          />
-          <Detail.Metadata.Label
-            title="Email"
-            text={loading ? "Loading..." : profile?.email || "Anonymous"}
-          />
-          <Detail.Metadata.Separator />
-          <Detail.Metadata.Label
-            title="Focus Streak"
-            text={`${profile?.streak_days || 0} days`}
-            icon={Icon.Bolt}
-          />
-          <Detail.Metadata.Label
-            title="Total Points"
-            text={`${profile?.puntos_totales || 0} pts`}
-            icon={Icon.Star}
-          />
-          <Detail.Metadata.Separator />
-          <Detail.Metadata.Label
-            title="Completed Sessions"
-            text={`${state.sessionsCompleted} blocks`}
-            icon={Icon.Checkmark}
-          />
-          <Detail.Metadata.Label
-            title="Active Rules"
-            text={`${profile?.pomodoro.work_minutes || 40}m work / ${profile?.pomodoro.break_minutes || 10}m break`}
-            icon={Icon.Clock}
-          />
-          {state.activeTaskTitle && (
-            <>
-              <Detail.Metadata.Separator />
-              <Detail.Metadata.Label
-                title="Active Focus Task"
-                text={state.activeTaskTitle}
-                icon={Icon.CheckCircle}
-              />
-            </>
-          )}
-        </Detail.Metadata>
-      }
       actions={
         <ActionPanel>
           <Action
