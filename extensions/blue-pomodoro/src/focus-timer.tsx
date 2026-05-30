@@ -456,7 +456,15 @@ export default function Command() {
 
   const markdown = useMemo(() => {
     const isWork = state.mode === "work";
-    const statusGif = isWork ? "focus.gif" : "break.gif";
+    let statusGif = isWork ? "focus.gif" : "break.gif";
+
+    if (isWork) {
+      const elapsedSec = timerDuration - remainingSec;
+      const elapsedMin = Math.floor(elapsedSec / 60);
+      if (elapsedMin > 0 && elapsedMin % 10 === 0) {
+        statusGif = "timeout.gif";
+      }
+    }
 
     const statusTitle = isWork
       ? "🚀 Deep Focus Session in Progress..."
@@ -470,7 +478,7 @@ export default function Command() {
 
 <img src="${statusGif}" width="130" />
 `;
-  }, [svgUri, state.mode]);
+  }, [svgUri, state.mode, remainingSec, timerDuration]);
 
   return (
     <Detail
