@@ -2,7 +2,7 @@
   "name": "blue-pomodoro",
   "title": "BluePomodoro",
   "description": "Integrate BluePomodoro flow into Raycast. Manage your pomodoros, tasks, and productivity stats.",
-  "icon": "logo.png",
+  "icon": "icon.png",
   "author": "joaquin_gonzalez",
   "categories": [
     "Productivity",
