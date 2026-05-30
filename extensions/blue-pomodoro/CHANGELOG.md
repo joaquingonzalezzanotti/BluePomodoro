@@ -5,8 +5,8 @@ All notable changes to this project will be documented in this file.
 ## [1.0.0] - {PR_MERGE_DATE}
 
 - Initial release of **BluePomodoro** Raycast integration.
-- **Focus Timer**: Dynamic Apple-style inline SVG timer showing current active session, remaining time, active task, and status.
-- **Manage Tasks**: View lists, search, create tasks, and toggle task completion.
-- **Productivity Stats**: Track total points, current active focus streak, and daily achievements.
-- **Menu Bar Timer**: Keep track of focus or break sessions directly in the macOS menu bar.
-- Fully compatible with both macOS and Windows clients (Raycast 2.0+).
+- **Focus Timer**: watchOS-inspired glowing circular progress ring showing countdown, session mode, active task, and streak stats.
+- **Animated Avatars**: Custom transparent focus and break animated GIFs sized perfectly for the Detail view.
+- **Manage Tasks**: Native color-coded task lists based on status, priority, and active focus, with actions in Title Case.
+- **Productivity Stats**: Track total points, current active focus streak, and achievements.
+- **Menu Bar Timer**: Monitor and control focus or break sessions directly from the macOS menu bar.
