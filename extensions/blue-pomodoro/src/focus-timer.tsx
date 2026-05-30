@@ -468,7 +468,7 @@ export default function Command() {
 
 ### ${statusTitle}
 
-![Session Status](${statusGif})
+<img src="${statusGif}" width="130" />
 `;
   }, [svgUri, state.mode]);
 

@@ -193,7 +193,7 @@ export default function Command() {
   return (
     <MenuBarExtra
       title={menuTitle}
-      icon="icon.png"
+      icon="logo.png"
       tooltip="BluePomodoro Timer"
     >
       <MenuBarExtra.Section title="Timer">
