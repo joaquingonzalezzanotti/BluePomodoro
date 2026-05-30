@@ -456,13 +456,13 @@ export default function Command() {
 
   const markdown = useMemo(() => {
     const isWork = state.mode === "work";
-    let statusGif = isWork ? "focus.gif" : "break.gif";
+    let statusGif = isWork ? "focus_v2.gif" : "break_v2.gif";
 
     if (isWork) {
       const elapsedSec = timerDuration - remainingSec;
       const elapsedMin = Math.floor(elapsedSec / 60);
       if (elapsedMin > 0 && elapsedMin % 10 === 0) {
-        statusGif = "timeout.gif";
+        statusGif = "timeout_v2.gif";
       }
     }
 
